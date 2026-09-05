@@ -10,6 +10,10 @@ struct ReviewView: View {
     @Environment(\.dismiss)
     private var dismiss
     
+    @Query
+    private var configurations:
+        [PyokoConfiguration]
+    
     // MARK: - Review State
     
     @State private var currentCard:
@@ -59,7 +63,9 @@ struct ReviewView: View {
             }
         }
         .padding()
-        .navigationTitle("Review")
+        .navigationTitle(
+            "Review"
+        )
         .onAppear {
             loadReview()
         }
@@ -74,6 +80,30 @@ struct ReviewView: View {
             
             Text(errorMessage)
         }
+    }
+    
+    // MARK: - Configuration
+    
+    private var configuration:
+        PyokoConfiguration? {
+        
+        configurations.first
+    }
+    
+    private var beforeAnswerDisplayMode:
+        TargetDisplayMode {
+        
+        configuration?
+            .beforeAnswerDisplayMode
+            ?? .target
+    }
+    
+    private var afterAnswerDisplayMode:
+        TargetDisplayMode {
+        
+        configuration?
+            .afterAnswerDisplayMode
+            ?? .reading
     }
     
     // MARK: - Review Content
@@ -94,19 +124,9 @@ struct ReviewView: View {
                 card: card
             )
             
-            Text(
-                question(
-                    for: card
-                )
+            questionView(
+                card: card
             )
-            .font(
-                .system(
-                    size: 36,
-                    weight: .semibold
-                )
-            )
-            .multilineTextAlignment(.center)
-            .textSelection(.enabled)
             
             if showingAnswer {
                 
@@ -115,18 +135,9 @@ struct ReviewView: View {
                         maxWidth: 500
                     )
                 
-                Text(
-                    answer(
-                        for: card
-                    )
+                answerView(
+                    card: card
                 )
-                .font(
-                    .system(
-                        size: 30
-                    )
-                )
-                .multilineTextAlignment(.center)
-                .textSelection(.enabled)
             }
             
             Spacer()
@@ -143,13 +154,19 @@ struct ReviewView: View {
                     
                 } label: {
                     
-                    Text("Show Answer")
-                        .frame(
-                            maxWidth: 300
-                        )
+                    Text(
+                        "Show Answer"
+                    )
+                    .frame(
+                        maxWidth: 300
+                    )
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .buttonStyle(
+                    .borderedProminent
+                )
+                .controlSize(
+                    .large
+                )
             }
         }
         .frame(
@@ -158,31 +175,158 @@ struct ReviewView: View {
         )
     }
     
+    // MARK: - Question
+    
+    @ViewBuilder
+    private func questionView(
+        card: PyokoCard
+    ) -> some View {
+        
+        switch card.type {
+            
+        case .recognition:
+            
+            Text(
+                displayedTarget(
+                    card: card,
+                    mode:
+                        showingAnswer
+                        ? afterAnswerDisplayMode
+                        : beforeAnswerDisplayMode
+                )
+            )
+            .font(
+                .system(
+                    size: 36,
+                    weight: .semibold
+                )
+            )
+            .multilineTextAlignment(
+                .center
+            )
+            .textSelection(
+                .enabled
+            )
+            
+        case .recall:
+            
+            Text(
+                card.sourceText
+            )
+            .font(
+                .system(
+                    size: 36,
+                    weight: .semibold
+                )
+            )
+            .multilineTextAlignment(
+                .center
+            )
+            .textSelection(
+                .enabled
+            )
+        }
+    }
+    
+    // MARK: - Answer
+    
+    @ViewBuilder
+    private func answerView(
+        card: PyokoCard
+    ) -> some View {
+        
+        switch card.type {
+            
+        case .recognition:
+            
+            Text(
+                card.sourceText
+            )
+            .font(
+                .system(
+                    size: 30
+                )
+            )
+            .multilineTextAlignment(
+                .center
+            )
+            .textSelection(
+                .enabled
+            )
+            
+        case .recall:
+            
+            Text(
+                displayedTarget(
+                    card: card,
+                    mode:
+                        afterAnswerDisplayMode
+                )
+            )
+            .font(
+                .system(
+                    size: 30
+                )
+            )
+            .multilineTextAlignment(
+                .center
+            )
+            .textSelection(
+                .enabled
+            )
+        }
+    }
+    
+    // MARK: - Target Display
+    
+    private func displayedTarget(
+        card: PyokoCard,
+        mode: TargetDisplayMode
+    ) -> String {
+        
+        switch mode {
+            
+        case .target:
+            
+            return card.targetText
+            
+        case .reading:
+            
+            return card.targetReading
+                ?? card.targetText
+        }
+    }
+    
     // MARK: - Progress
     
-    private var progressView: some View {
+    private var progressView:
+        some View {
         
         VStack(
             spacing: 6
         ) {
             
             ProgressView(
-                value: Double(
-                    progress.completed
-                ),
-                total: Double(
-                    max(
-                        progress.total,
-                        1
+                value:
+                    Double(
+                        progress.completed
+                    ),
+                total:
+                    Double(
+                        max(
+                            progress.total,
+                            1
+                        )
                     )
-                )
             )
             
             Text(
                 "\(progress.completed) of \(progress.total)"
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(
+                .secondary
+            )
         }
         .frame(
             maxWidth: 500
@@ -205,7 +349,9 @@ struct ReviewView: View {
                 systemImage: "eye"
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(
+                .secondary
+            )
             
         case .recall:
             
@@ -215,45 +361,16 @@ struct ReviewView: View {
                     "bubble.left.and.bubble.right"
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(
+                .secondary
+            )
         }
     }
     
-    // MARK: - Question
+    // MARK: - Rating Buttons
     
-    private func question(
-        for card: PyokoCard
-    ) -> String {
-        
-        switch card.type {
-            
-        case .recognition:
-            return card.japanese
-            
-        case .recall:
-            return card.english
-        }
-    }
-    
-    // MARK: - Answer
-    
-    private func answer(
-        for card: PyokoCard
-    ) -> String {
-        
-        switch card.type {
-            
-        case .recognition:
-            return card.english
-            
-        case .recall:
-            return card.japanese
-        }
-    }
-    
-    // MARK: - Ratings
-    
-    private var ratingButtons: some View {
+    private var ratingButtons:
+        some View {
         
         LazyVGrid(
             columns: [
@@ -310,8 +427,12 @@ struct ReviewView: View {
                     rating
                 )
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .buttonStyle(
+                .borderedProminent
+            )
+            .controlSize(
+                .large
+            )
             
         } else {
             
@@ -321,8 +442,12 @@ struct ReviewView: View {
                     rating
                 )
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
+            .buttonStyle(
+                .bordered
+            )
+            .controlSize(
+                .large
+            )
         }
     }
     
@@ -348,7 +473,9 @@ struct ReviewView: View {
                     size: 52
                 )
             )
-            .foregroundStyle(.secondary)
+            .foregroundStyle(
+                .secondary
+            )
             
             if progress.total == 0 {
                 
@@ -356,13 +483,19 @@ struct ReviewView: View {
                     "No Cards to Review"
                 )
                 .font(.title2)
-                .fontWeight(.semibold)
+                .fontWeight(
+                    .semibold
+                )
                 
                 Text(
                     "There are currently no due cards matching your configuration."
                 )
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .multilineTextAlignment(
+                    .center
+                )
+                .foregroundStyle(
+                    .secondary
+                )
                 
             } else {
                 
@@ -370,12 +503,16 @@ struct ReviewView: View {
                     "Review Complete"
                 )
                 .font(.title2)
-                .fontWeight(.semibold)
+                .fontWeight(
+                    .semibold
+                )
                 
                 Text(
                     "You reviewed \(progress.completed) cards."
                 )
-                .foregroundStyle(.secondary)
+                .foregroundStyle(
+                    .secondary
+                )
             }
             
             Button {
@@ -384,12 +521,16 @@ struct ReviewView: View {
                 
             } label: {
                 
-                Text("Go Home")
-                    .frame(
-                        minWidth: 140
-                    )
+                Text(
+                    "Go Home"
+                )
+                .frame(
+                    minWidth: 140
+                )
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(
+                .borderedProminent
+            )
             
             Spacer()
         }
@@ -407,13 +548,9 @@ struct ReviewView: View {
         }
         
         let manager = CardManager(
-            modelContext: modelContext
+            modelContext:
+                modelContext
         )
-        
-        // No startReviewIfNeeded() here.
-        //
-        // HomeView owns creation of the
-        // daily review session.
         
         currentCard =
             manager.getNextCard()
@@ -435,14 +572,17 @@ struct ReviewView: View {
         }
         
         let manager = CardManager(
-            modelContext: modelContext
+            modelContext:
+                modelContext
         )
         
         do {
             
             try manager.reviewCard(
-                id: currentCard.id,
-                rating: rating
+                id:
+                    currentCard.id,
+                rating:
+                    rating
             )
             
             showingAnswer = false
@@ -458,7 +598,8 @@ struct ReviewView: View {
             errorMessage =
                 error.localizedDescription
             
-            showingError = true
+            showingError =
+                true
         }
     }
 }

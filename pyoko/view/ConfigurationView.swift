@@ -1,10 +1,3 @@
-//
-//  ConfigurationView.swift
-//  pyoko
-//
-//  Created by Bill on 05/09/2026.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -35,8 +28,11 @@ struct ConfigurationView: View {
     
     @State private var dailyCardLimit = 20
     
-    @State private var kanjiLevel:
-        KanjiLevel = .n5
+    @State private var beforeAnswerDisplayMode:
+        TargetDisplayMode = .target
+    
+    @State private var afterAnswerDisplayMode:
+        TargetDisplayMode = .reading
     
     @State private var selectedSourceIDs:
         Set<UUID> = []
@@ -44,16 +40,13 @@ struct ConfigurationView: View {
     @State private var selectedTagIDs:
         Set<UUID> = []
     
-    @State private var hasLoadedConfiguration =
-        false
+    @State private var hasLoadedConfiguration = false
     
     // MARK: - Error
     
-    @State private var showingError =
-        false
+    @State private var showingError = false
     
-    @State private var errorMessage =
-        ""
+    @State private var errorMessage = ""
     
     // MARK: - Body
     
@@ -63,15 +56,15 @@ struct ConfigurationView: View {
             
             studySection
             
-            kanjiSection
+            displaySection
+            
+            previewSection
             
             sourceSection
             
             tagSection
         }
-        .navigationTitle(
-            "Configuration"
-        )
+        .navigationTitle("Configuration")
         .toolbar {
             
             ToolbarItem(
@@ -89,7 +82,8 @@ struct ConfigurationView: View {
         }
         .onChange(
             of: selectedSourceIDs
-        ) {
+        ) { _, _ in
+            
             pruneUnavailableTags()
         }
         .alert(
@@ -107,8 +101,7 @@ struct ConfigurationView: View {
     
     // MARK: - Study
     
-    private var studySection:
-        some View {
+    private var studySection: some View {
         
         Section {
             
@@ -119,19 +112,14 @@ struct ConfigurationView: View {
                 
                 HStack {
                     
-                    Text(
-                        "Daily Card Limit"
-                    )
+                    Text("Daily Card Limit")
                     
                     Spacer()
                     
                     Text(
-                        dailyCardLimit
-                            .formatted()
+                        dailyCardLimit.formatted()
                     )
-                    .foregroundStyle(
-                        .secondary
-                    )
+                    .foregroundStyle(.secondary)
                 }
             }
             
@@ -142,49 +130,87 @@ struct ConfigurationView: View {
         } footer: {
             
             Text(
-                "The maximum number of cards Pyoko will add to a daily review session."
+                "The maximum number of cards added to a daily review session."
             )
         }
     }
     
-    // MARK: - Kanji
+    // MARK: - Display
     
-    private var kanjiSection:
-        some View {
+    private var displaySection: some View {
         
         Section {
             
             Picker(
-                "Kanji Level",
-                selection: $kanjiLevel
+                "Before Answer",
+                selection: $beforeAnswerDisplayMode
             ) {
                 
                 ForEach(
-                    KanjiLevel.allCases,
+                    TargetDisplayMode.allCases,
                     id: \.self
-                ) { level in
+                ) { mode in
                     
-                    Text(level.rawValue)
-                        .tag(level)
+                    Text(mode.title)
+                        .tag(mode)
+                }
+            }
+            
+            Picker(
+                "After Answer",
+                selection: $afterAnswerDisplayMode
+            ) {
+                
+                ForEach(
+                    TargetDisplayMode.allCases,
+                    id: \.self
+                ) { mode in
+                    
+                    Text(mode.title)
+                        .tag(mode)
                 }
             }
             
         } header: {
             
-            Text("Kanji")
+            Text("Target Display")
             
         } footer: {
             
             Text(
-                "This represents your current kanji level. Pyoko can use it to provide reading assistance for kanji above your selected level."
+                "Target shows the normal target-language text. Reading uses the optional reading supplied by the vocabulary source. If no reading exists, Pyoko displays the target text instead."
+            )
+        }
+    }
+    
+    // MARK: - Preview
+    
+    private var previewSection: some View {
+        
+        Section {
+            
+            ExampleCardPreview(
+                beforeAnswerDisplayMode:
+                    beforeAnswerDisplayMode,
+                afterAnswerDisplayMode:
+                    afterAnswerDisplayMode
+            )
+            
+        } header: {
+            
+            Text("Preview")
+            
+        } footer: {
+            
+            Text(
+                "This example shows how the selected display settings affect Recognition and Recall cards."
             )
         }
     }
     
     // MARK: - Sources
     
-    private var sourceSection:
-        some View {
+    private var sourceSection: some View {
         
         Section {
             
@@ -198,9 +224,7 @@ struct ConfigurationView: View {
                     Text(
                         "No data sources installed."
                     )
-                    .foregroundStyle(
-                        .secondary
-                    )
+                    .foregroundStyle(.secondary)
                     
                     NavigationLink {
                         
@@ -210,15 +234,11 @@ struct ConfigurationView: View {
                         
                         Label(
                             "Manage Source Data",
-                            systemImage:
-                                "tray.full"
+                            systemImage: "tray.full"
                         )
                     }
                 }
-                .padding(
-                    .vertical,
-                    4
-                )
+                .padding(.vertical, 4)
                 
             } else {
                 
@@ -231,10 +251,9 @@ struct ConfigurationView: View {
                     SourceSelectionRow(
                         source: source,
                         isSelected:
-                            selectedSourceIDs
-                                .contains(
-                                    source.id
-                                )
+                            selectedSourceIDs.contains(
+                                source.id
+                            )
                     ) {
                         
                         toggleSource(
@@ -261,45 +280,32 @@ struct ConfigurationView: View {
     
     // MARK: - Source Actions
     
-    private var sourceSelectionActions:
-        some View {
+    private var sourceSelectionActions: some View {
         
         HStack {
             
-            Button(
-                "Select All"
-            ) {
+            Button("Select All") {
                 
-                selectedSourceIDs =
-                    Set(
-                        sources.map(
-                            \.id
-                        )
-                    )
+                selectedSourceIDs = Set(
+                    sources.map(\.id)
+                )
             }
             
             Spacer()
             
-            Button(
-                "Clear"
-            ) {
+            Button("Clear") {
                 
-                selectedSourceIDs
-                    .removeAll()
+                selectedSourceIDs.removeAll()
                 
-                selectedTagIDs
-                    .removeAll()
+                selectedTagIDs.removeAll()
             }
         }
-        .buttonStyle(
-            .borderless
-        )
+        .buttonStyle(.borderless)
     }
     
     // MARK: - Tags
     
-    private var tagSection:
-        some View {
+    private var tagSection: some View {
         
         Section {
             
@@ -308,18 +314,14 @@ struct ConfigurationView: View {
                 Text(
                     "Select at least one data source to configure tags."
                 )
-                .foregroundStyle(
-                    .secondary
-                )
+                .foregroundStyle(.secondary)
                 
             } else if availableTags.isEmpty {
                 
                 Text(
                     "No tags are available for the selected sources."
                 )
-                .foregroundStyle(
-                    .secondary
-                )
+                .foregroundStyle(.secondary)
                 
             } else {
                 
@@ -332,10 +334,9 @@ struct ConfigurationView: View {
                     TagSelectionRow(
                         tag: tag,
                         isSelected:
-                            selectedTagIDs
-                                .contains(
-                                    tag.id
-                                )
+                            selectedTagIDs.contains(
+                                tag.id
+                            )
                     ) {
                         
                         toggleTag(
@@ -371,59 +372,42 @@ struct ConfigurationView: View {
     
     // MARK: - Tag Actions
     
-    private var tagSelectionActions:
-        some View {
+    private var tagSelectionActions: some View {
         
         HStack {
             
-            Button(
-                "Select All"
-            ) {
+            Button("Select All") {
                 
-                selectedTagIDs =
-                    Set(
-                        availableTags.map(
-                            \.id
-                        )
-                    )
+                selectedTagIDs = Set(
+                    availableTags.map(\.id)
+                )
             }
             
             Spacer()
             
-            Button(
-                "Clear Filter"
-            ) {
+            Button("Clear Filter") {
                 
-                selectedTagIDs
-                    .removeAll()
+                selectedTagIDs.removeAll()
             }
         }
-        .buttonStyle(
-            .borderless
-        )
+        .buttonStyle(.borderless)
     }
     
     // MARK: - Available Tags
     
-    private var availableTags:
-        [PyokoTag] {
+    private var availableTags: [PyokoTag] {
         
-        guard
-            !selectedSourceIDs.isEmpty
-        else {
+        guard !selectedSourceIDs.isEmpty else {
             return []
         }
         
         return tags.filter { tag in
             
-            guard let cards =
-                tag.cards
-            else {
+            guard let cards = tag.cards else {
                 return false
             }
             
-            return cards.contains {
-                card in
+            return cards.contains { card in
                 
                 guard let sourceID =
                     card.source?.id
@@ -431,10 +415,9 @@ struct ConfigurationView: View {
                     return false
                 }
                 
-                return selectedSourceIDs
-                    .contains(
-                        sourceID
-                    )
+                return selectedSourceIDs.contains(
+                    sourceID
+                )
             }
         }
     }
@@ -450,14 +433,11 @@ struct ConfigurationView: View {
     
     private func loadConfigurationIfNeeded() {
         
-        guard
-            !hasLoadedConfiguration
-        else {
+        guard !hasLoadedConfiguration else {
             return
         }
         
-        hasLoadedConfiguration =
-            true
+        hasLoadedConfiguration = true
         
         guard let configuration =
             configurations.first
@@ -471,26 +451,23 @@ struct ConfigurationView: View {
         dailyCardLimit =
             configuration.dailyCardLimit
         
-        kanjiLevel =
-            configuration.kanjiLevel
+        beforeAnswerDisplayMode =
+            configuration.beforeAnswerDisplayMode
         
-        selectedSourceIDs =
-            Set(
-                configuration
-                    .sources
-                    .map(
-                        \.id
-                    )
-            )
+        afterAnswerDisplayMode =
+            configuration.afterAnswerDisplayMode
         
-        selectedTagIDs =
-            Set(
-                configuration
-                    .tags
-                    .map(
-                        \.id
-                    )
-            )
+        selectedSourceIDs = Set(
+            configuration
+                .sources
+                .map(\.id)
+        )
+        
+        selectedTagIDs = Set(
+            configuration
+                .tags
+                .map(\.id)
+        )
         
         pruneUnavailableTags()
     }
@@ -501,22 +478,21 @@ struct ConfigurationView: View {
         
         dailyCardLimit = 20
         
-        kanjiLevel = .n5
+        beforeAnswerDisplayMode = .target
         
-        // When configuration is first created,
-        // use all currently installed sources.
+        afterAnswerDisplayMode = .reading
         
-        selectedSourceIDs =
-            Set(
-                sources.map(
-                    \.id
-                )
-            )
+        // Select all currently installed sources
+        // when no configuration exists yet.
         
-        // Empty means no tag filter.
+        selectedSourceIDs = Set(
+            sources.map(\.id)
+        )
         
-        selectedTagIDs =
-            []
+        // An empty tag selection means:
+        // no tag filtering.
+        
+        selectedTagIDs = []
     }
     
     // MARK: - Toggle Source
@@ -525,22 +501,19 @@ struct ConfigurationView: View {
         _ source: PyokoDataSource
     ) {
         
-        if selectedSourceIDs
-            .contains(
-                source.id
-            ) {
+        if selectedSourceIDs.contains(
+            source.id
+        ) {
             
-            selectedSourceIDs
-                .remove(
-                    source.id
-                )
+            selectedSourceIDs.remove(
+                source.id
+            )
             
         } else {
             
-            selectedSourceIDs
-                .insert(
-                    source.id
-                )
+            selectedSourceIDs.insert(
+                source.id
+            )
         }
     }
     
@@ -550,22 +523,19 @@ struct ConfigurationView: View {
         _ tag: PyokoTag
     ) {
         
-        if selectedTagIDs
-            .contains(
-                tag.id
-            ) {
+        if selectedTagIDs.contains(
+            tag.id
+        ) {
             
-            selectedTagIDs
-                .remove(
-                    tag.id
-                )
+            selectedTagIDs.remove(
+                tag.id
+            )
             
         } else {
             
-            selectedTagIDs
-                .insert(
-                    tag.id
-                )
+            selectedTagIDs.insert(
+                tag.id
+            )
         }
     }
     
@@ -573,18 +543,14 @@ struct ConfigurationView: View {
     
     private func pruneUnavailableTags() {
         
-        let availableTagIDs =
-            Set(
-                availableTags.map(
-                    \.id
-                )
-            )
+        let availableTagIDs = Set(
+            availableTags.map(\.id)
+        )
         
         selectedTagIDs =
-            selectedTagIDs
-                .intersection(
-                    availableTagIDs
-                )
+            selectedTagIDs.intersection(
+                availableTagIDs
+            )
     }
     
     // MARK: - Save
@@ -622,28 +588,26 @@ struct ConfigurationView: View {
             configuration.dailyCardLimit =
                 dailyCardLimit
             
-            configuration.kanjiLevel =
-                kanjiLevel
+            configuration.beforeAnswerDisplayMode =
+                beforeAnswerDisplayMode
+            
+            configuration.afterAnswerDisplayMode =
+                afterAnswerDisplayMode
             
             configuration.selectedSources =
                 sources.filter {
                     
-                    selectedSourceIDs
-                        .contains(
-                            $0.id
-                        )
+                    selectedSourceIDs.contains(
+                        $0.id
+                    )
                 }
-            
-            // Empty selectedTags intentionally
-            // means "no tag filter".
             
             configuration.selectedTags =
                 availableTags.filter {
                     
-                    selectedTagIDs
-                        .contains(
-                            $0.id
-                        )
+                    selectedTagIDs.contains(
+                        $0.id
+                    )
                 }
             
             try modelContext.save()
@@ -655,25 +619,20 @@ struct ConfigurationView: View {
             errorMessage =
                 error.localizedDescription
             
-            showingError =
-                true
+            showingError = true
         }
     }
 }
 
-// MARK: - Source Row
+// MARK: - Source Selection Row
 
-private struct SourceSelectionRow:
-    View {
+private struct SourceSelectionRow: View {
     
-    let source:
-        PyokoDataSource
+    let source: PyokoDataSource
     
-    let isSelected:
-        Bool
+    let isSelected: Bool
     
-    let action:
-        () -> Void
+    let action: () -> Void
     
     var body: some View {
         
@@ -690,20 +649,14 @@ private struct SourceSelectionRow:
                     spacing: 3
                 ) {
                     
-                    Text(
-                        source.name
-                    )
-                    .foregroundStyle(
-                        .primary
-                    )
+                    Text(source.name)
+                        .foregroundStyle(.primary)
                     
                     Text(
-                        sourceSummary
+                        "\(source.vocabularyCount.formatted()) vocabulary"
                     )
                     .font(.caption)
-                    .foregroundStyle(
-                        .secondary
-                    )
+                    .foregroundStyle(.secondary)
                 }
                 
                 Spacer()
@@ -715,14 +668,13 @@ private struct SourceSelectionRow:
                             "checkmark.circle.fill"
                     )
                     .foregroundStyle(
-                        .tint
+                        Color.accentColor
                     )
                     
                 } else {
                     
                     Image(
-                        systemName:
-                            "circle"
+                        systemName: "circle"
                     )
                     .foregroundStyle(
                         .secondary
@@ -733,31 +685,19 @@ private struct SourceSelectionRow:
                 Rectangle()
             )
         }
-        .buttonStyle(
-            .plain
-        )
-    }
-    
-    private var sourceSummary:
-        String {
-        
-        "\(source.vocabularyCount.formatted()) vocabulary"
+        .buttonStyle(.plain)
     }
 }
 
-// MARK: - Tag Row
+// MARK: - Tag Selection Row
 
-private struct TagSelectionRow:
-    View {
+private struct TagSelectionRow: View {
     
-    let tag:
-        PyokoTag
+    let tag: PyokoTag
     
-    let isSelected:
-        Bool
+    let isSelected: Bool
     
-    let action:
-        () -> Void
+    let action: () -> Void
     
     var body: some View {
         
@@ -768,9 +708,7 @@ private struct TagSelectionRow:
             HStack {
                 
                 Text(tag.name)
-                    .foregroundStyle(
-                        .primary
-                    )
+                    .foregroundStyle(.primary)
                 
                 Spacer()
                 
@@ -781,14 +719,13 @@ private struct TagSelectionRow:
                             "checkmark.circle.fill"
                     )
                     .foregroundStyle(
-                        .tint
+                        Color.accentColor
                     )
                     
                 } else {
                     
                     Image(
-                        systemName:
-                            "circle"
+                        systemName: "circle"
                     )
                     .foregroundStyle(
                         .secondary
@@ -799,8 +736,257 @@ private struct TagSelectionRow:
                 Rectangle()
             )
         }
-        .buttonStyle(
-            .plain
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Example Card Preview
+
+private struct ExampleCardPreview: View {
+    
+    let beforeAnswerDisplayMode:
+        TargetDisplayMode
+    
+    let afterAnswerDisplayMode:
+        TargetDisplayMode
+    
+    @State private var cardType:
+        ExampleCardType = .recognition
+    
+    // MARK: - Example Data
+    
+    private let sourceText =
+        "to eat"
+    
+    private let targetText =
+        "食べる"
+    
+    private let targetReading =
+        "たべる"
+    
+    var body: some View {
+        
+        VStack(
+            alignment: .leading,
+            spacing: 16
+        ) {
+            
+            Picker(
+                "Example Card Type",
+                selection: $cardType
+            ) {
+                
+                ForEach(
+                    ExampleCardType.allCases
+                ) { type in
+                    
+                    Text(type.title)
+                        .tag(type)
+                }
+            }
+            .pickerStyle(.segmented)
+            
+            HStack(
+                alignment: .center,
+                spacing: 12
+            ) {
+                
+                previewStage(
+                    title: "Before Answer",
+                    primaryText:
+                        beforePrimaryText,
+                    secondaryText: nil
+                )
+                
+                Image(
+                    systemName: "arrow.right"
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+                
+                previewStage(
+                    title: "After Answer",
+                    primaryText:
+                        afterPrimaryText,
+                    secondaryText:
+                        afterSecondaryText
+                )
+            }
+        }
+        .padding(.vertical, 4)
+    }
+    
+    // MARK: - Before
+    
+    private var beforePrimaryText:
+        String {
+        
+        switch cardType {
+            
+        case .recognition:
+            
+            return displayedTarget(
+                mode:
+                    beforeAnswerDisplayMode
+            )
+            
+        case .recall:
+            
+            return sourceText
+        }
+    }
+    
+    // MARK: - After
+    
+    private var afterPrimaryText:
+        String {
+        
+        switch cardType {
+            
+        case .recognition:
+            
+            return displayedTarget(
+                mode:
+                    afterAnswerDisplayMode
+            )
+            
+        case .recall:
+            
+            return sourceText
+        }
+    }
+    
+    private var afterSecondaryText:
+        String? {
+        
+        switch cardType {
+            
+        case .recognition:
+            
+            return sourceText
+            
+        case .recall:
+            
+            return displayedTarget(
+                mode:
+                    afterAnswerDisplayMode
+            )
+        }
+    }
+    
+    // MARK: - Target Display
+    
+    private func displayedTarget(
+        mode: TargetDisplayMode
+    ) -> String {
+        
+        switch mode {
+            
+        case .target:
+            return targetText
+            
+        case .reading:
+            return targetReading
+        }
+    }
+    
+    // MARK: - Preview Stage
+    
+    private func previewStage(
+        title: String,
+        primaryText: String,
+        secondaryText: String?
+    ) -> some View {
+        
+        VStack(
+            alignment: .leading,
+            spacing: 8
+        ) {
+            
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(
+                    .secondary
+                )
+            
+            VStack(
+                spacing: 10
+            ) {
+                
+                Spacer(
+                    minLength: 8
+                )
+                
+                Text(primaryText)
+                    .font(.title2)
+                    .fontWeight(
+                        .semibold
+                    )
+                    .multilineTextAlignment(
+                        .center
+                    )
+                
+                if let secondaryText {
+                    
+                    Divider()
+                    
+                    Text(
+                        secondaryText
+                    )
+                    .multilineTextAlignment(
+                        .center
+                    )
+                }
+                
+                Spacer(
+                    minLength: 8
+                )
+            }
+            .frame(
+                maxWidth: .infinity,
+                minHeight: 140
+            )
+            .padding()
+            .background(
+                Color.secondary
+                    .opacity(0.08)
+            )
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: 12
+                )
+            )
+        }
+        .frame(
+            maxWidth: .infinity
         )
+    }
+}
+
+// MARK: - Example Card Type
+
+private enum ExampleCardType:
+    String,
+    CaseIterable,
+    Identifiable {
+    
+    case recognition
+    case recall
+    
+    var id: Self {
+        self
+    }
+    
+    var title: String {
+        
+        switch self {
+            
+        case .recognition:
+            return "Recognition"
+            
+        case .recall:
+            return "Recall"
+        }
     }
 }

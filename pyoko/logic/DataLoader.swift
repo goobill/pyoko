@@ -22,7 +22,7 @@ final class DataLoader {
         createRecognition: Bool,
         createRecall: Bool,
         catalogKey: String? = nil,
-        origin: DataSourceOrigin = DataSourceOrigin.custom
+        origin: DataSourceOrigin = .custom
     ) async throws {
         
         let trimmedURL = urlString
@@ -34,20 +34,16 @@ final class DataLoader {
             let url = URL(
                 string: trimmedURL
             ),
-            let scheme = url.scheme?
-                .lowercased(),
-            scheme == "http" ||
-            scheme == "https"
+            let scheme = url.scheme?.lowercased(),
+            scheme == "http" || scheme == "https"
         else {
             throw DataLoaderError.invalidURL
         }
         
-        let (
-            data,
-            response
-        ) = try await URLSession.shared.data(
-            from: url
-        )
+        let (data, response) =
+            try await URLSession.shared.data(
+                from: url
+            )
         
         if let httpResponse =
             response as? HTTPURLResponse,
@@ -98,7 +94,7 @@ final class DataLoader {
             data: data,
             sourceName: sourceName,
             catalogKey: nil,
-            origin: DataSourceOrigin.custom,
+            origin: .custom,
             createRecognition: createRecognition,
             createRecall: createRecall
         )
@@ -115,11 +111,8 @@ final class DataLoader {
         createRecall: Bool
     ) throws {
         
-        guard createRecognition ||
-              createRecall
-        else {
-            throw DataLoaderError
-                .noCardTypesSelected
+        guard createRecognition || createRecall else {
+            throw DataLoaderError.noCardTypesSelected
         }
         
         let sourceName = sourceName
@@ -160,15 +153,13 @@ final class DataLoader {
                 createRecall
                     ? words.count
                     : 0,
-            importedAt: Date.now
+            importedAt: .now
         )
         
         modelContext.insert(
             source
         )
         
-        // Prevent repeated SwiftData queries for
-        // the same tags during one import.
         var tagCache:
             [String: PyokoTag] = [:]
         
@@ -182,16 +173,12 @@ final class DataLoader {
             if createRecognition {
                 
                 let card = PyokoCard(
-                    type:
-                        CardType.recognition,
-                    english:
-                        word.english,
-                    japanese:
-                        word.japanese,
-                    source:
-                        source,
-                    tags:
-                        tags
+                    type: .recognition,
+                    sourceText: word.sourceText,
+                    targetText: word.targetText,
+                    targetReading: word.targetReading,
+                    source: source,
+                    tags: tags
                 )
                 
                 modelContext.insert(
@@ -202,16 +189,12 @@ final class DataLoader {
             if createRecall {
                 
                 let card = PyokoCard(
-                    type:
-                        CardType.recall,
-                    english:
-                        word.english,
-                    japanese:
-                        word.japanese,
-                    source:
-                        source,
-                    tags:
-                        tags
+                    type: .recall,
+                    sourceText: word.sourceText,
+                    targetText: word.targetText,
+                    targetReading: word.targetReading,
+                    source: source,
+                    tags: tags
                 )
                 
                 modelContext.insert(
@@ -263,8 +246,7 @@ final class DataLoader {
                     #Predicate<PyokoDataSource> {
                         source in
                         
-                        source.name ==
-                            sourceName
+                        source.name == sourceName
                     }
             )
         
@@ -313,9 +295,6 @@ final class DataLoader {
                 continue
             }
             
-            // Already encountered during
-            // this import.
-            
             if let cachedTag =
                 cache[trimmedName] {
                 
@@ -334,8 +313,7 @@ final class DataLoader {
                         #Predicate<PyokoTag> {
                             tag in
                             
-                            tag.name ==
-                                tagName
+                            tag.name == tagName
                         }
                 )
             
@@ -382,7 +360,7 @@ final class DataLoader {
             csv
         )
         
-        // First row is always ignored
+        // The first row is always ignored
         // as the header.
         
         guard rows.count > 1 else {
@@ -403,42 +381,52 @@ final class DataLoader {
             
             // Exact format:
             //
-            // English, Japanese, Tags
+            // Source, Target, Reading, Tags
             
-            guard row.count == 3 else {
+            guard row.count == 4 else {
                 
-                throw DataLoaderError
-                    .invalidRow(
-                        row: rowNumber
-                    )
+                throw DataLoaderError.invalidRow(
+                    row: rowNumber
+                )
             }
             
-            let english = row[0]
+            let sourceText = row[0]
                 .trimmingCharacters(
                     in: .whitespacesAndNewlines
                 )
             
-            let japanese = row[1]
+            let targetText = row[1]
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                )
+            
+            let reading = row[2]
                 .trimmingCharacters(
                     in: .whitespacesAndNewlines
                 )
             
             guard
-                !english.isEmpty,
-                !japanese.isEmpty
+                !sourceText.isEmpty,
+                !targetText.isEmpty
             else {
                 
-                throw DataLoaderError
-                    .invalidRow(
-                        row: rowNumber
-                    )
+                throw DataLoaderError.invalidRow(
+                    row: rowNumber
+                )
             }
             
-            var tags = row[2]
+            let targetReading:
+                String? =
+                reading.isEmpty
+                    ? nil
+                    : reading
+            
+            var tags = row[3]
                 .split(
                     separator: "|"
                 )
                 .map {
+                    
                     String($0)
                         .trimmingCharacters(
                             in: .whitespacesAndNewlines
@@ -456,12 +444,10 @@ final class DataLoader {
             
             words.append(
                 ImportedWord(
-                    english:
-                        english,
-                    japanese:
-                        japanese,
-                    tags:
-                        tags
+                    sourceText: sourceText,
+                    targetText: targetText,
+                    targetReading: targetReading,
+                    tags: tags
                 )
             )
         }
@@ -492,8 +478,7 @@ final class DataLoader {
         
         var index = 0
         
-        while index <
-                characters.count {
+        while index < characters.count {
             
             let character =
                 characters[index]
@@ -503,14 +488,12 @@ final class DataLoader {
                 // Escaped quote: ""
                 
                 if insideQuotes,
-                   index + 1 <
-                    characters.count,
-                   characters[
-                        index + 1
-                   ] == "\"" {
+                   index + 1 < characters.count,
+                   characters[index + 1] == "\"" {
                     
-                    currentField
-                        .append("\"")
+                    currentField.append(
+                        "\""
+                    )
                     
                     index += 2
                     
@@ -537,11 +520,8 @@ final class DataLoader {
                 // Windows CRLF
                 
                 if character == "\r",
-                   index + 1 <
-                    characters.count,
-                   characters[
-                        index + 1
-                   ] == "\n" {
+                   index + 1 < characters.count,
+                   characters[index + 1] == "\n" {
                     
                     index += 1
                 }
@@ -554,6 +534,7 @@ final class DataLoader {
                 
                 let hasContent =
                     currentRow.contains {
+                        
                         !$0
                             .trimmingCharacters(
                                 in: .whitespacesAndNewlines
@@ -579,14 +560,12 @@ final class DataLoader {
             index += 1
         }
         
-        // Unclosed quote.
-        
         guard !insideQuotes else {
             throw DataLoaderError.invalidCSV
         }
         
         if !currentField.isEmpty ||
-           !currentRow.isEmpty {
+            !currentRow.isEmpty {
             
             currentRow.append(
                 currentField
@@ -594,6 +573,7 @@ final class DataLoader {
             
             let hasContent =
                 currentRow.contains {
+                    
                     !$0
                         .trimmingCharacters(
                             in: .whitespacesAndNewlines
@@ -602,6 +582,7 @@ final class DataLoader {
                 }
             
             if hasContent {
+                
                 rows.append(
                     currentRow
                 )
@@ -616,9 +597,11 @@ final class DataLoader {
 
 struct ImportedWord {
     
-    let english: String
+    let sourceText: String
     
-    let japanese: String
+    let targetText: String
+    
+    let targetReading: String?
     
     let tags: [String]
 }
@@ -702,7 +685,7 @@ enum DataLoaderError: LocalizedError {
         ):
             
             return """
-            Row \(row) is invalid. Every row must contain exactly English, Japanese, and Tags.
+            Row \(row) is invalid. Every row must contain exactly Source, Target, Reading, and Tags.
             """
             
         case .noWordsFound:

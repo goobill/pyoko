@@ -9,13 +9,32 @@ final class PyokoCard {
     
     var id: UUID = UUID()
     
-    // MARK: - Vocabulary
+    // MARK: - Card
     
     var type: CardType = CardType.recognition
     
-    var english: String = ""
+    /// The source-language text.
+    ///
+    /// Examples:
+    /// English: "to eat"
+    /// English: "library"
+    var sourceText: String = ""
     
-    var japanese: String = ""
+    /// The target-language text.
+    ///
+    /// Examples:
+    /// Japanese: "食べる"
+    /// French: "manger"
+    var targetText: String = ""
+    
+    /// Optional pronunciation / reading representation
+    /// of the target text.
+    ///
+    /// Japanese:
+    /// 食べる → たべる
+    ///
+    /// French would normally use nil.
+    var targetReading: String?
     
     // MARK: - Source
     
@@ -64,11 +83,12 @@ final class PyokoCard {
     init(
         id: UUID = UUID(),
         type: CardType,
-        english: String,
-        japanese: String,
+        sourceText: String,
+        targetText: String,
+        targetReading: String? = nil,
         source: PyokoDataSource?,
         tags: [PyokoTag] = [],
-        due: Date = Date.now,
+        due: Date = .now,
         stability: Double = 0,
         difficulty: Double = 0,
         elapsedDays: Double = 0,
@@ -76,15 +96,15 @@ final class PyokoCard {
         learningSteps: Int = 0,
         reps: Int = 0,
         lapses: Int = 0,
-        state: CardState = CardState.new,
+        state: CardState = .new,
         lastReview: Date? = nil
     ) {
         self.id = id
-        
         self.type = type
         
-        self.english = english
-        self.japanese = japanese
+        self.sourceText = sourceText
+        self.targetText = targetText
+        self.targetReading = targetReading
         
         self.source = source
         self.tags = tags
@@ -102,7 +122,6 @@ final class PyokoCard {
         self.lapses = lapses
         
         self.state = state
-        
         self.lastReview = lastReview
     }
 }
@@ -111,52 +130,3 @@ enum CardType: String, Codable {
     case recognition = "RECOGNITION"
     case recall = "RECALL"
 }
-
-//extension PyokoCard {
-//    static let sample = sampleData[0]
-//    
-//    static let sampleData = [
-//        PyokoCard(
-//            id: 1,
-//            type: .recall,
-//            japanese: "食べる",
-//            reading: "たべる",
-//            english: "to eat",
-//        ),
-//        PyokoCard(
-//            id: 2,
-//            type: .recognition,
-//            japanese: "食べる",
-//            reading: "たべる",
-//            english: "to eat",
-//        ),
-//        PyokoCard(
-//            id: 3,
-//            type: .recall,
-//            japanese: "飲む",
-//            reading: "のむ",
-//            english: "to drink"
-//        ),
-//        PyokoCard(
-//            id: 4,
-//            type: .recognition,
-//            japanese: "飲む",
-//            reading: "のむ",
-//            english: "to drink"
-//        ),
-//        PyokoCard(
-//            id: 5,
-//            type: .recall,
-//            japanese: "行く",
-//            reading: "いく",
-//            english: "to go"
-//        ),
-//        PyokoCard(
-//            id: 6,
-//            type: .recognition,
-//            japanese: "行く",
-//            reading: "いく",
-//            english: "to go"
-//        )
-//    ]
-//}

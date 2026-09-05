@@ -1,12 +1,22 @@
 import Foundation
 import SwiftData
 
-enum KanjiLevel: String, Codable, CaseIterable {
-    case n5 = "N5"
-    case n4 = "N4"
-    case n3 = "N3"
-    case n2 = "N2"
-    case n1 = "N1"
+enum TargetDisplayMode: String, Codable, CaseIterable {
+    
+    case target
+    case reading
+    
+    var title: String {
+        
+        switch self {
+            
+        case .target:
+            return "Target"
+            
+        case .reading:
+            return "Reading"
+        }
+    }
 }
 
 @Model
@@ -16,11 +26,15 @@ final class PyokoConfiguration {
     
     var id: UUID = UUID()
     
-    // MARK: - Configuration
+    // MARK: - Study
     
     var dailyCardLimit: Int = 20
     
-    var kanjiLevel: KanjiLevel = KanjiLevel.n5
+    // MARK: - Target Display
+    
+    var beforeAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.target
+    
+    var afterAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.reading
     
     // MARK: - Sources
     
@@ -43,13 +57,18 @@ final class PyokoConfiguration {
     init(
         id: UUID = UUID(),
         dailyCardLimit: Int = 20,
-        kanjiLevel: KanjiLevel = KanjiLevel.n5,
+        beforeAnswerDisplayMode: TargetDisplayMode = .target,
+        afterAnswerDisplayMode: TargetDisplayMode = .reading,
         selectedSources: [PyokoDataSource] = [],
         selectedTags: [PyokoTag] = []
     ) {
         self.id = id
+        
         self.dailyCardLimit = dailyCardLimit
-        self.kanjiLevel = kanjiLevel
+        
+        self.beforeAnswerDisplayMode = beforeAnswerDisplayMode
+        self.afterAnswerDisplayMode = afterAnswerDisplayMode
+        
         self.selectedSources = selectedSources
         self.selectedTags = selectedTags
     }
