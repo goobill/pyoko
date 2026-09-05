@@ -31,9 +31,7 @@ final class DataLoader {
             )
         
         guard
-            let url = URL(
-                string: trimmedURL
-            ),
+            let url = URL(string: trimmedURL),
             let scheme = url.scheme?.lowercased(),
             scheme == "http" || scheme == "https"
         else {
@@ -111,12 +109,15 @@ final class DataLoader {
         createRecall: Bool
     ) throws {
         
-        guard createRecognition || createRecall else {
+        guard
+            createRecognition ||
+            createRecall
+        else {
             throw DataLoaderError.noCardTypesSelected
         }
         
-        let sourceName = sourceName
-            .trimmingCharacters(
+        let sourceName =
+            sourceName.trimmingCharacters(
                 in: .whitespacesAndNewlines
             )
         
@@ -131,9 +132,7 @@ final class DataLoader {
             throw DataLoaderError.invalidEncoding
         }
         
-        let words = try parseCSV(
-            csv
-        )
+        let words = try parseCSV(csv)
         
         try ensureSourceDoesNotExist(
             name: sourceName,
@@ -147,18 +146,16 @@ final class DataLoader {
             vocabularyCount: words.count,
             recognitionCount:
                 createRecognition
-                    ? words.count
-                    : 0,
+                ? words.count
+                : 0,
             recallCount:
                 createRecall
-                    ? words.count
-                    : 0,
+                ? words.count
+                : 0,
             importedAt: .now
         )
         
-        modelContext.insert(
-            source
-        )
+        modelContext.insert(source)
         
         var tagCache:
             [String: PyokoTag] = [:]
@@ -181,9 +178,7 @@ final class DataLoader {
                     tags: tags
                 )
                 
-                modelContext.insert(
-                    card
-                )
+                modelContext.insert(card)
             }
             
             if createRecall {
@@ -197,9 +192,7 @@ final class DataLoader {
                     tags: tags
                 )
                 
-                modelContext.insert(
-                    card
-                )
+                modelContext.insert(card)
             }
         }
         
@@ -279,8 +272,8 @@ final class DataLoader {
         
         for name in tagNames {
             
-            let trimmedName = name
-                .trimmingCharacters(
+            let trimmedName =
+                name.trimmingCharacters(
                     in: .whitespacesAndNewlines
                 )
             
@@ -288,9 +281,10 @@ final class DataLoader {
                 continue
             }
             
-            guard seenNames
-                .insert(trimmedName)
-                .inserted
+            guard
+                seenNames
+                    .insert(trimmedName)
+                    .inserted
             else {
                 continue
             }
@@ -298,10 +292,7 @@ final class DataLoader {
             if let cachedTag =
                 cache[trimmedName] {
                 
-                tags.append(
-                    cachedTag
-                )
-                
+                tags.append(cachedTag)
                 continue
             }
             
@@ -325,9 +316,7 @@ final class DataLoader {
                 cache[trimmedName] =
                     existingTag
                 
-                tags.append(
-                    existingTag
-                )
+                tags.append(existingTag)
                 
                 continue
             }
@@ -336,15 +325,11 @@ final class DataLoader {
                 name: trimmedName
             )
             
-            modelContext.insert(
-                tag
-            )
+            modelContext.insert(tag)
             
             cache[trimmedName] = tag
             
-            tags.append(
-                tag
-            )
+            tags.append(tag)
         }
         
         return tags
@@ -356,12 +341,9 @@ final class DataLoader {
         _ csv: String
     ) throws -> [ImportedWord] {
         
-        let rows = try parseCSVRows(
-            csv
-        )
+        let rows = try parseCSVRows(csv)
         
-        // The first row is always ignored
-        // as the header.
+        // Row 1 is always treated as the header.
         
         guard rows.count > 1 else {
             throw DataLoaderError.noWordsFound
@@ -376,70 +358,91 @@ final class DataLoader {
             .dropFirst()
             .enumerated() {
             
-            let rowNumber =
-                index + 2
+            // +2 because:
+            // index starts at 0 and
+            // row 1 is the header.
             
-            // Exact format:
+            let rowNumber = index + 2
+            
+            // Every row must always be:
             //
-            // Source, Target, Reading, Tags
+            // source,target,reading,tags
             
             guard row.count == 4 else {
                 
-                throw DataLoaderError.invalidRow(
-                    row: rowNumber
+                throw DataLoaderError.invalidColumnCount(
+                    row: rowNumber,
+                    values: row
                 )
             }
             
-            let sourceText = row[0]
-                .trimmingCharacters(
+            let sourceText =
+                row[0].trimmingCharacters(
                     in: .whitespacesAndNewlines
                 )
             
-            let targetText = row[1]
-                .trimmingCharacters(
+            let targetText =
+                row[1].trimmingCharacters(
                     in: .whitespacesAndNewlines
                 )
             
-            let reading = row[2]
-                .trimmingCharacters(
+            let reading =
+                row[2].trimmingCharacters(
                     in: .whitespacesAndNewlines
                 )
             
-            guard
-                !sourceText.isEmpty,
-                !targetText.isEmpty
-            else {
+            let rawTags =
+                row[3].trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                )
+            
+            // Source is required.
+            
+            guard !sourceText.isEmpty else {
                 
-                throw DataLoaderError.invalidRow(
-                    row: rowNumber
+                throw DataLoaderError.missingSource(
+                    row: rowNumber,
+                    values: row
                 )
             }
             
-            let targetReading:
-                String? =
+            // Target is required.
+            
+            guard !targetText.isEmpty else {
+                
+                throw DataLoaderError.missingTarget(
+                    row: rowNumber,
+                    values: row
+                )
+            }
+            
+            // Reading is optional.
+            
+            let targetReading: String? =
                 reading.isEmpty
                     ? nil
                     : reading
             
-            var tags = row[3]
-                .split(
-                    separator: "|"
-                )
-                .map {
-                    
-                    String($0)
-                        .trimmingCharacters(
-                            in: .whitespacesAndNewlines
-                        )
-                }
-                .filter {
-                    !$0.isEmpty
-                }
+            // Tags are optional.
+            
+            var tags =
+                rawTags
+                    .split(separator: "|")
+                    .map {
+                        
+                        String($0)
+                            .trimmingCharacters(
+                                in: .whitespacesAndNewlines
+                            )
+                    }
+                    .filter {
+                        !$0.isEmpty
+                    }
+            
+            // No tags -> "No Tag"
             
             if tags.isEmpty {
-                tags = [
-                    defaultTagName
-                ]
+                tags = [defaultTagName]
             }
             
             words.append(
@@ -473,8 +476,7 @@ final class DataLoader {
         
         var insideQuotes = false
         
-        let characters =
-            Array(csv)
+        let characters = Array(csv)
         
         var index = 0
         
@@ -485,18 +487,17 @@ final class DataLoader {
             
             if character == "\"" {
                 
-                // Escaped quote: ""
+                // Escaped quote inside a quoted field:
+                //
+                // "Hello ""World"""
                 
                 if insideQuotes,
                    index + 1 < characters.count,
                    characters[index + 1] == "\"" {
                     
-                    currentField.append(
-                        "\""
-                    )
+                    currentField.append("\"")
                     
                     index += 2
-                    
                     continue
                 }
                 
@@ -517,7 +518,7 @@ final class DataLoader {
                 character == "\r"
             ) && !insideQuotes {
                 
-                // Windows CRLF
+                // Handle Windows CRLF.
                 
                 if character == "\r",
                    index + 1 < characters.count,
@@ -543,9 +544,7 @@ final class DataLoader {
                     }
                 
                 if hasContent {
-                    rows.append(
-                        currentRow
-                    )
+                    rows.append(currentRow)
                 }
                 
                 currentRow = []
@@ -559,6 +558,9 @@ final class DataLoader {
             
             index += 1
         }
+        
+        // If a quote was opened but never closed,
+        // the CSV is malformed.
         
         guard !insideQuotes else {
             throw DataLoaderError.invalidCSV
@@ -582,10 +584,7 @@ final class DataLoader {
                 }
             
             if hasContent {
-                
-                rows.append(
-                    currentRow
-                )
+                rows.append(currentRow)
             }
         }
         
@@ -628,8 +627,19 @@ enum DataLoaderError: LocalizedError {
     
     case invalidCSV
     
-    case invalidRow(
-        row: Int
+    case invalidColumnCount(
+        row: Int,
+        values: [String]
+    )
+    
+    case missingSource(
+        row: Int,
+        values: [String]
+    )
+    
+    case missingTarget(
+        row: Int,
+        values: [String]
     )
     
     case noWordsFound
@@ -647,7 +657,9 @@ enum DataLoaderError: LocalizedError {
         ):
             
             return """
-            The file could not be downloaded. HTTP status: \(statusCode).
+            The file could not be downloaded.
+            
+            HTTP status: \(statusCode).
             """
             
         case .emptySourceName:
@@ -659,7 +671,9 @@ enum DataLoaderError: LocalizedError {
         ):
             
             return """
-            A data source named "\(name)" is already installed. Delete it before importing it again.
+            A data source named "\(name)" is already installed.
+            
+            Delete it before importing it again.
             """
             
         case .noCardTypesSelected:
@@ -678,14 +692,57 @@ enum DataLoaderError: LocalizedError {
             
             return """
             The CSV file is invalid.
+            
+            Check that quotes are correctly opened and closed.
             """
             
-        case .invalidRow(
-            let row
+        case .invalidColumnCount(
+            let row,
+            let values
         ):
             
             return """
-            Row \(row) is invalid. Every row must contain exactly Source, Target, Reading, and Tags.
+            Row \(row) has \(values.count) columns, but Pyoko requires exactly 4.
+            
+            Expected:
+            source,target,reading,tags
+            
+            Received:
+            \(formatRow(values))
+            """
+            
+        case .missingSource(
+            let row,
+            let values
+        ):
+            
+            return """
+            Row \(row) is missing its Source value.
+            
+            Source and Target are required.
+            
+            Expected:
+            source,target,reading,tags
+            
+            Received:
+            \(formatRow(values))
+            """
+            
+        case .missingTarget(
+            let row,
+            let values
+        ):
+            
+            return """
+            Row \(row) is missing its Target value.
+            
+            Source and Target are required.
+            
+            Expected:
+            source,target,reading,tags
+            
+            Received:
+            \(formatRow(values))
             """
             
         case .noWordsFound:
@@ -694,5 +751,16 @@ enum DataLoaderError: LocalizedError {
             No vocabulary was found in the CSV file.
             """
         }
+    }
+    
+    // MARK: - Error Formatting
+    
+    private func formatRow(
+        _ values: [String]
+    ) -> String {
+        
+        values.joined(
+            separator: ","
+        )
     }
 }

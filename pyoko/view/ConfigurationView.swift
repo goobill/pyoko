@@ -52,6 +52,64 @@ struct ConfigurationView: View {
     
     var body: some View {
         
+        configurationContent
+            .navigationTitle("Configuration")
+            .toolbar {
+                
+                ToolbarItem(
+                    placement: .primaryAction
+                ) {
+                    
+                    Button("Save") {
+                        saveConfiguration()
+                    }
+                    .disabled(!canSave)
+                }
+            }
+            .onAppear {
+                loadConfigurationIfNeeded()
+            }
+            .onChange(
+                of: selectedSourceIDs
+            ) { _, _ in
+                
+                pruneUnavailableTags()
+            }
+            .alert(
+                "Configuration Error",
+                isPresented: $showingError
+            ) {
+                
+                Button("OK") {}
+                
+            } message: {
+                
+                Text(errorMessage)
+            }
+    }
+    
+    // MARK: - Platform Content
+    
+    @ViewBuilder
+    private var configurationContent: some View {
+        
+        #if os(macOS)
+        
+        macOSContent
+        
+        #else
+        
+        iOSContent
+        
+        #endif
+    }
+    
+    // MARK: - iOS Content
+    
+    #if os(iOS)
+    
+    private var iOSContent: some View {
+        
         Form {
             
             studySection
@@ -64,42 +122,349 @@ struct ConfigurationView: View {
             
             tagSection
         }
-        .navigationTitle("Configuration")
-        .toolbar {
+    }
+    
+    #endif
+    
+    // MARK: - macOS Content
+    
+    #if os(macOS)
+    
+    private var macOSContent: some View {
+        
+        ScrollView {
             
-            ToolbarItem(
-                placement: .primaryAction
+            VStack(
+                alignment: .leading,
+                spacing: 20
             ) {
                 
-                Button("Save") {
-                    saveConfiguration()
-                }
-                .disabled(!canSave)
+                macStudySection
+                
+                macDisplaySection
+                
+                macPreviewSection
+                
+                macSourceSection
+                
+                macTagSection
             }
+            .padding(24)
+            .frame(
+                maxWidth: 700,
+                alignment: .leading
+            )
         }
-        .onAppear {
-            loadConfigurationIfNeeded()
-        }
-        .onChange(
-            of: selectedSourceIDs
-        ) { _, _ in
+        .frame(
+            minWidth: 500,
+            minHeight: 500
+        )
+    }
+    
+    // MARK: macOS Study
+    
+    private var macStudySection: some View {
+        
+        GroupBox {
             
-            pruneUnavailableTags()
-        }
-        .alert(
-            "Configuration Error",
-            isPresented: $showingError
-        ) {
+            VStack(
+                alignment: .leading,
+                spacing: 12
+            ) {
+                
+                Stepper(
+                    value: $dailyCardLimit,
+                    in: 1...100
+                ) {
+                    
+                    HStack {
+                        
+                        Text("Daily Card Limit")
+                        
+                        Spacer()
+                        
+                        Text(
+                            dailyCardLimit.formatted()
+                        )
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                
+                Text(
+                    "The maximum number of cards added to a daily review session."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            .padding(4)
             
-            Button("OK") {}
+        } label: {
             
-        } message: {
-            
-            Text(errorMessage)
+            Text("Study")
         }
     }
     
-    // MARK: - Study
+    // MARK: macOS Display
+    
+    private var macDisplaySection: some View {
+        
+        GroupBox {
+            
+            VStack(
+                alignment: .leading,
+                spacing: 14
+            ) {
+                
+                Picker(
+                    "Before Answer",
+                    selection: $beforeAnswerDisplayMode
+                ) {
+                    
+                    ForEach(
+                        TargetDisplayMode.allCases,
+                        id: \.self
+                    ) { mode in
+                        
+                        Text(mode.title)
+                            .tag(mode)
+                    }
+                }
+                
+                Picker(
+                    "After Answer",
+                    selection: $afterAnswerDisplayMode
+                ) {
+                    
+                    ForEach(
+                        TargetDisplayMode.allCases,
+                        id: \.self
+                    ) { mode in
+                        
+                        Text(mode.title)
+                            .tag(mode)
+                    }
+                }
+                
+                Text(
+                    "Target shows the normal target-language text. Reading shows the optional reading. Target + Reading shows both. If no reading exists, Pyoko displays the target text instead."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            .padding(4)
+            
+        } label: {
+            
+            Text("Target Display")
+        }
+    }
+    
+    // MARK: macOS Preview
+    
+    private var macPreviewSection: some View {
+        
+        GroupBox {
+            
+            ExampleCardView(
+                beforeAnswerDisplayMode:
+                    beforeAnswerDisplayMode,
+                afterAnswerDisplayMode:
+                    afterAnswerDisplayMode
+            )
+            .padding(4)
+            
+        } label: {
+            
+            Text("Preview")
+        }
+    }
+    
+    // MARK: macOS Sources
+    
+    private var macSourceSection: some View {
+        
+        GroupBox {
+            
+            VStack(
+                alignment: .leading,
+                spacing: 12
+            ) {
+                
+                if sources.isEmpty {
+                    
+                    Text(
+                        "No data sources installed."
+                    )
+                    .foregroundStyle(.secondary)
+                    
+                    NavigationLink {
+                        
+                        SourceDataView()
+                        
+                    } label: {
+                        
+                        Label(
+                            "Manage Source Data",
+                            systemImage: "tray.full"
+                        )
+                    }
+                    
+                } else {
+                    
+                    HStack {
+                        
+                        Button("Select All") {
+                            
+                            selectedSourceIDs = Set(
+                                sources.map(\.id)
+                            )
+                        }
+                        
+                        Button("Clear") {
+                            
+                            selectedSourceIDs.removeAll()
+                            selectedTagIDs.removeAll()
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    ForEach(
+                        sources
+                    ) { source in
+                        
+                        SourceSelectionRow(
+                            source: source,
+                            isSelected:
+                                selectedSourceIDs.contains(
+                                    source.id
+                                )
+                        ) {
+                            
+                            toggleSource(
+                                source
+                            )
+                        }
+                    }
+                }
+                
+                if !sources.isEmpty {
+                    
+                    Divider()
+                    
+                    Text(
+                        "Only vocabulary from selected data sources will be included in reviews."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            .padding(4)
+            
+        } label: {
+            
+            Text("Data Sources")
+        }
+    }
+    
+    // MARK: macOS Tags
+    
+    private var macTagSection: some View {
+        
+        GroupBox {
+            
+            VStack(
+                alignment: .leading,
+                spacing: 12
+            ) {
+                
+                if selectedSourceIDs.isEmpty {
+                    
+                    Text(
+                        "Select at least one data source to configure tags."
+                    )
+                    .foregroundStyle(.secondary)
+                    
+                } else if availableTags.isEmpty {
+                    
+                    Text(
+                        "No tags are available for the selected sources."
+                    )
+                    .foregroundStyle(.secondary)
+                    
+                } else {
+                    
+                    HStack {
+                        
+                        Button("Select All") {
+                            
+                            selectedTagIDs = Set(
+                                availableTags.map(\.id)
+                            )
+                        }
+                        
+                        Button("Clear Filter") {
+                            
+                            selectedTagIDs.removeAll()
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    ForEach(
+                        availableTags
+                    ) { tag in
+                        
+                        TagSelectionRow(
+                            tag: tag,
+                            isSelected:
+                                selectedTagIDs.contains(
+                                    tag.id
+                                )
+                        ) {
+                            
+                            toggleTag(
+                                tag
+                            )
+                        }
+                    }
+                }
+                
+                if !selectedSourceIDs.isEmpty {
+                    
+                    Divider()
+                    
+                    if selectedTagIDs.isEmpty {
+                        
+                        Text(
+                            "No tag filter is active. All vocabulary from the selected sources will be included."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        
+                    } else {
+                        
+                        Text(
+                            "Only cards matching at least one selected tag will be included."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(4)
+            
+        } label: {
+            
+            Text("Tags")
+        }
+    }
+    
+    #endif
+    
+    // MARK: - iOS Study
+    
+    #if os(iOS)
     
     private var studySection: some View {
         
@@ -135,7 +500,11 @@ struct ConfigurationView: View {
         }
     }
     
-    // MARK: - Display
+    #endif
+    
+    // MARK: - iOS Display
+    
+    #if os(iOS)
     
     private var displaySection: some View {
         
@@ -183,13 +552,17 @@ struct ConfigurationView: View {
         }
     }
     
-    // MARK: - Preview
+    #endif
+    
+    // MARK: - iOS Preview
+    
+    #if os(iOS)
     
     private var previewSection: some View {
         
         Section {
             
-            ExampleCardPreview(
+            ExampleCardView(
                 beforeAnswerDisplayMode:
                     beforeAnswerDisplayMode,
                 afterAnswerDisplayMode:
@@ -208,7 +581,11 @@ struct ConfigurationView: View {
         }
     }
     
-    // MARK: - Sources
+    #endif
+    
+    // MARK: - iOS Sources
+    
+    #if os(iOS)
     
     private var sourceSection: some View {
         
@@ -278,8 +655,6 @@ struct ConfigurationView: View {
         }
     }
     
-    // MARK: - Source Actions
-    
     private var sourceSelectionActions: some View {
         
         HStack {
@@ -296,14 +671,17 @@ struct ConfigurationView: View {
             Button("Clear") {
                 
                 selectedSourceIDs.removeAll()
-                
                 selectedTagIDs.removeAll()
             }
         }
         .buttonStyle(.borderless)
     }
     
-    // MARK: - Tags
+    #endif
+    
+    // MARK: - iOS Tags
+    
+    #if os(iOS)
     
     private var tagSection: some View {
         
@@ -370,8 +748,6 @@ struct ConfigurationView: View {
         }
     }
     
-    // MARK: - Tag Actions
-    
     private var tagSelectionActions: some View {
         
         HStack {
@@ -392,6 +768,8 @@ struct ConfigurationView: View {
         }
         .buttonStyle(.borderless)
     }
+    
+    #endif
     
     // MARK: - Available Tags
     
@@ -478,19 +856,15 @@ struct ConfigurationView: View {
         
         dailyCardLimit = 20
         
-        beforeAnswerDisplayMode = .target
+        beforeAnswerDisplayMode =
+            .target
         
-        afterAnswerDisplayMode = .reading
-        
-        // Select all currently installed sources
-        // when no configuration exists yet.
+        afterAnswerDisplayMode =
+            .reading
         
         selectedSourceIDs = Set(
             sources.map(\.id)
         )
-        
-        // An empty tag selection means:
-        // no tag filtering.
         
         selectedTagIDs = []
     }
@@ -737,256 +1111,5 @@ private struct TagSelectionRow: View {
             )
         }
         .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Example Card Preview
-
-private struct ExampleCardPreview: View {
-    
-    let beforeAnswerDisplayMode:
-        TargetDisplayMode
-    
-    let afterAnswerDisplayMode:
-        TargetDisplayMode
-    
-    @State private var cardType:
-        ExampleCardType = .recognition
-    
-    // MARK: - Example Data
-    
-    private let sourceText =
-        "to eat"
-    
-    private let targetText =
-        "食べる"
-    
-    private let targetReading =
-        "たべる"
-    
-    var body: some View {
-        
-        VStack(
-            alignment: .leading,
-            spacing: 16
-        ) {
-            
-            Picker(
-                "Example Card Type",
-                selection: $cardType
-            ) {
-                
-                ForEach(
-                    ExampleCardType.allCases
-                ) { type in
-                    
-                    Text(type.title)
-                        .tag(type)
-                }
-            }
-            .pickerStyle(.segmented)
-            
-            HStack(
-                alignment: .center,
-                spacing: 12
-            ) {
-                
-                previewStage(
-                    title: "Before Answer",
-                    primaryText:
-                        beforePrimaryText,
-                    secondaryText: nil
-                )
-                
-                Image(
-                    systemName: "arrow.right"
-                )
-                .foregroundStyle(
-                    .secondary
-                )
-                
-                previewStage(
-                    title: "After Answer",
-                    primaryText:
-                        afterPrimaryText,
-                    secondaryText:
-                        afterSecondaryText
-                )
-            }
-        }
-        .padding(.vertical, 4)
-    }
-    
-    // MARK: - Before
-    
-    private var beforePrimaryText:
-        String {
-        
-        switch cardType {
-            
-        case .recognition:
-            
-            return displayedTarget(
-                mode:
-                    beforeAnswerDisplayMode
-            )
-            
-        case .recall:
-            
-            return sourceText
-        }
-    }
-    
-    // MARK: - After
-    
-    private var afterPrimaryText:
-        String {
-        
-        switch cardType {
-            
-        case .recognition:
-            
-            return displayedTarget(
-                mode:
-                    afterAnswerDisplayMode
-            )
-            
-        case .recall:
-            
-            return sourceText
-        }
-    }
-    
-    private var afterSecondaryText:
-        String? {
-        
-        switch cardType {
-            
-        case .recognition:
-            
-            return sourceText
-            
-        case .recall:
-            
-            return displayedTarget(
-                mode:
-                    afterAnswerDisplayMode
-            )
-        }
-    }
-    
-    // MARK: - Target Display
-    
-    private func displayedTarget(
-        mode: TargetDisplayMode
-    ) -> String {
-        
-        switch mode {
-            
-        case .target:
-            return targetText
-            
-        case .reading:
-            return targetReading
-        }
-    }
-    
-    // MARK: - Preview Stage
-    
-    private func previewStage(
-        title: String,
-        primaryText: String,
-        secondaryText: String?
-    ) -> some View {
-        
-        VStack(
-            alignment: .leading,
-            spacing: 8
-        ) {
-            
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
-            
-            VStack(
-                spacing: 10
-            ) {
-                
-                Spacer(
-                    minLength: 8
-                )
-                
-                Text(primaryText)
-                    .font(.title2)
-                    .fontWeight(
-                        .semibold
-                    )
-                    .multilineTextAlignment(
-                        .center
-                    )
-                
-                if let secondaryText {
-                    
-                    Divider()
-                    
-                    Text(
-                        secondaryText
-                    )
-                    .multilineTextAlignment(
-                        .center
-                    )
-                }
-                
-                Spacer(
-                    minLength: 8
-                )
-            }
-            .frame(
-                maxWidth: .infinity,
-                minHeight: 140
-            )
-            .padding()
-            .background(
-                Color.secondary
-                    .opacity(0.08)
-            )
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: 12
-                )
-            )
-        }
-        .frame(
-            maxWidth: .infinity
-        )
-    }
-}
-
-// MARK: - Example Card Type
-
-private enum ExampleCardType:
-    String,
-    CaseIterable,
-    Identifiable {
-    
-    case recognition
-    case recall
-    
-    var id: Self {
-        self
-    }
-    
-    var title: String {
-        
-        switch self {
-            
-        case .recognition:
-            return "Recognition"
-            
-        case .recall:
-            return "Recall"
-        }
     }
 }

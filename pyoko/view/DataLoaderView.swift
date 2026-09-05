@@ -10,35 +10,35 @@ struct DataLoaderView: View {
     @Environment(\.dismiss)
     private var dismiss
     
+    // MARK: - Import
+    
     @State private var importMethod:
         ImportMethod = .url
     
-    @State private var sourceName =
-        ""
+    @State private var sourceName = ""
     
-    @State private var urlString =
-        ""
+    @State private var urlString = ""
     
     @State private var selectedFileURL:
         URL?
     
-    @State private var createRecognition =
-        true
+    // MARK: - Card Types
     
-    @State private var createRecall =
-        true
+    @State private var createRecognition = true
     
-    @State private var isLoading =
-        false
+    @State private var createRecall = true
     
-    @State private var showingFilePicker =
-        false
+    // MARK: - UI State
     
-    @State private var showingError =
-        false
+    @State private var isLoading = false
     
-    @State private var errorMessage =
-        ""
+    @State private var showingFilePicker = false
+    
+    @State private var showingError = false
+    
+    @State private var errorMessage = ""
+    
+    // MARK: - Body
     
     var body: some View {
         
@@ -61,7 +61,8 @@ struct DataLoaderView: View {
             allowedContentTypes: [
                 .commaSeparatedText,
                 .text
-            ]
+            ],
+            allowsMultipleSelection: false
         ) { result in
             
             handleFileSelection(
@@ -91,8 +92,7 @@ struct DataLoaderView: View {
             
             Picker(
                 "Import From",
-                selection:
-                    $importMethod
+                selection: $importMethod
             ) {
                 
                 ForEach(
@@ -105,9 +105,7 @@ struct DataLoaderView: View {
                     .tag(method)
                 }
             }
-            .pickerStyle(
-                .segmented
-            )
+            .pickerStyle(.segmented)
             
             TextField(
                 "Source Name",
@@ -140,15 +138,14 @@ struct DataLoaderView: View {
         .pyokoURLInput()
     }
     
-    // MARK: - File Picker
+    // MARK: - File
     
     private var filePickerRow:
         some View {
         
         Button {
             
-            showingFilePicker =
-                true
+            showingFilePicker = true
             
         } label: {
             
@@ -164,9 +161,7 @@ struct DataLoaderView: View {
                         selectedFileURL
                             .lastPathComponent
                     )
-                    .foregroundStyle(
-                        .primary
-                    )
+                    .foregroundStyle(.primary)
                     
                 } else {
                     
@@ -182,9 +177,7 @@ struct DataLoaderView: View {
                         "chevron.right"
                 )
                 .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
+                .foregroundStyle(.secondary)
             }
         }
     }
@@ -198,31 +191,25 @@ struct DataLoaderView: View {
             
             Toggle(
                 "Recognition",
-                isOn:
-                    $createRecognition
+                isOn: $createRecognition
             )
             
             Text(
-                "Japanese → English"
+                "Target → Source"
             )
             .font(.caption)
-            .foregroundStyle(
-                .secondary
-            )
+            .foregroundStyle(.secondary)
             
             Toggle(
                 "Recall",
-                isOn:
-                    $createRecall
+                isOn: $createRecall
             )
             
             Text(
-                "English → Japanese"
+                "Source → Target"
             )
             .font(.caption)
-            .foregroundStyle(
-                .secondary
-            )
+            .foregroundStyle(.secondary)
             
         } header: {
             
@@ -231,45 +218,139 @@ struct DataLoaderView: View {
         } footer: {
             
             Text(
-                "Each selected type creates a separate card for every vocabulary item."
+                "Each selected type creates a separate review card for every vocabulary item."
             )
         }
     }
     
-    // MARK: - Format
+    // MARK: - CSV Format
     
     private var formatSection:
         some View {
         
-        Section("CSV Format") {
+        Section {
+            
+            VStack(
+                alignment: .leading,
+                spacing: 14
+            ) {
+                
+                // Required format
+                
+                VStack(
+                    alignment: .leading,
+                    spacing: 6
+                ) {
+                    
+                    Text(
+                        "Required Format"
+                    )
+                    .font(.headline)
+                    
+                    Text(
+                        "source,target,reading,tags"
+                    )
+                    .font(
+                        .system(
+                            .body,
+                            design: .monospaced
+                        )
+                    )
+                    .textSelection(.enabled)
+                }
+                
+                Divider()
+                
+                // Example
+                
+                VStack(
+                    alignment: .leading,
+                    spacing: 8
+                ) {
+                    
+                    Text("Example")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    
+                    Text(
+                        """
+                        source,target,reading,tags
+                        to eat,食べる,たべる,N5|Verb
+                        library,図書館,としょかん,N5|Place
+                        thank you,ありがとう,,Greeting
+                        bread,pain,,Food
+                        """
+                    )
+                    .font(
+                        .system(
+                            .caption,
+                            design: .monospaced
+                        )
+                    )
+                    .textSelection(.enabled)
+                }
+                
+                Divider()
+                
+                // Rules
+                
+                VStack(
+                    alignment: .leading,
+                    spacing: 8
+                ) {
+                    
+                    formatRule(
+                        "Source is required"
+                    )
+                    
+                    formatRule(
+                        "Target is required"
+                    )
+                    
+                    formatRule(
+                        "Reading can be empty"
+                    )
+                    
+                    formatRule(
+                        "Tags can be empty"
+                    )
+                    
+                    formatRule(
+                        "Use | between multiple tags"
+                    )
+                    
+                    formatRule(
+                        "Every row must contain exactly 4 columns"
+                    )
+                }
+            }
+            .padding(.vertical, 4)
+            
+        } header: {
+            
+            Text("CSV Format")
+            
+        } footer: {
             
             Text(
-                "english,japanese,tags"
-            )
-            .font(
-                .system(
-                    .body,
-                    design:
-                        .monospaced
-                )
-            )
-            
-            Text(
-                "The first row is ignored as the header. Every vocabulary row must contain exactly three columns in this order."
-            )
-            .font(.caption)
-            .foregroundStyle(
-                .secondary
-            )
-            
-            Text(
-                "Separate multiple tags using |. An empty tags column is automatically assigned “No Tag”."
-            )
-            .font(.caption)
-            .foregroundStyle(
-                .secondary
+                "The first row is treated as the header. Empty tags are automatically assigned “No Tag”."
             )
         }
+    }
+    
+    // MARK: - Format Rule
+    
+    private func formatRule(
+        _ text: String
+    ) -> some View {
+        
+        Label(
+            text,
+            systemImage:
+                "checkmark.circle"
+        )
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
     
     // MARK: - Import
@@ -308,9 +389,7 @@ struct DataLoaderView: View {
                     Spacer()
                 }
             }
-            .disabled(
-                !canImport
-            )
+            .disabled(!canImport)
         }
     }
     
@@ -329,9 +408,7 @@ struct DataLoaderView: View {
                         .whitespacesAndNewlines
                 )
         
-        guard
-            !trimmedName.isEmpty
-        else {
+        guard !trimmedName.isEmpty else {
             return false
         }
         
@@ -355,49 +432,43 @@ struct DataLoaderView: View {
             
         case .file:
             
-            return selectedFileURL
-                != nil
+            return selectedFileURL != nil
         }
     }
     
     // MARK: - File Selection
     
     private func handleFileSelection(
-        _ result:
-            Result<URL, Error>
+        _ result: Result<[URL], Error>
     ) {
-        
         switch result {
             
-        case .success(let url):
+        case .success(let urls):
             
-            selectedFileURL =
-                url
+            guard let url = urls.first else {
+                return
+            }
             
-            let trimmedName =
-                sourceName
-                    .trimmingCharacters(
-                        in:
-                            .whitespacesAndNewlines
-                    )
+            selectedFileURL = url
+            
+            let trimmedName = sourceName
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                )
             
             if trimmedName.isEmpty {
-                
-                sourceName =
-                    url
-                        .deletingPathExtension()
-                        .lastPathComponent
+                sourceName = url
+                    .deletingPathExtension()
+                    .lastPathComponent
             }
             
         case .failure(let error):
             
-            showError(
-                error
-            )
+            showError(error)
         }
     }
     
-    // MARK: - Import
+    // MARK: - Import Data
     
     private func importData()
         async {
@@ -436,6 +507,7 @@ struct DataLoaderView: View {
                 guard
                     let selectedFileURL
                 else {
+                    
                     throw DataLoaderError
                         .invalidCSV
                 }
@@ -457,9 +529,7 @@ struct DataLoaderView: View {
             
         } catch {
             
-            showError(
-                error
-            )
+            showError(error)
         }
     }
     
@@ -472,8 +542,7 @@ struct DataLoaderView: View {
         errorMessage =
             error.localizedDescription
         
-        showingError =
-            true
+        showingError = true
     }
 }
 
@@ -518,9 +587,7 @@ private extension View {
             .textInputAutocapitalization(
                 .never
             )
-            .keyboardType(
-                .URL
-            )
+            .keyboardType(.URL)
         
         #else
         

@@ -5,6 +5,7 @@ enum TargetDisplayMode: String, Codable, CaseIterable {
     
     case target
     case reading
+    case targetAndReading
     
     var title: String {
         
@@ -15,6 +16,9 @@ enum TargetDisplayMode: String, Codable, CaseIterable {
             
         case .reading:
             return "Reading"
+            
+        case .targetAndReading:
+            return "Target + Reading"
         }
     }
 }
@@ -34,7 +38,7 @@ final class PyokoConfiguration {
     
     var beforeAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.target
     
-    var afterAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.reading
+    var afterAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.targetAndReading
     
     // MARK: - Sources
     

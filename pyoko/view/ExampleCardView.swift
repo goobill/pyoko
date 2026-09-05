@@ -12,10 +12,7 @@ struct ExampleCardView: View {
     let beforeAnswerDisplayMode: TargetDisplayMode
     let afterAnswerDisplayMode: TargetDisplayMode
     
-    @State private var cardType:
-        ExampleCardType = .recognition
-    
-    // MARK: - Example Data
+    @State private var cardType: ExampleCardType = .recognition
     
     private let sourceText = "to eat"
     private let targetText = "食べる"
@@ -43,36 +40,36 @@ struct ExampleCardView: View {
             }
             .pickerStyle(.segmented)
             
-            HStack(
-                alignment: .top,
-                spacing: 12
-            ) {
+            previewStage(
+                title: "Before Answer",
+                primaryText: beforePrimaryText,
+                secondaryText: nil
+            )
+            
+            HStack {
                 
-                previewStage(
-                    title: "Before Answer",
-                    content: beforeContent,
-                    secondaryContent: nil
-                )
+                Spacer()
                 
                 Image(
-                    systemName: "arrow.right"
+                    systemName: "arrow.down"
                 )
                 .foregroundStyle(.secondary)
-                .padding(.top, 50)
                 
-                previewStage(
-                    title: "After Answer",
-                    content: afterPrimaryContent,
-                    secondaryContent: afterSecondaryContent
-                )
+                Spacer()
             }
+            
+            previewStage(
+                title: "After Answer",
+                primaryText: afterPrimaryText,
+                secondaryText: afterSecondaryText
+            )
         }
         .padding(.vertical, 4)
     }
     
     // MARK: - Before
     
-    private var beforeContent: String {
+    private var beforePrimaryText: String {
         
         switch cardType {
             
@@ -90,7 +87,7 @@ struct ExampleCardView: View {
     
     // MARK: - After
     
-    private var afterPrimaryContent: String {
+    private var afterPrimaryText: String {
         
         switch cardType {
             
@@ -106,7 +103,7 @@ struct ExampleCardView: View {
         }
     }
     
-    private var afterSecondaryContent: String? {
+    private var afterSecondaryText: String? {
         
         switch cardType {
             
@@ -122,7 +119,7 @@ struct ExampleCardView: View {
         }
     }
     
-    // MARK: - Display
+    // MARK: - Target Display
     
     private func displayedTarget(
         mode: TargetDisplayMode
@@ -131,19 +128,28 @@ struct ExampleCardView: View {
         switch mode {
             
         case .target:
+            
             return targetText
             
         case .reading:
+            
             return targetReading
+            
+        case .targetAndReading:
+            
+            return """
+            \(targetText)
+            \(targetReading)
+            """
         }
     }
     
-    // MARK: - Stage
+    // MARK: - Preview Stage
     
     private func previewStage(
         title: String,
-        content: String,
-        secondaryContent: String?
+        primaryText: String,
+        secondaryText: String?
     ) -> some View {
         
         VStack(
@@ -156,34 +162,28 @@ struct ExampleCardView: View {
                 .foregroundStyle(.secondary)
             
             VStack(
-                spacing: 10
+                spacing: 12
             ) {
                 
-                Spacer()
-                
-                Text(content)
+                Text(primaryText)
                     .font(.title2)
                     .fontWeight(.semibold)
                     .multilineTextAlignment(.center)
                 
-                if let secondaryContent {
+                if let secondaryText {
                     
                     Divider()
                     
-                    Text(secondaryContent)
-                        .font(.body)
+                    Text(secondaryText)
                         .multilineTextAlignment(.center)
                 }
-                
-                Spacer()
             }
-            .frame(
-                maxWidth: .infinity,
-                minHeight: 140
-            )
             .padding()
+            .frame(
+                minHeight: 110
+            )
             .background(
-                .secondary.opacity(0.08)
+                Color.secondary.opacity(0.08)
             )
             .clipShape(
                 RoundedRectangle(
@@ -191,13 +191,8 @@ struct ExampleCardView: View {
                 )
             )
         }
-        .frame(
-            maxWidth: .infinity
-        )
     }
 }
-
-// MARK: - Example Card Type
 
 private enum ExampleCardType:
     String,

@@ -294,6 +294,19 @@ struct ReviewView: View {
             
             return card.targetReading
                 ?? card.targetText
+            
+        case .targetAndReading:
+            
+            guard let reading = card.targetReading,
+                  !reading.isEmpty
+            else {
+                return card.targetText
+            }
+            
+            return """
+            \(card.targetText)
+            \(reading)
+            """
         }
     }
     
