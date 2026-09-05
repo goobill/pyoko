@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		6E1DFAFF3042E383009E2294 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 6E1DFAFE3042E383009E2294 /* README.md */; };
+		6E1DFB2A304690E6009E2294 /* FSRS in Frameworks */ = {isa = PBXBuildFile; productRef = 6E1DFB29304690E6009E2294 /* FSRS */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		6E436A4D3041656A007A1D5E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +29,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		6E1DFAFE3042E383009E2294 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		6E436A3D30416569007A1D5E /* pyoko.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = pyoko.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6E436A4C3041656A007A1D5E /* pyokoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = pyokoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6E436A563041656A007A1D5E /* pyokoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = pyokoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -52,6 +58,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6E1DFB2A304690E6009E2294 /* FSRS in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,6 +82,7 @@
 		6E436A3430416569007A1D5E = {
 			isa = PBXGroup;
 			children = (
+				6E1DFAFE3042E383009E2294 /* README.md */,
 				6E436A3F30416569007A1D5E /* pyoko */,
 				6E436A4F3041656A007A1D5E /* pyokoTests */,
 				6E436A593041656A007A1D5E /* pyokoUITests */,
@@ -112,6 +120,7 @@
 			);
 			name = pyoko;
 			packageProductDependencies = (
+				6E1DFB29304690E6009E2294 /* FSRS */,
 			);
 			productName = pyoko;
 			productReference = 6E436A3D30416569007A1D5E /* pyoko.app */;
@@ -195,6 +204,9 @@
 			);
 			mainGroup = 6E436A3430416569007A1D5E;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6E1DFB28304690E6009E2294 /* XCRemoteSwiftPackageReference "swift-fsrs" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6E436A3E30416569007A1D5E /* Products */;
 			projectDirPath = "";
@@ -212,6 +224,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6E1DFAFF3042E383009E2294 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -605,6 +618,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		6E1DFB28304690E6009E2294 /* XCRemoteSwiftPackageReference "swift-fsrs" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/open-spaced-repetition/swift-fsrs";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		6E1DFB29304690E6009E2294 /* FSRS */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6E1DFB28304690E6009E2294 /* XCRemoteSwiftPackageReference "swift-fsrs" */;
+			productName = FSRS;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 6E436A3530416569007A1D5E /* Project object */;
 }

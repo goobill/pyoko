@@ -1,32 +1,62 @@
-//
-//  pyokoApp.swift
-//  pyoko
-//
-//  Created by Bill on 28/08/2026.
-//
-
 import SwiftUI
 import SwiftData
 
 @main
-struct pyokoApp: App {
-    var sharedModelContainer: ModelContainer = {
+struct PyokoApp: App {
+    
+    private let modelContainer:
+        ModelContainer
+    
+    init() {
+        
         let schema = Schema([
-            Item.self,
+            PyokoCard.self,
+            PyokoDataSource.self,
+            PyokoTag.self,
+            PyokoReviewCard.self,
+            PyokoConfiguration.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
+        
+        // CloudKit is deliberately disabled
+        // for now.
+        //
+        // When the model and app are ready for
+        // syncing, this can later become:
+        //
+        // .private("iCloud.com.yourcompany.Pyoko")
+        
+        let configuration =
+            ModelConfiguration(
+                cloudKitDatabase: .none
+            )
+        
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            
+            modelContainer =
+                try ModelContainer(
+                    for: schema,
+                    configurations:
+                        configuration
+                )
+            
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            
+            fatalError(
+                """
+                Failed to create Pyoko model container:
+                \(error)
+                """
+            )
         }
-    }()
-
+    }
+    
     var body: some Scene {
+        
         WindowGroup {
-            ContentView()
+            HomeView()
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(
+            modelContainer
+        )
     }
 }
