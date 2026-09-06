@@ -1,107 +1,65 @@
 import Foundation
 import SwiftData
 
-enum TargetDisplayMode: String, Codable, CaseIterable {
-    
-    case target
-    case reading
-    case targetAndReading
-    
-    var title: String {
-        switch self {
-        case .target:
-            return "Target"
-            
-        case .reading:
-            return "Reading"
-            
-        case .targetAndReading:
-            return "Target + Reading"
-        }
-    }
-    
-    var includesReading: Bool {
-        switch self {
-        case .target:
-            return false
-            
-        case .reading,
-             .targetAndReading:
-            return true
-        }
-    }
-}
-
 @Model
 final class PyokoConfiguration {
-    
+
     var id: UUID = UUID()
-    
-    // MARK: - Review
-    
+
     var dailyCardLimit: Int = 20
-    
-    var showRecognitionCards: Bool = true
-    
-    var showRecallCards: Bool = true
-    
-    var readingHintEnabled: Bool = true
-    
-    // MARK: - Display
-    
+
+    /// Minimum number of new cards to include
+    /// in a newly generated daily review session,
+    /// when enough eligible new cards are available.
+    ///
+    /// 0 means no new cards are guaranteed.
+    var minimumNewCards: Int = 0
+
     var beforeAnswerDisplayMode: TargetDisplayMode =
         TargetDisplayMode.target
-    
+
     var afterAnswerDisplayMode: TargetDisplayMode =
-        TargetDisplayMode.targetAndReading
-    
-    // MARK: - Decks
-    
+        TargetDisplayMode.reading
+
+    var showRecognitionCards: Bool = true
+
+    var showRecallCards: Bool = true
+
+    var readingHintEnabled: Bool = true
+
     @Relationship(
         deleteRule: .nullify,
         inverse: \PyokoDeck.configurations
     )
-    var selectedSources: [PyokoDeck]? = []
-    
-    // MARK: - Tags
-    
+    var selectedDecks: [PyokoDeck]? = []
+
     @Relationship(
         deleteRule: .nullify,
         inverse: \PyokoTag.configurations
     )
     var selectedTags: [PyokoTag]? = []
-    
-    // MARK: - Helpers
-    
-    var sources: [PyokoDeck] {
-        selectedSources ?? []
-    }
-    
-    var tags: [PyokoTag] {
-        selectedTags ?? []
-    }
-    
-    // MARK: - Init
-    
+
     init(
         id: UUID = UUID(),
         dailyCardLimit: Int = 20,
+        minimumNewCards: Int = 0,
+        beforeAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.target,
+        afterAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.reading,
         showRecognitionCards: Bool = true,
         showRecallCards: Bool = true,
         readingHintEnabled: Bool = true,
-        beforeAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.target,
-        afterAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.targetAndReading,
-        selectedSources: [PyokoDeck] = [],
-        selectedTags: [PyokoTag] = []
+        selectedDecks: [PyokoDeck]? = [],
+        selectedTags: [PyokoTag]? = []
     ) {
         self.id = id
         self.dailyCardLimit = dailyCardLimit
+        self.minimumNewCards = minimumNewCards
+        self.beforeAnswerDisplayMode = beforeAnswerDisplayMode
+        self.afterAnswerDisplayMode = afterAnswerDisplayMode
         self.showRecognitionCards = showRecognitionCards
         self.showRecallCards = showRecallCards
         self.readingHintEnabled = readingHintEnabled
-        self.beforeAnswerDisplayMode = beforeAnswerDisplayMode
-        self.afterAnswerDisplayMode = afterAnswerDisplayMode
-        self.selectedSources = selectedSources
+        self.selectedDecks = selectedDecks
         self.selectedTags = selectedTags
     }
 }

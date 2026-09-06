@@ -1,143 +1,257 @@
 import Foundation
 import SwiftData
+import FSRS
 
 @MainActor
-struct CardRetrieval {
-    
+final class CardRetrieval {
+
     private let modelContext: ModelContext
-    
+
     init(
         modelContext: ModelContext
     ) {
         self.modelContext = modelContext
     }
-    
+
     // MARK: - Public
-    
+
     func getCardsForReview() throws -> [PyokoCard] {
-        
-        let settings =
-            try getReviewSettings()
-        
-        guard
-            !settings.selectedSourceIDs.isEmpty
-        else {
-            return []
-        }
-        
-        let dueCards =
-            try fetchDueCards()
-        
+
+        let configuration =
+            try getReviewConfiguration()
+
         let eligibleCards =
-            dueCards.filter { card in
-                
-                matchesSource(
-                    card,
-                    settings: settings
-                )
-                &&
-                matchesCardType(
-                    card,
-                    settings: settings
-                )
-                &&
-                matchesTags(
-                    card,
-                    settings: settings
-                )
-            }
-        
-        return Array(
-            eligibleCards.prefix(
-                settings.dailyCardLimit
+            try fetchEligibleCards(
+                configuration: configuration
             )
+
+        return selectCards(
+            from: eligibleCards,
+            configuration: configuration
         )
     }
-    
-    // MARK: - Settings
-    
-    private func getReviewSettings()
-        throws -> ReviewSettings {
-        
-        let configurationDescriptor =
+
+    // MARK: - Selection
+
+    private func selectCards(
+        from eligibleCards: [PyokoCard],
+        configuration: ReviewConfiguration
+    ) -> [PyokoCard] {
+
+        let dailyLimit =
+            max(
+                configuration.dailyCardLimit,
+                1
+            )
+
+        let requestedNewCards =
+            min(
+                max(
+                    configuration.minimumNewCards,
+                    0
+                ),
+                dailyLimit
+            )
+
+        let newCards =
+            eligibleCards.filter {
+                $0.state == CardState.new
+            }
+
+        let reviewCards =
+            eligibleCards.filter {
+                $0.state != CardState.new
+            }
+
+        /*
+         Reserve the requested number of slots
+         for new cards.
+        */
+
+        let selectedNewCards =
+            Array(
+                newCards.prefix(
+                    requestedNewCards
+                )
+            )
+
+        /*
+         Reviews fill the remaining capacity.
+        */
+
+        let reviewCapacity =
+            max(
+                dailyLimit -
+                    selectedNewCards.count,
+                0
+            )
+
+        let selectedReviewCards =
+            Array(
+                reviewCards.prefix(
+                    reviewCapacity
+                )
+            )
+
+        var selectedCards =
+            selectedReviewCards +
+            selectedNewCards
+
+        /*
+         If there were not enough reviews to
+         fill the daily limit, use additional
+         new cards.
+
+         minimumNewCards is therefore a minimum,
+         not a maximum.
+        */
+
+        let remainingCapacity =
+            dailyLimit -
+                selectedCards.count
+
+        if remainingCapacity > 0 {
+
+            let additionalNewCards =
+                newCards
+                    .dropFirst(
+                        selectedNewCards.count
+                    )
+                    .prefix(
+                        remainingCapacity
+                    )
+
+            selectedCards.append(
+                contentsOf:
+                    additionalNewCards
+            )
+        }
+
+        return selectedCards
+    }
+
+    // MARK: - Configuration
+
+    private func getReviewConfiguration()
+        throws -> ReviewConfiguration {
+
+        let descriptor =
             FetchDescriptor<PyokoConfiguration>()
-        
+
         if let configuration =
             try modelContext
                 .fetch(
-                    configurationDescriptor
+                    descriptor
                 )
                 .first {
-            
-            return ReviewSettings(
-                dailyCardLimit:
+
+            let dailyLimit =
+                max(
+                    configuration.dailyCardLimit,
+                    1
+                )
+
+            let minimumNewCards =
+                min(
                     max(
-                        configuration.dailyCardLimit,
-                        1
+                        configuration.minimumNewCards,
+                        0
+                    ),
+                    dailyLimit
+                )
+
+            return ReviewConfiguration(
+                dailyCardLimit:
+                    dailyLimit,
+                minimumNewCards:
+                    minimumNewCards,
+                selectedDeckIDs:
+                    Set(
+                        (
+                            configuration.selectedDecks ??
+                            []
+                        )
+                        .map(
+                            \.id
+                        )
+                    ),
+                selectedTagIDs:
+                    Set(
+                        (
+                            configuration.selectedTags ??
+                            []
+                        )
+                        .map(
+                            \.id
+                        )
                     ),
                 showRecognitionCards:
                     configuration
                         .showRecognitionCards,
                 showRecallCards:
                     configuration
-                        .showRecallCards,
-                selectedSourceIDs:
-                    Set(
-                        configuration
-                            .sources
-                            .map(\.id)
-                    ),
-                selectedTagIDs:
-                    Set(
-                        configuration
-                            .tags
-                            .map(\.id)
-                    )
+                        .showRecallCards
             )
         }
-        
-        // No configuration has been saved yet.
-        //
-        // Defaults:
-        // - 20 cards
-        // - Recognition enabled
-        // - Recall enabled
-        // - all installed decks
-        // - no tag filter
-        
-        let sourceDescriptor =
+
+        /*
+         Default configuration if none
+         exists yet:
+
+         - 20 cards
+         - 0 guaranteed new cards
+         - all decks
+         - no tag filter
+         - Recognition enabled
+         - Recall enabled
+        */
+
+        let deckDescriptor =
             FetchDescriptor<PyokoDeck>()
-        
-        let sources =
+
+        let decks =
             try modelContext.fetch(
-                sourceDescriptor
+                deckDescriptor
             )
-        
-        return ReviewSettings(
+
+        return ReviewConfiguration(
             dailyCardLimit: 20,
-            showRecognitionCards: true,
-            showRecallCards: true,
-            selectedSourceIDs:
+            minimumNewCards: 0,
+            selectedDeckIDs:
                 Set(
-                    sources.map(\.id)
+                    decks.map(
+                        \.id
+                    )
                 ),
-            selectedTagIDs: []
+            selectedTagIDs: [],
+            showRecognitionCards: true,
+            showRecallCards: true
         )
     }
-    
-    // MARK: - Due Cards
-    
-    private func fetchDueCards()
-        throws -> [PyokoCard] {
-        
-        let now = Date.now
-        
+
+    // MARK: - Eligible Cards
+
+    private func fetchEligibleCards(
+        configuration: ReviewConfiguration
+    ) throws -> [PyokoCard] {
+
+        guard
+            !configuration
+                .selectedDeckIDs
+                .isEmpty
+        else {
+            return []
+        }
+
+        let now =
+            Date.now
+
         let descriptor =
             FetchDescriptor<PyokoCard>(
                 predicate:
                     #Predicate<PyokoCard> {
                         card in
-                        
+
                         card.due <= now
                     },
                 sortBy: [
@@ -147,99 +261,104 @@ struct CardRetrieval {
                     )
                 ]
             )
-        
-        return try modelContext.fetch(
-            descriptor
-        )
-    }
-    
-    // MARK: - Source Filter
-    
-    private func matchesSource(
-        _ card: PyokoCard,
-        settings: ReviewSettings
-    ) -> Bool {
-        
-        guard
-            let sourceID =
-                card.deck?.id
-        else {
-            return false
-        }
-        
-        return settings
-            .selectedSourceIDs
-            .contains(
-                sourceID
+
+        let dueCards =
+            try modelContext.fetch(
+                descriptor
             )
-    }
-    
-    // MARK: - Card Type Filter
-    
-    private func matchesCardType(
-        _ card: PyokoCard,
-        settings: ReviewSettings
-    ) -> Bool {
-        
-        switch card.type {
-            
-        case .recognition:
-            
-            return settings
-                .showRecognitionCards
-            
-        case .recall:
-            
-            return settings
-                .showRecallCards
+
+        return dueCards.filter {
+            card in
+
+            // Deck filter
+
+            guard
+                let deckID =
+                    card.deck?.id,
+                configuration
+                    .selectedDeckIDs
+                    .contains(
+                        deckID
+                    )
+            else {
+                return false
+            }
+
+            // Card-type filter
+
+            switch card.type {
+
+            case .recognition:
+
+                guard
+                    configuration
+                        .showRecognitionCards
+                else {
+                    return false
+                }
+
+            case .recall:
+
+                guard
+                    configuration
+                        .showRecallCards
+                else {
+                    return false
+                }
+            }
+
+            // No selected tags means
+            // no tag filtering.
+
+            guard
+                !configuration
+                    .selectedTagIDs
+                    .isEmpty
+            else {
+                return true
+            }
+
+            let cardTagIDs =
+                Set(
+                    (
+                        card.tags ??
+                        []
+                    )
+                    .map(
+                        \.id
+                    )
+                )
+
+            return !cardTagIDs
+                .isDisjoint(
+                    with:
+                        configuration
+                            .selectedTagIDs
+                )
         }
-    }
-    
-    // MARK: - Tag Filter
-    
-    private func matchesTags(
-        _ card: PyokoCard,
-        settings: ReviewSettings
-    ) -> Bool {
-        
-        // Empty selected tags means:
-        // no tag filter.
-        
-        guard
-            !settings
-                .selectedTagIDs
-                .isEmpty
-        else {
-            return true
-        }
-        
-        let cardTagIDs =
-            Set(
-                (card.tags ?? [])
-                    .map(\.id)
-            )
-        
-        return !cardTagIDs
-            .isDisjoint(
-                with:
-                    settings
-                        .selectedTagIDs
-            )
     }
 }
 
-// MARK: - Review Settings
+// MARK: - Review Configuration
 
-private struct ReviewSettings {
-    
-    let dailyCardLimit: Int
-    
-    let showRecognitionCards: Bool
-    
-    let showRecallCards: Bool
-    
-    let selectedSourceIDs: Set<UUID>
-    
+private struct ReviewConfiguration {
+
+    let dailyCardLimit:
+        Int
+
+    let minimumNewCards:
+        Int
+
+    let selectedDeckIDs:
+        Set<UUID>
+
     /// Empty means no tag filter.
-    let selectedTagIDs: Set<UUID>
+    let selectedTagIDs:
+        Set<UUID>
+
+    let showRecognitionCards:
+        Bool
+
+    let showRecallCards:
+        Bool
 }

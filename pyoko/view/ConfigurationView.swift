@@ -2,1147 +2,1250 @@ import SwiftUI
 import SwiftData
 
 struct ConfigurationView: View {
-    
+
     @Environment(\.modelContext)
     private var modelContext
-    
+
     @Query
     private var configurations:
         [PyokoConfiguration]
-    
-    @Query(sort: \PyokoDeck.name)
-    private var sources:
+
+    @Query(
+        sort: \PyokoDeck.name
+    )
+    private var decks:
         [PyokoDeck]
-    
-    @Query(sort: \PyokoTag.name)
+
+    @Query(
+        sort: \PyokoTag.name
+    )
     private var tags:
         [PyokoTag]
-    
-    // MARK: - Appearance
-    
-    @AppStorage("appearancePreference")
-    private var appearancePreferenceRawValue =
-        AppearancePreference.system.rawValue
-    
-    // MARK: - Review
-    
+
+    @AppStorage(
+        "appearancePreference"
+    )
+    private var appearanceRawValue =
+        AppearancePreference
+            .system
+            .rawValue
+
     @State
-    private var dailyCardLimit = 20
-    
-    @State
-    private var showRecognitionCards = true
-    
-    @State
-    private var showRecallCards = true
-    
-    @State
-    private var readingHintEnabled = true
-    
-    // MARK: - Display
-    
-    @State
-    private var beforeAnswerDisplayMode:
-        TargetDisplayMode = TargetDisplayMode.target
-    
-    @State
-    private var afterAnswerDisplayMode:
-        TargetDisplayMode = TargetDisplayMode.targetAndReading
-    
-    // MARK: - Filters
-    
-    @State
-    private var selectedSourceIDs:
-        Set<UUID> = []
-    
-    @State
-    private var selectedTagIDs:
-        Set<UUID> = []
-    
-    // MARK: - State
-    
-    @State
-    private var hasLoadedConfiguration = false
-    
-    @State
-    private var isLoadingConfiguration = false
-    
-    @State
-    private var showingError = false
-    
-    @State
-    private var errorMessage = ""
-    
-    // MARK: - Body
-    
+    private var configuration:
+        PyokoConfiguration?
+
     var body: some View {
-        
+
         ScrollView {
-            
+
             VStack(
                 alignment: .leading,
                 spacing: 20
             ) {
-                
-                autoSaveMessage
-                
-                studySection
-                
-                cardTypeSection
-                
-                hintSection
-                
+
+                reviewLimitsSection
+
+                cardTypesSection
+
                 displaySection
-                
-                previewSection
-                
-                deckSection
-                
-                tagSection
-                
+
+                readingHintSection
+
+                exampleSection
+
                 appearanceSection
+
+                decksSection
+
+                tagsSection
             }
+            .frame(
+                maxWidth: 700
+            )
             .padding()
             .frame(
-                maxWidth: 760,
-                alignment: .leading
-            )
-            .frame(
-                maxWidth: .infinity,
-                alignment: .center
+                maxWidth: .infinity
             )
         }
         .navigationTitle(
             "Configuration"
         )
-        .onAppear {
-            loadConfigurationIfNeeded()
+        .task {
+
+            createConfigurationIfNeeded()
         }
-        .onChange(
-            of: dailyCardLimit
-        ) { _, _ in
-            autoSaveConfiguration()
-        }
-        .onChange(
-            of: showRecognitionCards
-        ) { _, _ in
-            autoSaveConfiguration()
-        }
-        .onChange(
-            of: showRecallCards
-        ) { _, _ in
-            autoSaveConfiguration()
-        }
-        .onChange(
-            of: readingHintEnabled
-        ) { _, _ in
-            autoSaveConfiguration()
-        }
-        .onChange(
-            of: beforeAnswerDisplayMode
-        ) { _, _ in
-            autoSaveConfiguration()
-        }
-        .onChange(
-            of: afterAnswerDisplayMode
-        ) { _, _ in
-            autoSaveConfiguration()
-        }
-        .onChange(
-            of: selectedSourceIDs
-        ) { _, _ in
-            
-            pruneUnavailableTags()
-            
-            autoSaveConfiguration()
-        }
-        .onChange(
-            of: selectedTagIDs
-        ) { _, _ in
-            autoSaveConfiguration()
-        }
-        .alert(
-            "Configuration Error",
-            isPresented: $showingError
+    }
+
+    // MARK: - Daily Review
+
+    private var reviewLimitsSection:
+        some View {
+
+        GroupBox(
+            "Daily Review"
         ) {
-            Button("OK") {}
-        } message: {
-            Text(errorMessage)
-        }
-    }
-    
-    // MARK: - Autosave Message
-    
-    private var autoSaveMessage:
-        some View {
-        
-        Label(
-            "Changes are saved automatically",
-            systemImage:
-                "checkmark.circle"
-        )
-        .font(.caption)
-        .foregroundStyle(
-            .secondary
-        )
-    }
-    
-    // MARK: - Study
-    
-    private var studySection:
-        some View {
-        
-        GroupBox("Study") {
-            
+
             VStack(
                 alignment: .leading,
-                spacing: 12
+                spacing: 18
             ) {
-                
-                Stepper(
-                    value: $dailyCardLimit,
-                    in: 1...100
-                ) {
-                    
-                    HStack {
-                        
-                        Text(
-                            "Daily Card Limit"
-                        )
-                        
+
+                if let configuration {
+
+                    HStack(
+                        alignment: .top,
+                        spacing: 20
+                    ) {
+
+                        VStack(
+                            alignment: .leading,
+                            spacing: 4
+                        ) {
+
+                            Text(
+                                "Daily Card Limit"
+                            )
+                            .fontWeight(
+                                .medium
+                            )
+
+                            Text(
+                                "The maximum number of cards included in a daily review session."
+                            )
+                            .font(
+                                .caption
+                            )
+                            .foregroundStyle(
+                                .secondary
+                            )
+                        }
+
                         Spacer()
-                        
+
+                        Stepper(
+                            value:
+                                dailyCardLimitBinding(
+                                    configuration
+                                ),
+                            in: 1...100
+                        ) {
+
+                            Text(
+                                "\(configuration.dailyCardLimit)"
+                            )
+                            .monospacedDigit()
+                        }
+                        .fixedSize()
+                    }
+
+                    Divider()
+
+                    VStack(
+                        alignment: .leading,
+                        spacing: 10
+                    ) {
+
+                        HStack(
+                            alignment: .top,
+                            spacing: 20
+                        ) {
+
+                            VStack(
+                                alignment: .leading,
+                                spacing: 4
+                            ) {
+
+                                Text(
+                                    "Minimum New Cards"
+                                )
+                                .fontWeight(
+                                    .medium
+                                )
+
+                                Text(
+                                    "Reserve at least this many places in each daily session for new cards when enough eligible new cards are available. Set this to 0 if you do not want to guarantee any new cards."
+                                )
+                                .font(
+                                    .caption
+                                )
+                                .foregroundStyle(
+                                    .secondary
+                                )
+                                .fixedSize(
+                                    horizontal:
+                                        false,
+                                    vertical:
+                                        true
+                                )
+                            }
+
+                            Spacer()
+
+                            Stepper(
+                                value:
+                                    minimumNewCardsBinding(
+                                        configuration
+                                    ),
+                                in:
+                                    0...configuration
+                                        .dailyCardLimit
+                            ) {
+
+                                Text(
+                                    "\(configuration.minimumNewCards)"
+                                )
+                                .monospacedDigit()
+                            }
+                            .fixedSize()
+                        }
+
+                        if configuration
+                            .minimumNewCards == 0 {
+
+                            Label(
+                                "No new cards are guaranteed. Review cards may use the full daily limit.",
+                                systemImage:
+                                    "info.circle"
+                            )
+                            .font(
+                                .caption
+                            )
+                            .foregroundStyle(
+                                .secondary
+                            )
+
+                        } else {
+
+                            Label(
+                                "At least \(configuration.minimumNewCards) places are reserved for new cards when enough are available.",
+                                systemImage:
+                                    "info.circle"
+                            )
+                            .font(
+                                .caption
+                            )
+                            .foregroundStyle(
+                                .secondary
+                            )
+                        }
+                    }
+                }
+            }
+            .padding(
+                .vertical,
+                6
+            )
+        }
+    }
+
+    // MARK: - Card Types
+
+    private var cardTypesSection:
+        some View {
+
+        GroupBox(
+            "Card Types"
+        ) {
+
+            VStack(
+                alignment: .leading,
+                spacing: 14
+            ) {
+
+                if let configuration {
+
+                    VStack(
+                        alignment: .leading,
+                        spacing: 4
+                    ) {
+
+                        Toggle(
+                            "Recognition",
+                            isOn:
+                                recognitionBinding(
+                                    configuration
+                                )
+                        )
+
                         Text(
-                            dailyCardLimit
-                                .formatted()
+                            "Target → Source"
+                        )
+                        .font(
+                            .caption
+                        )
+                        .foregroundStyle(
+                            .secondary
+                        )
+
+                        Text(
+                            "Example: 食べる → to eat"
+                        )
+                        .font(
+                            .caption
+                        )
+                        .foregroundStyle(
+                            .secondary
+                        )
+                    }
+
+                    Divider()
+
+                    VStack(
+                        alignment: .leading,
+                        spacing: 4
+                    ) {
+
+                        Toggle(
+                            "Recall",
+                            isOn:
+                                recallBinding(
+                                    configuration
+                                )
+                        )
+
+                        Text(
+                            "Source → Target"
+                        )
+                        .font(
+                            .caption
+                        )
+                        .foregroundStyle(
+                            .secondary
+                        )
+
+                        Text(
+                            "Example: to eat → 食べる"
+                        )
+                        .font(
+                            .caption
+                        )
+                        .foregroundStyle(
+                            .secondary
+                        )
+                    }
+
+                    Text(
+                        "At least one card type must remain enabled."
+                    )
+                    .font(
+                        .caption
+                    )
+                    .foregroundStyle(
+                        .secondary
+                    )
+                }
+            }
+            .padding(
+                .vertical,
+                6
+            )
+        }
+    }
+
+    // MARK: - Target Display
+
+    private var displaySection:
+        some View {
+
+        GroupBox(
+            "Target Display"
+        ) {
+
+            VStack(
+                alignment: .leading,
+                spacing: 16
+            ) {
+
+                if let configuration {
+
+                    VStack(
+                        alignment: .leading,
+                        spacing: 6
+                    ) {
+
+                        Text(
+                            "Before Answer"
+                        )
+                        .fontWeight(
+                            .medium
+                        )
+
+                        Picker(
+                            "Before Answer",
+                            selection:
+                                beforeAnswerBinding(
+                                    configuration
+                                )
+                        ) {
+
+                            ForEach(
+                                TargetDisplayMode
+                                    .allCases,
+                                id: \.self
+                            ) { mode in
+
+                                Text(
+                                    mode.title
+                                )
+                                .tag(
+                                    mode
+                                )
+                            }
+                        }
+                        .labelsHidden()
+
+                        Text(
+                            "Controls how target-language text is displayed before the answer is revealed."
+                        )
+                        .font(
+                            .caption
+                        )
+                        .foregroundStyle(
+                            .secondary
+                        )
+                    }
+
+                    Divider()
+
+                    VStack(
+                        alignment: .leading,
+                        spacing: 6
+                    ) {
+
+                        Text(
+                            "After Answer"
+                        )
+                        .fontWeight(
+                            .medium
+                        )
+
+                        Picker(
+                            "After Answer",
+                            selection:
+                                afterAnswerBinding(
+                                    configuration
+                                )
+                        ) {
+
+                            ForEach(
+                                TargetDisplayMode
+                                    .allCases,
+                                id: \.self
+                            ) { mode in
+
+                                Text(
+                                    mode.title
+                                )
+                                .tag(
+                                    mode
+                                )
+                            }
+                        }
+                        .labelsHidden()
+
+                        Text(
+                            "Controls how target-language text is displayed after the answer is revealed."
+                        )
+                        .font(
+                            .caption
                         )
                         .foregroundStyle(
                             .secondary
                         )
                     }
                 }
-                
-                Text(
-                    "The maximum number of cards added to a new daily review session."
-                )
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
             }
-            .frame(
-                maxWidth: .infinity,
-                alignment: .leading
+            .padding(
+                .vertical,
+                6
             )
         }
     }
-    
-    // MARK: - Card Types
-    
-    private var cardTypeSection:
+
+    // MARK: - Reading Hint
+
+    private var readingHintSection:
         some View {
-        
-        GroupBox(
-            "Review Card Types"
-        ) {
-            
-            VStack(
-                alignment: .leading,
-                spacing: 14
-            ) {
-                
-                VStack(
-                    alignment: .leading,
-                    spacing: 4
-                ) {
-                    
-                    Toggle(
-                        "Recognition",
-                        isOn:
-                            $showRecognitionCards
-                    )
-                    .disabled(
-                        showRecognitionCards &&
-                        !showRecallCards
-                    )
-                    
-                    Text(
-                        "Target → Source"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(
-                        .secondary
-                    )
-                    
-                    Text(
-                        "Example: 食べる → to eat"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(
-                        .secondary
-                    )
-                }
-                
-                Divider()
-                
-                VStack(
-                    alignment: .leading,
-                    spacing: 4
-                ) {
-                    
-                    Toggle(
-                        "Recall",
-                        isOn:
-                            $showRecallCards
-                    )
-                    .disabled(
-                        showRecallCards &&
-                        !showRecognitionCards
-                    )
-                    
-                    Text(
-                        "Source → Target"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(
-                        .secondary
-                    )
-                    
-                    Text(
-                        "Example: to eat → 食べる"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(
-                        .secondary
-                    )
-                }
-                
-                Text(
-                    "At least one card type must remain enabled."
-                )
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
-            }
-            .frame(
-                maxWidth: .infinity,
-                alignment: .leading
-            )
-        }
-    }
-    
-    // MARK: - Hint
-    
-    private var hintSection:
-        some View {
-        
+
         GroupBox(
             "Reading Hint"
         ) {
-            
+
             VStack(
                 alignment: .leading,
                 spacing: 8
             ) {
-                
-                Toggle(
-                    "Show Reading Hint",
-                    isOn:
-                        $readingHintEnabled
-                )
-                
-                Text(
-                    "When enabled, review cards with a reading can show a hint before the answer is revealed."
-                )
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
+
+                if let configuration {
+
+                    Toggle(
+                        "Enable Reading Hint",
+                        isOn:
+                            readingHintBinding(
+                                configuration
+                            )
+                    )
+
+                    Text(
+                        "When a card has a reading, show a hint button that can reveal the reading before the full answer."
+                    )
+                    .font(
+                        .caption
+                    )
+                    .foregroundStyle(
+                        .secondary
+                    )
+                }
             }
-            .frame(
-                maxWidth: .infinity,
-                alignment: .leading
+            .padding(
+                .vertical,
+                6
             )
         }
     }
-    
-    // MARK: - Display
-    
-    private var displaySection:
+
+    // MARK: - Example
+
+    private var exampleSection:
         some View {
-        
+
         GroupBox(
-            "Target Display"
+            "Card Preview"
         ) {
-            
-            VStack(
-                alignment: .leading,
-                spacing: 14
-            ) {
-                
-                Picker(
-                    "Before Answer",
-                    selection:
-                        $beforeAnswerDisplayMode
-                ) {
-                    
-                    ForEach(
-                        TargetDisplayMode
-                            .allCases,
-                        id: \.self
-                    ) { mode in
-                        
-                        Text(
-                            mode.title
-                        )
-                        .tag(mode)
-                    }
-                }
-                
-                Picker(
-                    "After Answer",
-                    selection:
-                        $afterAnswerDisplayMode
-                ) {
-                    
-                    ForEach(
-                        TargetDisplayMode
-                            .allCases,
-                        id: \.self
-                    ) { mode in
-                        
-                        Text(
-                            mode.title
-                        )
-                        .tag(mode)
-                    }
-                }
-                
-                Text(
-                    "Target shows the target-language text. Reading shows its optional reading. Target + Reading shows both. If no reading exists, Pyoko uses the target text."
-                )
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
-            }
-            .frame(
-                maxWidth: .infinity,
-                alignment: .leading
-            )
-        }
-    }
-    
-    // MARK: - Preview
-    
-    private var previewSection:
-        some View {
-        
-        GroupBox("Example") {
-            
-            ExampleCardView(
-                beforeAnswerDisplayMode:
-                    beforeAnswerDisplayMode,
-                afterAnswerDisplayMode:
-                    afterAnswerDisplayMode
-            )
-            .frame(
-                maxWidth: .infinity,
-                alignment: .leading
-            )
-        }
-    }
-    
-    // MARK: - Decks
-    
-    private var deckSection:
-        some View {
-        
-        GroupBox("Decks") {
-            
+
             VStack(
                 alignment: .leading,
                 spacing: 12
             ) {
-                
-                if sources.isEmpty {
-                    
+
+                if let configuration {
+
+                    Text(
+                        "Preview how your current display and reading-hint settings will look during review."
+                    )
+                    .font(
+                        .caption
+                    )
+                    .foregroundStyle(
+                        .secondary
+                    )
+
+                    ExampleCardView(
+                        beforeAnswerDisplayMode:
+                            configuration
+                                .beforeAnswerDisplayMode,
+                        afterAnswerDisplayMode:
+                            configuration
+                                .afterAnswerDisplayMode,
+                        readingHintEnabled:
+                            configuration
+                                .readingHintEnabled
+                    )
+                }
+            }
+            .padding(
+                .vertical,
+                6
+            )
+        }
+    }
+
+    // MARK: - Appearance
+
+    private var appearanceSection:
+        some View {
+
+        GroupBox(
+            "Appearance"
+        ) {
+
+            VStack(
+                alignment: .leading,
+                spacing: 10
+            ) {
+
+                Picker(
+                    "Theme",
+                    selection:
+                        appearanceBinding
+                ) {
+
+                    ForEach(
+                        AppearancePreference
+                            .allCases
+                    ) { appearance in
+
+                        Label(
+                            appearance.title,
+                            systemImage:
+                                appearance
+                                    .systemImage
+                        )
+                        .tag(
+                            appearance
+                        )
+                    }
+                }
+
+                Text(
+                    "Choose whether Pyoko follows your device appearance or always uses Light or Dark mode."
+                )
+                .font(
+                    .caption
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+            }
+            .padding(
+                .vertical,
+                6
+            )
+        }
+    }
+
+    // MARK: - Decks
+
+    private var decksSection:
+        some View {
+
+        GroupBox(
+            "Decks"
+        ) {
+
+            VStack(
+                alignment: .leading,
+                spacing: 10
+            ) {
+
+                if decks.isEmpty {
+
                     Text(
                         "No decks are installed."
                     )
                     .foregroundStyle(
                         .secondary
                     )
-                    
-                    NavigationLink(
-                        "Manage Decks"
-                    ) {
-                        DecksView()
-                    }
-                    
-                } else {
-                    
-                    HStack {
-                        
-                        Text(
-                            "\(selectedSourceIDs.count) of \(sources.count) selected"
-                        )
-                        .font(.caption)
-                        .foregroundStyle(
-                            .secondary
-                        )
-                        
-                        Spacer()
-                        
-                        Button(
-                            "Select All"
-                        ) {
-                            
-                            selectedSourceIDs =
-                                Set(
-                                    sources.map(\.id)
-                                )
-                        }
-                    }
-                    
-                    Divider()
-                    
+
+                } else if let configuration {
+
                     ForEach(
-                        sources
-                    ) { source in
-                        
-                        SourceSelectionRow(
-                            source: source,
-                            isSelected:
-                                selectedSourceIDs
-                                    .contains(
-                                        source.id
-                                    )
-                        ) {
-                            toggleSource(
-                                source
-                            )
-                        }
+                        decks
+                    ) { deck in
+
+                        Toggle(
+                            deck.name,
+                            isOn:
+                                deckBinding(
+                                    deck,
+                                    configuration:
+                                        configuration
+                                )
+                        )
                     }
-                    
-                    Text(
-                        "Select which decks should be included when a new review session is created."
-                    )
-                    .font(.caption)
-                    .foregroundStyle(
-                        .secondary
-                    )
                 }
+
+                Text(
+                    "Only cards from selected decks are included in review sessions. Newly imported decks are automatically selected."
+                )
+                .font(
+                    .caption
+                )
+                .foregroundStyle(
+                    .secondary
+                )
             }
-            .frame(
-                maxWidth: .infinity,
-                alignment: .leading
+            .padding(
+                .vertical,
+                6
             )
         }
     }
-    
+
     // MARK: - Tags
-    
-    private var tagSection:
+
+    private var tagsSection:
         some View {
-        
-        GroupBox("Tags") {
-            
+
+        GroupBox(
+            "Tags"
+        ) {
+
             VStack(
                 alignment: .leading,
-                spacing: 12
+                spacing: 10
             ) {
-                
-                if selectedSourceIDs
-                    .isEmpty {
-                    
-                    Text(
-                        "Select a deck before choosing tags."
-                    )
-                    .foregroundStyle(
-                        .secondary
-                    )
-                    
-                } else if availableTags
-                    .isEmpty {
-                    
+
+                if availableTags.isEmpty {
+
                     Text(
                         "No tags are available for the selected decks."
                     )
                     .foregroundStyle(
                         .secondary
                     )
-                    
-                } else {
-                    
-                    HStack {
-                        
-                        Button(
-                            "Select All"
-                        ) {
-                            
-                            selectedTagIDs =
-                                Set(
-                                    availableTags
-                                        .map(\.id)
-                                )
-                        }
-                        
-                        Spacer()
-                        
-                        Button(
-                            "Clear Filter"
-                        ) {
-                            
-                            selectedTagIDs
-                                .removeAll()
-                        }
-                    }
-                    
-                    Divider()
-                    
+
+                } else if let configuration {
+
                     ForEach(
                         availableTags
                     ) { tag in
-                        
-                        TagSelectionRow(
-                            tag: tag,
-                            isSelected:
-                                selectedTagIDs
-                                    .contains(
-                                        tag.id
-                                    )
-                        ) {
-                            toggleTag(tag)
-                        }
-                    }
-                    
-                    Text(
-                        "No selected tags means all tags from the selected decks are included."
-                    )
-                    .font(.caption)
-                    .foregroundStyle(
-                        .secondary
-                    )
-                }
-            }
-            .frame(
-                maxWidth: .infinity,
-                alignment: .leading
-            )
-        }
-    }
-    
-    // MARK: - Appearance
-    
-    private var appearanceSection:
-        some View {
-        
-        GroupBox("Appearance") {
-            
-            VStack(
-                alignment: .leading,
-                spacing: 8
-            ) {
-                
-                Picker(
-                    "Theme",
-                    selection:
-                        appearanceSelection
-                ) {
-                    
-                    ForEach(
-                        AppearancePreference
-                            .allCases
-                    ) { appearance in
-                        
-                        Text(
-                            appearance.title
+
+                        Toggle(
+                            tag.name,
+                            isOn:
+                                tagBinding(
+                                    tag,
+                                    configuration:
+                                        configuration
+                                )
                         )
-                        .tag(appearance)
                     }
                 }
-                
-                #if os(macOS)
-                .pickerStyle(.menu)
-                #endif
-                
+
                 Text(
-                    "System follows the appearance selected on your device."
+                    "Selecting no tags means all tags are included."
                 )
-                .font(.caption)
+                .font(
+                    .caption
+                )
                 .foregroundStyle(
                     .secondary
                 )
             }
-            .frame(
-                maxWidth: .infinity,
-                alignment: .leading
+            .padding(
+                .vertical,
+                6
             )
         }
     }
-    
-    // MARK: - Appearance Binding
-    
-    private var appearanceSelection:
-        Binding<AppearancePreference> {
-        
-        Binding(
-            get: {
-                
-                AppearancePreference(
-                    rawValue:
-                        appearancePreferenceRawValue
-                ) ?? AppearancePreference.system
-            },
-            set: { appearance in
-                
-                appearancePreferenceRawValue =
-                    appearance.rawValue
-            }
-        )
-    }
-    
+
     // MARK: - Available Tags
-    
+
     private var availableTags:
         [PyokoTag] {
-        
+
         guard
-            !selectedSourceIDs
-                .isEmpty
+            let configuration
         else {
             return []
         }
-        
-        return tags.filter { tag in
-            
-            guard let cards =
-                tag.cards
-            else {
-                return false
-            }
-            
-            return cards.contains {
-                card in
-                
-                guard
-                    let sourceID =
-                        card.deck?.id
-                else {
-                    return false
-                }
-                
-                return selectedSourceIDs
-                    .contains(
-                        sourceID
-                    )
-            }
-        }
-    }
-    
-    // MARK: - Loading
-    
-    private func loadConfigurationIfNeeded() {
-        
-        guard
-            !hasLoadedConfiguration
-        else {
-            return
-        }
-        
-        isLoadingConfiguration =
-            true
-        
-        if let configuration =
-            configurations.first {
-            
-            dailyCardLimit =
-                configuration.dailyCardLimit
-            
-            showRecognitionCards =
-                configuration
-                    .showRecognitionCards
-            
-            showRecallCards =
-                configuration
-                    .showRecallCards
-            
-            readingHintEnabled =
-                configuration
-                    .readingHintEnabled
-            
-            beforeAnswerDisplayMode =
-                configuration
-                    .beforeAnswerDisplayMode
-            
-            afterAnswerDisplayMode =
-                configuration
-                    .afterAnswerDisplayMode
-            
-            selectedSourceIDs =
-                Set(
-                    configuration
-                        .sources
-                        .map(\.id)
-                )
-            
-            selectedTagIDs =
-                Set(
-                    configuration
-                        .tags
-                        .map(\.id)
-                )
-            
-        } else {
-            
-            dailyCardLimit = 20
-            
-            showRecognitionCards =
-                true
-            
-            showRecallCards =
-                true
-            
-            readingHintEnabled =
-                true
-            
-            beforeAnswerDisplayMode =
-                TargetDisplayMode.target
-            
-            afterAnswerDisplayMode =
-                TargetDisplayMode
-                    .targetAndReading
-            
-            selectedSourceIDs =
-                Set(
-                    sources.map(\.id)
-                )
-            
-            selectedTagIDs = []
-        }
-        
-        pruneUnavailableTags()
-        
-        hasLoadedConfiguration =
-            true
-        
-        isLoadingConfiguration =
-            false
-    }
-    
-    // MARK: - Deck Selection
-    
-    private func toggleSource(
-        _ source:
-            PyokoDeck
-    ) {
-        
-        if selectedSourceIDs
-            .contains(
-                source.id
-            ) {
-            
-            guard
-                selectedSourceIDs.count > 1
-            else {
-                
-                errorMessage =
-                    "At least one deck must remain selected."
-                
-                showingError =
-                    true
-                
-                return
-            }
-            
-            selectedSourceIDs
-                .remove(
-                    source.id
-                )
-            
-        } else {
-            
-            selectedSourceIDs
-                .insert(
-                    source.id
-                )
-        }
-    }
-    
-    // MARK: - Tag Selection
-    
-    private func toggleTag(
-        _ tag:
-            PyokoTag
-    ) {
-        
-        if selectedTagIDs
-            .contains(
-                tag.id
-            ) {
-            
-            selectedTagIDs
-                .remove(
-                    tag.id
-                )
-            
-        } else {
-            
-            selectedTagIDs
-                .insert(
-                    tag.id
-                )
-        }
-    }
-    
-    private func pruneUnavailableTags() {
-        
-        let availableIDs =
+
+        let selectedDeckIDs =
             Set(
-                availableTags
-                    .map(\.id)
-            )
-        
-        selectedTagIDs =
-            selectedTagIDs
-                .intersection(
-                    availableIDs
+                (
+                    configuration
+                        .selectedDecks ??
+                    []
                 )
+                .map(
+                    \.id
+                )
+            )
+
+        guard
+            !selectedDeckIDs.isEmpty
+        else {
+            return []
+        }
+
+        let tagIDs =
+            Set(
+                decks
+                    .filter {
+
+                        selectedDeckIDs
+                            .contains(
+                                $0.id
+                            )
+                    }
+                    .flatMap {
+
+                        $0.cards ??
+                        []
+                    }
+                    .flatMap {
+
+                        $0.tags ??
+                        []
+                    }
+                    .map(
+                        \.id
+                    )
+            )
+
+        return tags.filter {
+
+            tagIDs.contains(
+                $0.id
+            )
+        }
     }
-    
-    // MARK: - Auto Save
-    
-    private func autoSaveConfiguration() {
-        
-        guard
-            hasLoadedConfiguration,
-            !isLoadingConfiguration
-        else {
-            return
-        }
-        
-        guard
-            showRecognitionCards ||
-            showRecallCards
-        else {
-            return
-        }
-        
-        guard
-            !selectedSourceIDs
-                .isEmpty
-        else {
-            return
-        }
-        
-        let configuration:
-            PyokoConfiguration
-        
+
+    // MARK: - Configuration Creation
+
+    private func createConfigurationIfNeeded() {
+
         if let existing =
             configurations.first {
-            
+
             configuration =
                 existing
-            
-        } else {
-            
-            let newConfiguration =
-                PyokoConfiguration()
-            
-            modelContext.insert(
-                newConfiguration
+
+            clampMinimumNewCards(
+                existing
             )
-            
-            configuration =
-                newConfiguration
+
+            return
         }
-        
-        configuration.dailyCardLimit =
-            dailyCardLimit
-        
-        configuration.showRecognitionCards =
-            showRecognitionCards
-        
-        configuration.showRecallCards =
-            showRecallCards
-        
-        configuration.readingHintEnabled =
-            readingHintEnabled
-        
-        configuration.beforeAnswerDisplayMode =
-            beforeAnswerDisplayMode
-        
-        configuration.afterAnswerDisplayMode =
-            afterAnswerDisplayMode
-        
-        configuration.selectedSources =
-            sources.filter {
-                
-                selectedSourceIDs
-                    .contains(
-                        $0.id
-                    )
+
+        let newConfiguration =
+            PyokoConfiguration(
+                dailyCardLimit: 20,
+                minimumNewCards: 0,
+                beforeAnswerDisplayMode:
+                    TargetDisplayMode.target,
+                afterAnswerDisplayMode:
+                    TargetDisplayMode.reading,
+                showRecognitionCards:
+                    true,
+                showRecallCards:
+                    true,
+                readingHintEnabled:
+                    true,
+                selectedDecks:
+                    decks,
+                selectedTags:
+                    []
+            )
+
+        modelContext.insert(
+            newConfiguration
+        )
+
+        configuration =
+            newConfiguration
+
+        save()
+    }
+
+    // MARK: - Appearance Binding
+
+    private var appearanceBinding:
+        Binding<AppearancePreference> {
+
+        Binding(
+            get: {
+
+                AppearancePreference(
+                    rawValue:
+                        appearanceRawValue
+                ) ??
+                AppearancePreference.system
+            },
+            set: { newValue in
+
+                appearanceRawValue =
+                    newValue.rawValue
             }
-        
-        configuration.selectedTags =
-            availableTags.filter {
-                
-                selectedTagIDs
-                    .contains(
-                        $0.id
-                    )
+        )
+    }
+
+    // MARK: - Daily Limit
+
+    private func dailyCardLimitBinding(
+        _ configuration:
+            PyokoConfiguration
+    ) -> Binding<Int> {
+
+        Binding(
+            get: {
+
+                configuration
+                    .dailyCardLimit
+            },
+            set: { newValue in
+
+                configuration
+                    .dailyCardLimit =
+                        newValue
+
+                clampMinimumNewCards(
+                    configuration
+                )
+
+                save()
             }
-        
+        )
+    }
+
+    // MARK: - Minimum New Cards
+
+    private func minimumNewCardsBinding(
+        _ configuration:
+            PyokoConfiguration
+    ) -> Binding<Int> {
+
+        Binding(
+            get: {
+
+                configuration
+                    .minimumNewCards
+            },
+            set: { newValue in
+
+                configuration
+                    .minimumNewCards =
+                        min(
+                            max(
+                                newValue,
+                                0
+                            ),
+                            configuration
+                                .dailyCardLimit
+                        )
+
+                save()
+            }
+        )
+    }
+
+    // MARK: - Card Types
+
+    private func recognitionBinding(
+        _ configuration:
+            PyokoConfiguration
+    ) -> Binding<Bool> {
+
+        Binding(
+            get: {
+
+                configuration
+                    .showRecognitionCards
+            },
+            set: { newValue in
+
+                guard
+                    newValue ||
+                    configuration
+                        .showRecallCards
+                else {
+                    return
+                }
+
+                configuration
+                    .showRecognitionCards =
+                        newValue
+
+                save()
+            }
+        )
+    }
+
+    private func recallBinding(
+        _ configuration:
+            PyokoConfiguration
+    ) -> Binding<Bool> {
+
+        Binding(
+            get: {
+
+                configuration
+                    .showRecallCards
+            },
+            set: { newValue in
+
+                guard
+                    newValue ||
+                    configuration
+                        .showRecognitionCards
+                else {
+                    return
+                }
+
+                configuration
+                    .showRecallCards =
+                        newValue
+
+                save()
+            }
+        )
+    }
+
+    // MARK: - Reading Hint
+
+    private func readingHintBinding(
+        _ configuration:
+            PyokoConfiguration
+    ) -> Binding<Bool> {
+
+        Binding(
+            get: {
+
+                configuration
+                    .readingHintEnabled
+            },
+            set: { newValue in
+
+                configuration
+                    .readingHintEnabled =
+                        newValue
+
+                save()
+            }
+        )
+    }
+
+    // MARK: - Display
+
+    private func beforeAnswerBinding(
+        _ configuration:
+            PyokoConfiguration
+    ) -> Binding<TargetDisplayMode> {
+
+        Binding(
+            get: {
+
+                configuration
+                    .beforeAnswerDisplayMode
+            },
+            set: { newValue in
+
+                configuration
+                    .beforeAnswerDisplayMode =
+                        newValue
+
+                save()
+            }
+        )
+    }
+
+    private func afterAnswerBinding(
+        _ configuration:
+            PyokoConfiguration
+    ) -> Binding<TargetDisplayMode> {
+
+        Binding(
+            get: {
+
+                configuration
+                    .afterAnswerDisplayMode
+            },
+            set: { newValue in
+
+                configuration
+                    .afterAnswerDisplayMode =
+                        newValue
+
+                save()
+            }
+        )
+    }
+
+    // MARK: - Deck Binding
+
+    private func deckBinding(
+        _ deck: PyokoDeck,
+        configuration:
+            PyokoConfiguration
+    ) -> Binding<Bool> {
+
+        Binding(
+            get: {
+
+                (
+                    configuration
+                        .selectedDecks ??
+                    []
+                )
+                .contains {
+
+                    $0.id ==
+                        deck.id
+                }
+            },
+            set: { isSelected in
+
+                var selectedDecks =
+                    configuration
+                        .selectedDecks ??
+                    []
+
+                if isSelected {
+
+                    guard
+                        !selectedDecks
+                            .contains(
+                                where: {
+
+                                    $0.id ==
+                                        deck.id
+                                }
+                            )
+                    else {
+                        return
+                    }
+
+                    selectedDecks
+                        .append(
+                            deck
+                        )
+
+                } else {
+
+                    selectedDecks
+                        .removeAll {
+
+                            $0.id ==
+                                deck.id
+                        }
+                }
+
+                configuration
+                    .selectedDecks =
+                        selectedDecks
+
+                removeUnavailableTags(
+                    configuration
+                )
+
+                save()
+            }
+        )
+    }
+
+    // MARK: - Tag Binding
+
+    private func tagBinding(
+        _ tag: PyokoTag,
+        configuration:
+            PyokoConfiguration
+    ) -> Binding<Bool> {
+
+        Binding(
+            get: {
+
+                (
+                    configuration
+                        .selectedTags ??
+                    []
+                )
+                .contains {
+
+                    $0.id ==
+                        tag.id
+                }
+            },
+            set: { isSelected in
+
+                var selectedTags =
+                    configuration
+                        .selectedTags ??
+                    []
+
+                if isSelected {
+
+                    guard
+                        !selectedTags
+                            .contains(
+                                where: {
+
+                                    $0.id ==
+                                        tag.id
+                                }
+                            )
+                    else {
+                        return
+                    }
+
+                    selectedTags
+                        .append(
+                            tag
+                        )
+
+                } else {
+
+                    selectedTags
+                        .removeAll {
+
+                            $0.id ==
+                                tag.id
+                        }
+                }
+
+                configuration
+                    .selectedTags =
+                        selectedTags
+
+                save()
+            }
+        )
+    }
+
+    // MARK: - Validation
+
+    private func clampMinimumNewCards(
+        _ configuration:
+            PyokoConfiguration
+    ) {
+
+        configuration
+            .minimumNewCards =
+                min(
+                    max(
+                        configuration
+                            .minimumNewCards,
+                        0
+                    ),
+                    max(
+                        configuration
+                            .dailyCardLimit,
+                        1
+                    )
+                )
+    }
+
+    private func removeUnavailableTags(
+        _ configuration:
+            PyokoConfiguration
+    ) {
+
+        let availableTagIDs =
+            Set(
+                availableTags.map(
+                    \.id
+                )
+            )
+
+        configuration
+            .selectedTags =
+                (
+                    configuration
+                        .selectedTags ??
+                    []
+                )
+                .filter {
+
+                    availableTagIDs
+                        .contains(
+                            $0.id
+                        )
+                }
+    }
+
+    // MARK: - Save
+
+    private func save() {
+
         do {
-            
+
             try modelContext.save()
-            
+
         } catch {
-            
-            errorMessage =
-                error.localizedDescription
-            
-            showingError =
-                true
-        }
-    }
-}
 
-// MARK: - Deck Row
-
-private struct SourceSelectionRow:
-    View {
-    
-    let source:
-        PyokoDeck
-    
-    let isSelected:
-        Bool
-    
-    let action:
-        () -> Void
-    
-    var body: some View {
-        
-        Button(
-            action: action
-        ) {
-            
-            HStack {
-                
-                VStack(
-                    alignment: .leading,
-                    spacing: 3
-                ) {
-                    
-                    Text(
-                        source.name
-                    )
-                    .foregroundStyle(
-                        .primary
-                    )
-                    
-                    Text(
-                        "\(source.vocabularyCount.formatted()) vocabulary"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(
-                        .secondary
-                    )
-                }
-                
-                Spacer()
-                
-                if isSelected {
-                    
-                    Image(
-                        systemName:
-                            "checkmark.circle.fill"
-                    )
-                    .foregroundStyle(
-                        Color.accentColor
-                    )
-                    
-                } else {
-                    
-                    Image(
-                        systemName:
-                            "circle"
-                    )
-                    .foregroundStyle(
-                        .secondary
-                    )
-                }
-            }
-            .contentShape(
-                Rectangle()
+            print(
+                "Failed to save configuration: \(error)"
             )
         }
-        .buttonStyle(
-            .plain
-        )
-    }
-}
-
-// MARK: - Tag Row
-
-private struct TagSelectionRow:
-    View {
-    
-    let tag:
-        PyokoTag
-    
-    let isSelected:
-        Bool
-    
-    let action:
-        () -> Void
-    
-    var body: some View {
-        
-        Button(
-            action: action
-        ) {
-            
-            HStack {
-                
-                Text(
-                    tag.name
-                )
-                .foregroundStyle(
-                    .primary
-                )
-                
-                Spacer()
-                
-                if isSelected {
-                    
-                    Image(
-                        systemName:
-                            "checkmark.circle.fill"
-                    )
-                    .foregroundStyle(
-                        Color.accentColor
-                    )
-                    
-                } else {
-                    
-                    Image(
-                        systemName:
-                            "circle"
-                    )
-                    .foregroundStyle(
-                        .secondary
-                    )
-                }
-            }
-            .contentShape(
-                Rectangle()
-            )
-        }
-        .buttonStyle(
-            .plain
-        )
     }
 }

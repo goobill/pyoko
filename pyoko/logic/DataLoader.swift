@@ -3,23 +3,21 @@ import SwiftData
 
 @MainActor
 final class DataLoader {
-    
-    private let modelContext:
-        ModelContext
-    
+
+    private let modelContext: ModelContext
+
     private let defaultTagName =
         "No Tag"
-    
+
     init(
         modelContext: ModelContext
     ) {
-        
         self.modelContext =
             modelContext
     }
-    
+
     // MARK: - URL
-    
+
     func loadFromURL(
         deckName: String,
         urlString: String,
@@ -30,19 +28,16 @@ final class DataLoader {
         originName: String? = nil,
         originIdentifier: String? = nil
     ) async throws {
-        
+
         let trimmedURL =
-            urlString
-                .trimmingCharacters(
-                    in:
-                        .whitespacesAndNewlines
-                )
-        
+            urlString.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+
         guard
             let url =
                 URL(
-                    string:
-                        trimmedURL
+                    string: trimmedURL
                 ),
             let scheme =
                 url.scheme?
@@ -50,16 +45,15 @@ final class DataLoader {
             scheme == "http" ||
             scheme == "https"
         else {
-            
             throw DataLoaderError
                 .invalidURL
         }
-        
+
         let data =
             try await download(
                 from: url
             )
-        
+
         try importCSV(
             data: data,
             deckName: deckName,
@@ -76,47 +70,49 @@ final class DataLoader {
                 createRecall
         )
     }
-    
+
     // MARK: - Google Sheets
-    
+
     func loadFromGoogleSheet(
         deckName: String,
         urlString: String,
         createRecognition: Bool,
         createRecall: Bool
     ) async throws {
-        
+
         let reference =
             try GoogleSheetsCSVURL
                 .makeReference(
-                    from:
-                        urlString
+                    from: urlString
                 )
-        
+
         let (
             data,
             response
         ) =
             try await downloadWithResponse(
-                from:
-                    reference.csvURL
+                from: reference.csvURL
             )
-        
-        // Private Sheets commonly redirect
-        // to or return an HTML sign-in/access
-        // page rather than CSV.
-        
+
+        /*
+         A private Google Sheet may return
+         an HTML login/access page instead
+         of CSV.
+        */
+
         if response.mimeType?
             .lowercased()
             .contains(
                 "text/html"
             ) == true ||
-            looksLikeHTML(data) {
-            
+            looksLikeHTML(
+                data
+            ) {
+
             throw DataLoaderError
                 .googleSheetNotAccessible
         }
-        
+
         try importCSV(
             data: data,
             deckName: deckName,
@@ -135,34 +131,34 @@ final class DataLoader {
                 createRecall
         )
     }
-    
-    // MARK: - Local / Files
-    
+
+    // MARK: - File
+
     func loadFromFile(
         deckName: String,
         url: URL,
         createRecognition: Bool,
         createRecall: Bool
     ) throws {
-        
+
         let accessingSecurityScopedResource =
             url
                 .startAccessingSecurityScopedResource()
-        
+
         defer {
-            
+
             if accessingSecurityScopedResource {
-                
+
                 url
                     .stopAccessingSecurityScopedResource()
             }
         }
-        
+
         let data =
             try Data(
                 contentsOf: url
             )
-        
+
         try importCSV(
             data: data,
             deckName: deckName,
@@ -179,13 +175,13 @@ final class DataLoader {
                 createRecall
         )
     }
-    
+
     // MARK: - Download
-    
+
     private func download(
         from url: URL
     ) async throws -> Data {
-        
+
         let (
             data,
             _
@@ -193,17 +189,17 @@ final class DataLoader {
             try await downloadWithResponse(
                 from: url
             )
-        
+
         return data
     }
-    
+
     private func downloadWithResponse(
         from url: URL
     ) async throws -> (
         Data,
         URLResponse
     ) {
-        
+
         let (
             data,
             response
@@ -213,11 +209,10 @@ final class DataLoader {
                 .data(
                     from: url
                 )
-        
+
         if let httpResponse =
-            response
-                as? HTTPURLResponse {
-            
+            response as? HTTPURLResponse {
+
             guard
                 (200...299)
                     .contains(
@@ -225,7 +220,7 @@ final class DataLoader {
                             .statusCode
                     )
             else {
-                
+
                 throw DataLoaderError
                     .downloadFailed(
                         statusCode:
@@ -234,15 +229,15 @@ final class DataLoader {
                     )
             }
         }
-        
+
         return (
             data,
             response
         )
     }
-    
+
     // MARK: - Import
-    
+
     private func importCSV(
         data: Data,
         deckName: String,
@@ -254,31 +249,30 @@ final class DataLoader {
         createRecognition: Bool,
         createRecall: Bool
     ) throws {
-        
+
         guard
             createRecognition ||
             createRecall
         else {
-            
+
             throw DataLoaderError
                 .noCardTypesSelected
         }
-        
-        let deckName =
+
+        let trimmedDeckName =
             deckName
                 .trimmingCharacters(
-                    in:
-                        .whitespacesAndNewlines
+                    in: .whitespacesAndNewlines
                 )
-        
+
         guard
-            !deckName.isEmpty
+            !trimmedDeckName.isEmpty
         else {
-            
+
             throw DataLoaderError
                 .emptyDeckName
         }
-        
+
         guard
             let csv =
                 String(
@@ -286,28 +280,29 @@ final class DataLoader {
                     encoding: .utf8
                 )
         else {
-            
+
             throw DataLoaderError
                 .invalidEncoding
         }
-        
+
         let words =
             try parseCSV(
                 csv
             )
-        
+
         try ensureDeckDoesNotExist(
-            name: deckName,
-            catalogKey:
-                catalogKey
+            name: trimmedDeckName,
+            catalogKey: catalogKey
         )
-        
+
+        // MARK: Create Deck
+
         let deck =
             PyokoDeck(
                 catalogKey:
                     catalogKey,
                 name:
-                    deckName,
+                    trimmedDeckName,
                 origin:
                     origin,
                 originName:
@@ -329,16 +324,18 @@ final class DataLoader {
                 importedAt:
                     Date.now
             )
-        
+
         modelContext.insert(
             deck
         )
-        
+
+        // MARK: Create Cards
+
         var tagCache:
             [String: PyokoTag] = [:]
-        
+
         for word in words {
-            
+
             let tags =
                 try getOrCreateTags(
                     names:
@@ -346,9 +343,9 @@ final class DataLoader {
                     cache:
                         &tagCache
                 )
-            
+
             if createRecognition {
-                
+
                 let card =
                     PyokoCard(
                         type:
@@ -364,14 +361,14 @@ final class DataLoader {
                         tags:
                             tags
                     )
-                
+
                 modelContext.insert(
                     card
                 )
             }
-            
+
             if createRecall {
-                
+
                 let card =
                     PyokoCard(
                         type:
@@ -387,113 +384,194 @@ final class DataLoader {
                         tags:
                             tags
                     )
-                
+
                 modelContext.insert(
                     card
                 )
             }
         }
-        
+
+        /*
+         Automatically enable the newly
+         imported deck in the user's existing
+         review configuration.
+
+         This is especially important when the
+         configuration was created while there
+         were no decks installed.
+
+         We only add the NEW deck.
+
+         Previously deselected decks remain
+         deselected.
+        */
+
+        try selectNewDeckInConfiguration(
+            deck
+        )
+
         try modelContext.save()
     }
-    
+
+    // MARK: - Automatically Select Imported Deck
+
+    private func selectNewDeckInConfiguration(
+        _ deck: PyokoDeck
+    ) throws {
+
+        let descriptor =
+            FetchDescriptor<PyokoConfiguration>()
+
+        /*
+         If no configuration exists yet,
+         there is nothing to update.
+
+         When ConfigurationView eventually
+         creates its first configuration, it
+         already defaults to selecting all
+         installed decks.
+        */
+
+        guard
+            let configuration =
+                try modelContext
+                    .fetch(
+                        descriptor
+                    )
+                    .first
+        else {
+            return
+        }
+
+        var selectedDecks =
+            configuration
+                .selectedDecks ??
+            []
+
+        /*
+         Defensive duplicate check.
+
+         This should normally never be hit for
+         a newly created deck, but it keeps the
+         relationship clean.
+        */
+
+        guard
+            !selectedDecks
+                .contains(
+                    where: {
+                        $0.id == deck.id
+                    }
+                )
+        else {
+            return
+        }
+
+        selectedDecks.append(
+            deck
+        )
+
+        configuration.selectedDecks =
+            selectedDecks
+    }
+
     // MARK: - Duplicate Deck
-    
+
     private func ensureDeckDoesNotExist(
         name: String,
         catalogKey: String?
     ) throws {
-        
+
         if let catalogKey {
-            
+
             let key =
                 catalogKey
-            
+
             let descriptor =
                 FetchDescriptor<PyokoDeck>(
                     predicate:
                         #Predicate<PyokoDeck> {
                             deck in
-                            
+
                             deck.catalogKey ==
                                 key
                         }
                 )
-            
+
             if try modelContext
                 .fetch(
                     descriptor
                 )
                 .first != nil {
-                
+
                 throw DataLoaderError
                     .deckAlreadyExists(
                         name: name
                     )
             }
         }
-        
+
         let deckName =
             name
-        
+
         let descriptor =
             FetchDescriptor<PyokoDeck>(
                 predicate:
                     #Predicate<PyokoDeck> {
                         deck in
-                        
+
                         deck.name ==
                             deckName
                     }
             )
-        
+
         if try modelContext
             .fetch(
                 descriptor
             )
             .first != nil {
-            
+
             throw DataLoaderError
                 .deckAlreadyExists(
                     name: name
                 )
         }
     }
-    
+
     // MARK: - Tags
-    
+
     private func getOrCreateTags(
         names: [String],
         cache:
             inout [String: PyokoTag]
     ) throws -> [PyokoTag] {
-        
+
         var tags:
             [PyokoTag] = []
-        
+
         var seenNames:
             Set<String> = []
-        
+
         let tagNames =
             names.isEmpty
             ? [defaultTagName]
             : names
-        
+
         for name in tagNames {
-            
+
             let trimmedName =
                 name
                     .trimmingCharacters(
                         in:
                             .whitespacesAndNewlines
                     )
-            
+
             guard
                 !trimmedName.isEmpty
             else {
                 continue
             }
-            
+
             guard
                 seenNames
                     .insert(
@@ -503,113 +581,111 @@ final class DataLoader {
             else {
                 continue
             }
-            
+
             if let cachedTag =
                 cache[
                     trimmedName
                 ] {
-                
+
                 tags.append(
                     cachedTag
                 )
-                
+
                 continue
             }
-            
+
             let tagName =
                 trimmedName
-            
+
             let descriptor =
                 FetchDescriptor<PyokoTag>(
                     predicate:
                         #Predicate<PyokoTag> {
                             tag in
-                            
+
                             tag.name ==
                                 tagName
                         }
                 )
-            
+
             if let existingTag =
                 try modelContext
                     .fetch(
                         descriptor
                     )
                     .first {
-                
+
                 cache[
                     trimmedName
                 ] =
                     existingTag
-                
+
                 tags.append(
                     existingTag
                 )
-                
+
                 continue
             }
-            
+
             let tag =
                 PyokoTag(
                     name:
                         trimmedName
                 )
-            
+
             modelContext.insert(
                 tag
             )
-            
+
             cache[
                 trimmedName
             ] =
                 tag
-            
+
             tags.append(
                 tag
             )
         }
-        
+
         return tags
     }
-    
+
     // MARK: - CSV
-    
+
     private func parseCSV(
         _ csv: String
     ) throws -> [ImportedWord] {
-        
+
         let rows =
             try parseCSVRows(
                 csv
             )
-        
-        // Row 1 is always the header.
-        
+
         guard
             rows.count > 1
         else {
-            
+
             throw DataLoaderError
                 .noWordsFound
         }
-        
+
         var words:
             [ImportedWord] = []
-        
+
         for (
             index,
             row
         ) in rows
             .dropFirst()
             .enumerated() {
-            
+
             let rowNumber =
                 index + 2
-            
+
             guard
                 row.count == 4
             else {
-                
+
                 throw DataLoaderError
                     .invalidColumnCount(
                         row:
@@ -618,39 +694,39 @@ final class DataLoader {
                             row
                     )
             }
-            
+
             let sourceText =
                 row[0]
                     .trimmingCharacters(
                         in:
                             .whitespacesAndNewlines
                     )
-            
+
             let targetText =
                 row[1]
                     .trimmingCharacters(
                         in:
                             .whitespacesAndNewlines
                     )
-            
+
             let reading =
                 row[2]
                     .trimmingCharacters(
                         in:
                             .whitespacesAndNewlines
                     )
-            
+
             let rawTags =
                 row[3]
                     .trimmingCharacters(
                         in:
                             .whitespacesAndNewlines
                     )
-            
+
             guard
                 !sourceText.isEmpty
             else {
-                
+
                 throw DataLoaderError
                     .missingSource(
                         row:
@@ -659,11 +735,11 @@ final class DataLoader {
                             row
                     )
             }
-            
+
             guard
                 !targetText.isEmpty
             else {
-                
+
                 throw DataLoaderError
                     .missingTarget(
                         row:
@@ -672,20 +748,20 @@ final class DataLoader {
                             row
                     )
             }
-            
+
             let targetReading:
                 String? =
                     reading.isEmpty
                     ? nil
                     : reading
-            
+
             var tags =
                 rawTags
                     .split(
                         separator: "|"
                     )
                     .map {
-                        
+
                         String($0)
                             .trimmingCharacters(
                                 in:
@@ -695,14 +771,14 @@ final class DataLoader {
                     .filter {
                         !$0.isEmpty
                     }
-            
+
             if tags.isEmpty {
-                
+
                 tags = [
                     defaultTagName
                 ]
             }
-            
+
             words.append(
                 ImportedWord(
                     sourceText:
@@ -716,105 +792,106 @@ final class DataLoader {
                 )
             )
         }
-        
+
         guard
             !words.isEmpty
         else {
-            
+
             throw DataLoaderError
                 .noWordsFound
         }
-        
+
         return words
     }
-    
+
     // MARK: - CSV Parser
-    
+
     private func parseCSVRows(
         _ csv: String
     ) throws -> [[String]] {
-        
+
         var rows:
             [[String]] = []
-        
+
         var currentRow:
             [String] = []
-        
+
         var currentField =
             ""
-        
+
         var insideQuotes =
             false
-        
+
         let characters =
             Array(csv)
-        
+
         var index =
             0
-        
+
         while
             index <
             characters.count {
-            
+
             let character =
                 characters[index]
-            
+
             if character == "\"" {
-                
+
                 if insideQuotes,
                    index + 1 <
                     characters.count,
                    characters[
                     index + 1
                    ] == "\"" {
-                    
+
                     currentField
                         .append("\"")
-                    
+
                     index += 2
-                    
+
                     continue
                 }
-                
+
                 insideQuotes.toggle()
-                
+
             } else if
                 character == ",",
                 !insideQuotes {
-                
+
                 currentRow.append(
                     currentField
                 )
-                
+
                 currentField =
                     ""
-                
+
             } else if (
                 character == "\n" ||
                 character == "\r"
-            ) && !insideQuotes {
-                
+            ) &&
+            !insideQuotes {
+
                 if character == "\r",
                    index + 1 <
                     characters.count,
                    characters[
                     index + 1
                    ] == "\n" {
-                    
+
                     index += 1
                 }
-                
+
                 currentRow.append(
                     currentField
                 )
-                
+
                 currentField =
                     ""
-                
+
                 let hasContent =
                     currentRow
                         .contains {
-                            
+
                             !$0
                                 .trimmingCharacters(
                                     in:
@@ -822,48 +899,48 @@ final class DataLoader {
                                 )
                                 .isEmpty
                         }
-                
+
                 if hasContent {
-                    
+
                     rows.append(
                         currentRow
                     )
                 }
-                
+
                 currentRow =
                     []
-                
+
             } else {
-                
+
                 currentField
                     .append(
                         character
                     )
             }
-            
+
             index += 1
         }
-        
+
         guard
             !insideQuotes
         else {
-            
+
             throw DataLoaderError
                 .invalidCSV
         }
-        
+
         if
             !currentField.isEmpty ||
             !currentRow.isEmpty {
-            
+
             currentRow.append(
                 currentField
             )
-            
+
             let hasContent =
                 currentRow
                     .contains {
-                        
+
                         !$0
                             .trimmingCharacters(
                                 in:
@@ -871,40 +948,42 @@ final class DataLoader {
                             )
                             .isEmpty
                     }
-            
+
             if hasContent {
-                
+
                 rows.append(
                     currentRow
                 )
             }
         }
-        
+
         return rows
     }
-    
+
     // MARK: - HTML Detection
-    
+
     private func looksLikeHTML(
         _ data: Data
     ) -> Bool {
-        
+
         let prefix =
             data.prefix(
                 1024
             )
-        
+
         guard
             let string =
                 String(
-                    data: prefix,
-                    encoding: .utf8
+                    data:
+                        prefix,
+                    encoding:
+                        .utf8
                 )?
                 .lowercased()
         else {
             return false
         }
-        
+
         return
             string.contains(
                 "<!doctype html"
@@ -918,16 +997,16 @@ final class DataLoader {
 // MARK: - Imported Word
 
 struct ImportedWord {
-    
+
     let sourceText:
         String
-    
+
     let targetText:
         String
-    
+
     let targetReading:
         String?
-    
+
     let tags:
         [String]
 }
@@ -936,178 +1015,178 @@ struct ImportedWord {
 
 enum DataLoaderError:
     LocalizedError {
-    
+
     case invalidURL
-    
+
     case invalidGoogleSheetURL
-    
+
     case googleSheetNotAccessible
-    
+
     case downloadFailed(
         statusCode: Int
     )
-    
+
     case emptyDeckName
-    
+
     case deckAlreadyExists(
         name: String
     )
-    
+
     case noCardTypesSelected
-    
+
     case invalidEncoding
-    
+
     case invalidCSV
-    
+
     case invalidColumnCount(
         row: Int,
         values: [String]
     )
-    
+
     case missingSource(
         row: Int,
         values: [String]
     )
-    
+
     case missingTarget(
         row: Int,
         values: [String]
     )
-    
+
     case noWordsFound
-    
+
     var errorDescription:
         String? {
-        
+
         switch self {
-            
+
         case .invalidURL:
-            
+
             return """
             The URL is invalid.
             """
-            
+
         case .invalidGoogleSheetURL:
-            
+
             return """
             The Google Sheets URL is invalid.
-            
+
             Paste a normal Google Sheets sharing URL or a published Google Sheets URL.
             """
-            
+
         case .googleSheetNotAccessible:
-            
+
             return """
             Pyoko could not access this Google Sheet as CSV.
-            
+
             Make sure the spreadsheet is publicly readable or has been published to the web.
-            
+
             Private Google Sheets are not supported yet.
             """
-            
+
         case .downloadFailed(
             let statusCode
         ):
-            
+
             return """
             The file could not be downloaded.
-            
+
             HTTP status: \(statusCode).
             """
-            
+
         case .emptyDeckName:
-            
+
             return """
             Please enter a deck name.
             """
-            
+
         case .deckAlreadyExists(
             let name
         ):
-            
+
             return """
             A deck named "\(name)" is already installed.
-            
+
             Delete it before importing it again.
             """
-            
+
         case .noCardTypesSelected:
-            
+
             return """
             Select at least one card type.
             """
-            
+
         case .invalidEncoding:
-            
+
             return """
             The file must use UTF-8 encoding.
             """
-            
+
         case .invalidCSV:
-            
+
             return """
             The CSV file is invalid.
-            
+
             Check that quotes are correctly opened and closed.
             """
-            
+
         case .invalidColumnCount(
             let row,
             let values
         ):
-            
+
             return """
             Row \(row) has \(values.count) columns, but Pyoko requires exactly 4.
-            
+
             Expected:
             source,target,reading,tags
-            
+
             Received:
             \(formatRow(values))
             """
-            
+
         case .missingSource(
             let row,
             let values
         ):
-            
+
             return """
             Row \(row) is missing its Source value.
-            
+
             Expected:
             source,target,reading,tags
-            
+
             Received:
             \(formatRow(values))
             """
-            
+
         case .missingTarget(
             let row,
             let values
         ):
-            
+
             return """
             Row \(row) is missing its Target value.
-            
+
             Expected:
             source,target,reading,tags
-            
+
             Received:
             \(formatRow(values))
             """
-            
+
         case .noWordsFound:
-            
+
             return """
             No vocabulary was found in the CSV file.
             """
         }
     }
-    
+
     private func formatRow(
         _ values: [String]
     ) -> String {
-        
+
         values.joined(
             separator: ","
         )
