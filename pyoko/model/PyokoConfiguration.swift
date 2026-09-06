@@ -8,9 +8,7 @@ enum TargetDisplayMode: String, Codable, CaseIterable {
     case targetAndReading
     
     var title: String {
-        
         switch self {
-            
         case .target:
             return "Target"
             
@@ -26,19 +24,23 @@ enum TargetDisplayMode: String, Codable, CaseIterable {
 @Model
 final class PyokoConfiguration {
     
-    // MARK: - Identity
-    
     var id: UUID = UUID()
     
-    // MARK: - Study
+    // MARK: - Review
     
     var dailyCardLimit: Int = 20
     
-    // MARK: - Target Display
+    var showRecognitionCards: Bool = true
     
-    var beforeAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.target
+    var showRecallCards: Bool = true
     
-    var afterAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.targetAndReading
+    // MARK: - Display
+    
+    var beforeAnswerDisplayMode:
+        TargetDisplayMode = TargetDisplayMode.target
+    
+    var afterAnswerDisplayMode:
+        TargetDisplayMode = TargetDisplayMode.targetAndReading
     
     // MARK: - Sources
     
@@ -46,7 +48,8 @@ final class PyokoConfiguration {
         deleteRule: .nullify,
         inverse: \PyokoDataSource.configurations
     )
-    var selectedSources: [PyokoDataSource]? = []
+    var selectedSources:
+        [PyokoDataSource]? = []
     
     // MARK: - Tags
     
@@ -54,30 +57,10 @@ final class PyokoConfiguration {
         deleteRule: .nullify,
         inverse: \PyokoTag.configurations
     )
-    var selectedTags: [PyokoTag]? = []
+    var selectedTags:
+        [PyokoTag]? = []
     
-    // MARK: - Init
-    
-    init(
-        id: UUID = UUID(),
-        dailyCardLimit: Int = 20,
-        beforeAnswerDisplayMode: TargetDisplayMode = .target,
-        afterAnswerDisplayMode: TargetDisplayMode = .reading,
-        selectedSources: [PyokoDataSource] = [],
-        selectedTags: [PyokoTag] = []
-    ) {
-        self.id = id
-        
-        self.dailyCardLimit = dailyCardLimit
-        
-        self.beforeAnswerDisplayMode = beforeAnswerDisplayMode
-        self.afterAnswerDisplayMode = afterAnswerDisplayMode
-        
-        self.selectedSources = selectedSources
-        self.selectedTags = selectedTags
-    }
-    
-    // MARK: - Convenience
+    // MARK: - Helpers
     
     var sources: [PyokoDataSource] {
         selectedSources ?? []
@@ -85,5 +68,41 @@ final class PyokoConfiguration {
     
     var tags: [PyokoTag] {
         selectedTags ?? []
+    }
+    
+    // MARK: - Init
+    
+    init(
+        id: UUID = UUID(),
+        dailyCardLimit: Int = 20,
+        showRecognitionCards: Bool = true,
+        showRecallCards: Bool = true,
+        beforeAnswerDisplayMode: TargetDisplayMode = .target,
+        afterAnswerDisplayMode: TargetDisplayMode = .targetAndReading,
+        selectedSources: [PyokoDataSource] = [],
+        selectedTags: [PyokoTag] = []
+    ) {
+        self.id = id
+        
+        self.dailyCardLimit =
+            dailyCardLimit
+        
+        self.showRecognitionCards =
+            showRecognitionCards
+        
+        self.showRecallCards =
+            showRecallCards
+        
+        self.beforeAnswerDisplayMode =
+            beforeAnswerDisplayMode
+        
+        self.afterAnswerDisplayMode =
+            afterAnswerDisplayMode
+        
+        self.selectedSources =
+            selectedSources
+        
+        self.selectedTags =
+            selectedTags
     }
 }
