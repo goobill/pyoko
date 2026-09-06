@@ -19,6 +19,17 @@ enum TargetDisplayMode: String, Codable, CaseIterable {
             return "Target + Reading"
         }
     }
+    
+    var includesReading: Bool {
+        switch self {
+        case .target:
+            return false
+            
+        case .reading,
+             .targetAndReading:
+            return true
+        }
+    }
 }
 
 @Model
@@ -34,22 +45,23 @@ final class PyokoConfiguration {
     
     var showRecallCards: Bool = true
     
+    var readingHintEnabled: Bool = true
+    
     // MARK: - Display
     
-    var beforeAnswerDisplayMode:
-        TargetDisplayMode = TargetDisplayMode.target
+    var beforeAnswerDisplayMode: TargetDisplayMode =
+        TargetDisplayMode.target
     
-    var afterAnswerDisplayMode:
-        TargetDisplayMode = TargetDisplayMode.targetAndReading
+    var afterAnswerDisplayMode: TargetDisplayMode =
+        TargetDisplayMode.targetAndReading
     
-    // MARK: - Sources
+    // MARK: - Decks
     
     @Relationship(
         deleteRule: .nullify,
-        inverse: \PyokoDataSource.configurations
+        inverse: \PyokoDeck.configurations
     )
-    var selectedSources:
-        [PyokoDataSource]? = []
+    var selectedSources: [PyokoDeck]? = []
     
     // MARK: - Tags
     
@@ -57,12 +69,11 @@ final class PyokoConfiguration {
         deleteRule: .nullify,
         inverse: \PyokoTag.configurations
     )
-    var selectedTags:
-        [PyokoTag]? = []
+    var selectedTags: [PyokoTag]? = []
     
     // MARK: - Helpers
     
-    var sources: [PyokoDataSource] {
+    var sources: [PyokoDeck] {
         selectedSources ?? []
     }
     
@@ -77,32 +88,20 @@ final class PyokoConfiguration {
         dailyCardLimit: Int = 20,
         showRecognitionCards: Bool = true,
         showRecallCards: Bool = true,
-        beforeAnswerDisplayMode: TargetDisplayMode = .target,
-        afterAnswerDisplayMode: TargetDisplayMode = .targetAndReading,
-        selectedSources: [PyokoDataSource] = [],
+        readingHintEnabled: Bool = true,
+        beforeAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.target,
+        afterAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.targetAndReading,
+        selectedSources: [PyokoDeck] = [],
         selectedTags: [PyokoTag] = []
     ) {
         self.id = id
-        
-        self.dailyCardLimit =
-            dailyCardLimit
-        
-        self.showRecognitionCards =
-            showRecognitionCards
-        
-        self.showRecallCards =
-            showRecallCards
-        
-        self.beforeAnswerDisplayMode =
-            beforeAnswerDisplayMode
-        
-        self.afterAnswerDisplayMode =
-            afterAnswerDisplayMode
-        
-        self.selectedSources =
-            selectedSources
-        
-        self.selectedTags =
-            selectedTags
+        self.dailyCardLimit = dailyCardLimit
+        self.showRecognitionCards = showRecognitionCards
+        self.showRecallCards = showRecallCards
+        self.readingHintEnabled = readingHintEnabled
+        self.beforeAnswerDisplayMode = beforeAnswerDisplayMode
+        self.afterAnswerDisplayMode = afterAnswerDisplayMode
+        self.selectedSources = selectedSources
+        self.selectedTags = selectedTags
     }
 }

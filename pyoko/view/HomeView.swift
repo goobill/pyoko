@@ -6,110 +6,210 @@ struct HomeView: View {
     @Environment(\.modelContext)
     private var modelContext
     
-    @Query(
-        sort: \PyokoDataSource.name
-    )
-    private var sources: [PyokoDataSource]
-    
-    @Query
-    private var reviewCards: [PyokoReviewCard]
+    @State
+    private var reviewProgress =
+        ReviewProgress(
+            completed: 0,
+            total: 0
+        )
     
     var body: some View {
         
         NavigationStack {
             
-            List {
+            ScrollView {
                 
-                studySection
-                
-                dataSection
-                
-                settingsSection
+                VStack(
+                    alignment: .leading,
+                    spacing: 24
+                ) {
+                    
+                    header
+                    
+                    reviewSection
+                    
+                    navigationSection
+                }
+                .padding()
+                .frame(
+                    maxWidth: 760
+                )
+                .frame(
+                    maxWidth: .infinity
+                )
             }
-            .navigationTitle("Pyoko")
+            .navigationTitle(
+                "Pyoko"
+            )
             .onAppear {
-                prepareReviewQueue()
+                prepareReviewSession()
             }
         }
     }
     
-    // MARK: - Study
+    // MARK: - Header
     
-    private var studySection: some View {
+    private var header:
+        some View {
         
-        Section("Study") {
+        VStack(
+            alignment: .leading,
+            spacing: 4
+        ) {
             
-            NavigationLink {
+            Text(
+                "Ready to study?"
+            )
+            .font(
+                .title2
+                    .weight(
+                        .semibold
+                    )
+            )
+            
+            Text(
+                "Keep your daily review moving."
+            )
+            .foregroundStyle(
+                .secondary
+            )
+        }
+    }
+    
+    // MARK: - Review
+    
+    private var reviewSection:
+        some View {
+        
+        GroupBox {
+            
+            VStack(
+                alignment: .leading,
+                spacing: 18
+            ) {
                 
-                ReviewView()
-                
-            } label: {
-                
-                Label {
+                HStack {
                     
                     VStack(
                         alignment: .leading,
                         spacing: 4
                     ) {
                         
-                        Text("Start Review")
+                        Text(
+                            "Today"
+                        )
+                        .font(
+                            .headline
+                        )
                         
-                        Text(reviewSummary)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        Text(
+                            reviewStatusText
+                        )
+                        .foregroundStyle(
+                            .secondary
+                        )
                     }
                     
-                } icon: {
+                    Spacer()
                     
-                    Image(
-                        systemName: "rectangle.stack"
+                    Text(
+                        reviewProgress
+                            .remaining
+                            .formatted()
+                    )
+                    .font(
+                        .largeTitle
+                            .weight(
+                                .semibold
+                            )
                     )
                 }
+                
+                NavigationLink {
+                    
+                    ReviewView()
+                    
+                } label: {
+                    
+                    Label(
+                        reviewProgress
+                            .remaining > 0
+                        ? "Start Review"
+                        : "Review Complete",
+                        systemImage:
+                            reviewProgress
+                                .remaining > 0
+                            ? "play.fill"
+                            : "checkmark"
+                    )
+                    .frame(
+                        maxWidth:
+                            .infinity
+                    )
+                }
+                .buttonStyle(
+                    .borderedProminent
+                )
+                .disabled(
+                    reviewProgress
+                        .remaining == 0
+                )
             }
+            .padding(
+                .vertical,
+                4
+            )
+            
+        } label: {
+            
+            Label(
+                "Daily Review",
+                systemImage:
+                    "rectangle.stack"
+            )
         }
     }
     
-    // MARK: - Data
-    
-    private var dataSection: some View {
+    private var reviewStatusText:
+        String {
         
-        Section("Data") {
+        if reviewProgress.total == 0 {
+            return "No cards due"
+        }
+        
+        if reviewProgress.remaining == 0 {
+            return "All cards completed"
+        }
+        
+        return "\(reviewProgress.remaining) cards remaining"
+    }
+    
+    // MARK: - Navigation
+    
+    private var navigationSection:
+        some View {
+        
+        VStack(
+            spacing: 12
+        ) {
             
             NavigationLink {
                 
-                SourceDataView()
+                DecksView()
                 
             } label: {
                 
-                Label {
-                    
-                    VStack(
-                        alignment: .leading,
-                        spacing: 4
-                    ) {
-                        
-                        Text("Source Data")
-                        
-                        Text(sourceSummary)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                } icon: {
-                    
-                    Image(
-                        systemName: "tray.full"
-                    )
-                }
+                navigationRow(
+                    title: "Decks",
+                    subtitle:
+                        "Import and manage vocabulary",
+                    systemImage:
+                        "rectangle.stack.fill"
+                )
             }
-        }
-    }
-    
-    // MARK: - Settings
-    
-    private var settingsSection: some View {
-        
-        Section("Settings") {
+            .buttonStyle(
+                .plain
+            )
             
             NavigationLink {
                 
@@ -117,81 +217,106 @@ struct HomeView: View {
                 
             } label: {
                 
-                Label(
-                    "Configuration",
-                    systemImage: "slider.horizontal.3"
+                navigationRow(
+                    title:
+                        "Configuration",
+                    subtitle:
+                        "Review, display and appearance",
+                    systemImage:
+                        "gearshape.fill"
                 )
             }
+            .buttonStyle(
+                .plain
+            )
         }
     }
     
-    // MARK: - Prepare Review
-    
-    private func prepareReviewQueue() {
+    private func navigationRow(
+        title: String,
+        subtitle: String,
+        systemImage: String
+    ) -> some View {
         
-        let manager = CardManager(
-            modelContext: modelContext
+        HStack(
+            spacing: 14
+        ) {
+            
+            Image(
+                systemName:
+                    systemImage
+            )
+            .font(
+                .title2
+            )
+            .frame(
+                width: 36
+            )
+            
+            VStack(
+                alignment: .leading,
+                spacing: 3
+            ) {
+                
+                Text(title)
+                    .fontWeight(
+                        .semibold
+                    )
+                    .foregroundStyle(
+                        .primary
+                    )
+                
+                Text(subtitle)
+                    .font(
+                        .caption
+                    )
+                    .foregroundStyle(
+                        .secondary
+                    )
+            }
+            
+            Spacer()
+            
+            Image(
+                systemName:
+                    "chevron.right"
+            )
+            .font(
+                .caption
+            )
+            .foregroundStyle(
+                .secondary
+            )
+        }
+        .padding()
+        .background(
+            .regularMaterial,
+            in:
+                RoundedRectangle(
+                    cornerRadius: 16,
+                    style:
+                        .continuous
+                )
         )
-        
-        manager.startReviewIfNeeded()
+        .contentShape(
+            Rectangle()
+        )
     }
     
-    // MARK: - Review Summary
+    // MARK: - Review Setup
     
-    private var remainingReviewCount: Int {
+    private func prepareReviewSession() {
         
-        reviewCards.filter {
-            !$0.reviewed &&
-            $0.card != nil
-        }
-        .count
-    }
-    
-    private var totalReviewCount: Int {
+        let manager =
+            CardManager(
+                modelContext:
+                    modelContext
+            )
         
-        reviewCards.filter {
-            $0.card != nil
-        }
-        .count
-    }
-    
-    private var reviewSummary: String {
+        manager
+            .startReviewIfNeeded()
         
-        if totalReviewCount == 0 {
-            return "No cards due"
-        }
-        
-        if remainingReviewCount == 0 {
-            return "Today's review is complete"
-        }
-        
-        if remainingReviewCount == 1 {
-            return "1 card remaining"
-        }
-        
-        return "\(remainingReviewCount) cards remaining"
-    }
-    
-    // MARK: - Source Summary
-    
-    private var sourceSummary: String {
-        
-        let sourceCount = sources.count
-        
-        let vocabularyCount = sources.reduce(0) {
-            $0 + $1.vocabularyCount
-        }
-        
-        switch sourceCount {
-            
-        case 0:
-            return "No data sources installed"
-            
-        case 1:
-            return "1 source • \(vocabularyCount.formatted()) vocabulary"
-            
-        default:
-            return "\(sourceCount) sources • \(vocabularyCount.formatted()) vocabulary"
-        }
+        reviewProgress =
+            manager.getProgress()
     }
 }

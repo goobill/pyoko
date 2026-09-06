@@ -1,13 +1,7 @@
-//
-//  CardRetrieval.swift
-//  pyoko
-//
-//  Created by Bill on 05/09/2026.
-//
-
 import Foundation
 import SwiftData
 
+@MainActor
 struct CardRetrieval {
     
     private let modelContext: ModelContext
@@ -20,76 +14,123 @@ struct CardRetrieval {
     
     // MARK: - Public
     
-    func getCardsForReview()
-        throws -> [PyokoCard] {
-        
-        let configuration =
-            try getConfiguration()
-        
-        let allSources =
-            try getAllSources()
+    func getCardsForReview() throws -> [PyokoCard] {
         
         let settings =
-            makeReviewSettings(
-                configuration: configuration,
-                allSources: allSources
-            )
+            try getReviewSettings()
+        
+        guard
+            !settings.selectedSourceIDs.isEmpty
+        else {
+            return []
+        }
         
         let dueCards =
-            try getDueCards()
+            try fetchDueCards()
         
-        let filteredCards =
-            filterCards(
-                dueCards,
-                using: settings
-            )
+        let eligibleCards =
+            dueCards.filter { card in
+                
+                matchesSource(
+                    card,
+                    settings: settings
+                )
+                &&
+                matchesCardType(
+                    card,
+                    settings: settings
+                )
+                &&
+                matchesTags(
+                    card,
+                    settings: settings
+                )
+            }
         
         return Array(
-            filteredCards
-                .sorted {
-                    $0.due < $1.due
-                }
-                .prefix(
-                    settings.dailyCardLimit
-                )
+            eligibleCards.prefix(
+                settings.dailyCardLimit
+            )
         )
     }
     
-    // MARK: - Configuration
+    // MARK: - Settings
     
-    private func getConfiguration()
-        throws -> PyokoConfiguration? {
+    private func getReviewSettings()
+        throws -> ReviewSettings {
         
-        let descriptor =
-            FetchDescriptor<
-                PyokoConfiguration
-            >()
+        let configurationDescriptor =
+            FetchDescriptor<PyokoConfiguration>()
         
-        return try modelContext
-            .fetch(descriptor)
-            .first
-    }
-    
-    // MARK: - Sources
-    
-    private func getAllSources()
-        throws -> [PyokoDataSource] {
+        if let configuration =
+            try modelContext
+                .fetch(
+                    configurationDescriptor
+                )
+                .first {
+            
+            return ReviewSettings(
+                dailyCardLimit:
+                    max(
+                        configuration.dailyCardLimit,
+                        1
+                    ),
+                showRecognitionCards:
+                    configuration
+                        .showRecognitionCards,
+                showRecallCards:
+                    configuration
+                        .showRecallCards,
+                selectedSourceIDs:
+                    Set(
+                        configuration
+                            .sources
+                            .map(\.id)
+                    ),
+                selectedTagIDs:
+                    Set(
+                        configuration
+                            .tags
+                            .map(\.id)
+                    )
+            )
+        }
         
-        let descriptor =
-            FetchDescriptor<
-                PyokoDataSource
-            >()
+        // No configuration has been saved yet.
+        //
+        // Defaults:
+        // - 20 cards
+        // - Recognition enabled
+        // - Recall enabled
+        // - all installed decks
+        // - no tag filter
         
-        return try modelContext
-            .fetch(descriptor)
+        let sourceDescriptor =
+            FetchDescriptor<PyokoDeck>()
+        
+        let sources =
+            try modelContext.fetch(
+                sourceDescriptor
+            )
+        
+        return ReviewSettings(
+            dailyCardLimit: 20,
+            showRecognitionCards: true,
+            showRecallCards: true,
+            selectedSourceIDs:
+                Set(
+                    sources.map(\.id)
+                ),
+            selectedTagIDs: []
+        )
     }
     
     // MARK: - Due Cards
     
-    private func getDueCards()
+    private func fetchDueCards()
         throws -> [PyokoCard] {
         
-        let now = Date()
+        let now = Date.now
         
         let descriptor =
             FetchDescriptor<PyokoCard>(
@@ -98,90 +139,21 @@ struct CardRetrieval {
                         card in
                         
                         card.due <= now
-                    }
+                    },
+                sortBy: [
+                    SortDescriptor(
+                        \PyokoCard.due,
+                        order: .forward
+                    )
+                ]
             )
         
-        return try modelContext
-            .fetch(descriptor)
-    }
-    
-    // MARK: - Settings
-    
-    private func makeReviewSettings(
-        configuration: PyokoConfiguration?,
-        allSources: [PyokoDataSource]
-    ) -> ReviewSettings {
-        
-        guard let configuration else {
-            
-            return ReviewSettings(
-                dailyCardLimit: 20,
-                showRecognitionCards: true,
-                showRecallCards: true,
-                sourceIDs:
-                    Set(
-                        allSources.map(\.id)
-                    ),
-                tagIDs: []
-            )
-        }
-        
-        return ReviewSettings(
-            dailyCardLimit:
-                configuration.dailyCardLimit,
-            
-            showRecognitionCards:
-                configuration
-                    .showRecognitionCards,
-            
-            showRecallCards:
-                configuration
-                    .showRecallCards,
-            
-            sourceIDs:
-                Set(
-                    configuration
-                        .sources
-                        .map(\.id)
-                ),
-            
-            tagIDs:
-                Set(
-                    configuration
-                        .tags
-                        .map(\.id)
-                )
+        return try modelContext.fetch(
+            descriptor
         )
     }
     
-    // MARK: - Filtering
-    
-    private func filterCards(
-        _ cards: [PyokoCard],
-        using settings:
-            ReviewSettings
-    ) -> [PyokoCard] {
-        
-        cards.filter { card in
-            
-            matchesSource(
-                card,
-                settings: settings
-            )
-            &&
-            matchesCardType(
-                card,
-                settings: settings
-            )
-            &&
-            matchesTags(
-                card,
-                settings: settings
-            )
-        }
-    }
-    
-    // MARK: Source Filter
+    // MARK: - Source Filter
     
     private func matchesSource(
         _ card: PyokoCard,
@@ -190,19 +162,19 @@ struct CardRetrieval {
         
         guard
             let sourceID =
-                card.source?.id
+                card.deck?.id
         else {
             return false
         }
         
         return settings
-            .sourceIDs
+            .selectedSourceIDs
             .contains(
                 sourceID
             )
     }
     
-    // MARK: Card Type Filter
+    // MARK: - Card Type Filter
     
     private func matchesCardType(
         _ card: PyokoCard,
@@ -223,18 +195,20 @@ struct CardRetrieval {
         }
     }
     
-    // MARK: Tag Filter
+    // MARK: - Tag Filter
     
     private func matchesTags(
         _ card: PyokoCard,
         settings: ReviewSettings
     ) -> Bool {
         
-        // No selected tags means:
-        // do not filter by tags.
+        // Empty selected tags means:
+        // no tag filter.
         
         guard
-            !settings.tagIDs.isEmpty
+            !settings
+                .selectedTagIDs
+                .isEmpty
         else {
             return true
         }
@@ -248,7 +222,8 @@ struct CardRetrieval {
         return !cardTagIDs
             .isDisjoint(
                 with:
-                    settings.tagIDs
+                    settings
+                        .selectedTagIDs
             )
     }
 }
@@ -263,7 +238,8 @@ private struct ReviewSettings {
     
     let showRecallCards: Bool
     
-    let sourceIDs: Set<UUID>
+    let selectedSourceIDs: Set<UUID>
     
-    let tagIDs: Set<UUID>
+    /// Empty means no tag filter.
+    let selectedTagIDs: Set<UUID>
 }

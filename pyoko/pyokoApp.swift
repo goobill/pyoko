@@ -4,43 +4,35 @@ import SwiftData
 @main
 struct PyokoApp: App {
     
-    private let modelContainer:
-        ModelContainer
+    @AppStorage("appearancePreference")
+    private var appearancePreferenceRawValue =
+        AppearancePreference.system.rawValue
+    
+    private let modelContainer: ModelContainer
     
     init() {
         
         let schema = Schema([
             PyokoCard.self,
-            PyokoDataSource.self,
+            PyokoDeck.self,
             PyokoTag.self,
             PyokoReviewCard.self,
             PyokoConfiguration.self
         ])
         
-        // CloudKit is deliberately disabled
-        // for now.
-        //
-        // When the model and app are ready for
-        // syncing, this can later become:
-        //
-        // .private("iCloud.com.yourcompany.Pyoko")
-        
-        let configuration =
-            ModelConfiguration(
-                cloudKitDatabase: .none
-            )
+        let configuration = ModelConfiguration(
+            "Pyoko",
+            schema: schema,
+            isStoredInMemoryOnly: false,
+            cloudKitDatabase: .none
+        )
         
         do {
-            
-            modelContainer =
-                try ModelContainer(
-                    for: schema,
-                    configurations:
-                        configuration
-                )
-            
+            modelContainer = try ModelContainer(
+                for: schema,
+                configurations: configuration
+            )
         } catch {
-            
             fatalError(
                 """
                 Failed to create Pyoko model container:
@@ -50,10 +42,23 @@ struct PyokoApp: App {
         }
     }
     
+    private var appearancePreference:
+        AppearancePreference {
+        
+        AppearancePreference(
+            rawValue:
+                appearancePreferenceRawValue
+        ) ?? AppearancePreference.system
+    }
+    
     var body: some Scene {
         
         WindowGroup {
+            
             HomeView()
+                .preferredColorScheme(
+                    appearancePreference.colorScheme
+                )
         }
         .modelContainer(
             modelContainer

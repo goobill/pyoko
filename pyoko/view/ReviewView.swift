@@ -14,55 +14,105 @@ struct ReviewView: View {
     private var configurations:
         [PyokoConfiguration]
     
-    // MARK: - Review State
-    
-    @State private var currentCard:
+    @State
+    private var currentCard:
         PyokoCard?
     
-    @State private var showingAnswer =
+    @State
+    private var showingAnswer =
         false
     
-    @State private var progress =
+    @State
+    private var isReadingHintVisible =
+        false
+    
+    @State
+    private var progress =
         ReviewProgress(
             completed: 0,
             total: 0
         )
     
-    @State private var hasLoaded =
+    @State
+    private var showingError =
         false
     
-    // MARK: - Error
-    
-    @State private var showingError =
-        false
-    
-    @State private var errorMessage =
+    @State
+    private var errorMessage =
         ""
     
     // MARK: - Body
     
     var body: some View {
         
-        VStack(
-            spacing: 24
-        ) {
+        ScrollView {
             
-            if let currentCard {
+            VStack(
+                spacing: 24
+            ) {
                 
-                reviewContent(
-                    card: currentCard
-                )
+                progressHeader
                 
-            } else if hasLoaded {
-                
-                completeContent
-                
-            } else {
-                
-                ProgressView()
+                if let currentCard {
+                    
+                    ReviewCardView(
+                        card:
+                            currentCard,
+                        isAnswerVisible:
+                            showingAnswer,
+                        beforeAnswerDisplayMode:
+                            beforeAnswerDisplayMode,
+                        afterAnswerDisplayMode:
+                            afterAnswerDisplayMode,
+                        readingHintEnabled:
+                            readingHintEnabled,
+                        isReadingHintVisible:
+                            isReadingHintVisible,
+                        onReveal: {
+                            
+                            withAnimation(
+                                .easeInOut(
+                                    duration: 0.2
+                                )
+                            ) {
+                                
+                                showingAnswer =
+                                    true
+                            }
+                        },
+                        onShowReadingHint: {
+                            
+                            withAnimation(
+                                .easeInOut(
+                                    duration: 0.2
+                                )
+                            ) {
+                                
+                                isReadingHintVisible =
+                                    true
+                            }
+                        }
+                    )
+                    
+                    if showingAnswer {
+                        
+                        ratingButtons
+                    }
+                    
+                } else {
+                    
+                    finishedContent
+                }
             }
+            .padding()
+            .frame(
+                maxWidth: 700
+            )
+            .frame(
+                maxWidth:
+                    .infinity
+            )
         }
-        .padding()
         .navigationTitle(
             "Review"
         )
@@ -71,14 +121,17 @@ struct ReviewView: View {
         }
         .alert(
             "Review Error",
-            isPresented: $showingError
+            isPresented:
+                $showingError
         ) {
             
             Button("OK") {}
             
         } message: {
             
-            Text(errorMessage)
+            Text(
+                errorMessage
+            )
         }
     }
     
@@ -95,7 +148,8 @@ struct ReviewView: View {
         
         configuration?
             .beforeAnswerDisplayMode
-            ?? .target
+        ??
+        TargetDisplayMode.target
     }
     
     private var afterAnswerDisplayMode:
@@ -103,221 +157,47 @@ struct ReviewView: View {
         
         configuration?
             .afterAnswerDisplayMode
-            ?? .reading
+        ??
+        TargetDisplayMode
+            .targetAndReading
     }
     
-    // MARK: - Review Content
-    
-    private func reviewContent(
-        card: PyokoCard
-    ) -> some View {
+    private var readingHintEnabled:
+        Bool {
         
-        VStack(
-            spacing: 24
-        ) {
-            
-            progressView
-            
-            Spacer()
-            
-            cardTypeLabel(
-                card: card
-            )
-            
-            questionView(
-                card: card
-            )
-            
-            if showingAnswer {
-                
-                Divider()
-                    .frame(
-                        maxWidth: 500
-                    )
-                
-                answerView(
-                    card: card
-                )
-            }
-            
-            Spacer()
-            
-            if showingAnswer {
-                
-                ratingButtons
-                
-            } else {
-                
-                Button {
-                    
-                    showingAnswer = true
-                    
-                } label: {
-                    
-                    Text(
-                        "Show Answer"
-                    )
-                    .frame(
-                        maxWidth: 300
-                    )
-                }
-                .buttonStyle(
-                    .borderedProminent
-                )
-                .controlSize(
-                    .large
-                )
-            }
-        }
-        .frame(
-            maxWidth: 700,
-            maxHeight: .infinity
-        )
-    }
-    
-    // MARK: - Question
-    
-    @ViewBuilder
-    private func questionView(
-        card: PyokoCard
-    ) -> some View {
-        
-        switch card.type {
-            
-        case .recognition:
-            
-            Text(
-                displayedTarget(
-                    card: card,
-                    mode:
-                        showingAnswer
-                        ? afterAnswerDisplayMode
-                        : beforeAnswerDisplayMode
-                )
-            )
-            .font(
-                .system(
-                    size: 36,
-                    weight: .semibold
-                )
-            )
-            .multilineTextAlignment(
-                .center
-            )
-            .textSelection(
-                .enabled
-            )
-            
-        case .recall:
-            
-            Text(
-                card.sourceText
-            )
-            .font(
-                .system(
-                    size: 36,
-                    weight: .semibold
-                )
-            )
-            .multilineTextAlignment(
-                .center
-            )
-            .textSelection(
-                .enabled
-            )
-        }
-    }
-    
-    // MARK: - Answer
-    
-    @ViewBuilder
-    private func answerView(
-        card: PyokoCard
-    ) -> some View {
-        
-        switch card.type {
-            
-        case .recognition:
-            
-            Text(
-                card.sourceText
-            )
-            .font(
-                .system(
-                    size: 30
-                )
-            )
-            .multilineTextAlignment(
-                .center
-            )
-            .textSelection(
-                .enabled
-            )
-            
-        case .recall:
-            
-            Text(
-                displayedTarget(
-                    card: card,
-                    mode:
-                        afterAnswerDisplayMode
-                )
-            )
-            .font(
-                .system(
-                    size: 30
-                )
-            )
-            .multilineTextAlignment(
-                .center
-            )
-            .textSelection(
-                .enabled
-            )
-        }
-    }
-    
-    // MARK: - Target Display
-    
-    private func displayedTarget(
-        card: PyokoCard,
-        mode: TargetDisplayMode
-    ) -> String {
-        
-        switch mode {
-            
-        case .target:
-            
-            return card.targetText
-            
-        case .reading:
-            
-            return card.targetReading
-                ?? card.targetText
-            
-        case .targetAndReading:
-            
-            guard let reading = card.targetReading,
-                  !reading.isEmpty
-            else {
-                return card.targetText
-            }
-            
-            return """
-            \(card.targetText)
-            \(reading)
-            """
-        }
+        configuration?
+            .readingHintEnabled
+        ??
+        true
     }
     
     // MARK: - Progress
     
-    private var progressView:
+    private var progressHeader:
         some View {
         
         VStack(
-            spacing: 6
+            spacing: 8
         ) {
+            
+            HStack {
+                
+                Text(
+                    "Progress"
+                )
+                .font(
+                    .headline
+                )
+                
+                Spacer()
+                
+                Text(
+                    "\(progress.completed) / \(progress.total)"
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+            }
             
             ProgressView(
                 value:
@@ -332,51 +212,6 @@ struct ReviewView: View {
                         )
                     )
             )
-            
-            Text(
-                "\(progress.completed) of \(progress.total)"
-            )
-            .font(.caption)
-            .foregroundStyle(
-                .secondary
-            )
-        }
-        .frame(
-            maxWidth: 500
-        )
-    }
-    
-    // MARK: - Card Type
-    
-    @ViewBuilder
-    private func cardTypeLabel(
-        card: PyokoCard
-    ) -> some View {
-        
-        switch card.type {
-            
-        case .recognition:
-            
-            Label(
-                "Recognition",
-                systemImage: "eye"
-            )
-            .font(.caption)
-            .foregroundStyle(
-                .secondary
-            )
-            
-        case .recall:
-            
-            Label(
-                "Recall",
-                systemImage:
-                    "bubble.left.and.bubble.right"
-            )
-            .font(.caption)
-            .foregroundStyle(
-                .secondary
-            )
         }
     }
     
@@ -385,100 +220,83 @@ struct ReviewView: View {
     private var ratingButtons:
         some View {
         
-        LazyVGrid(
-            columns: [
-                GridItem(
-                    .adaptive(
-                        minimum: 110
-                    )
-                )
-            ],
+        VStack(
             spacing: 12
         ) {
             
-            ratingButton(
-                title: "Again",
-                rating: .again,
-                prominent: false
+            Text(
+                "How well did you remember?"
+            )
+            .font(
+                .headline
             )
             
-            ratingButton(
-                title: "Hard",
-                rating: .hard,
-                prominent: false
-            )
+            HStack(
+                spacing: 10
+            ) {
+                
+                ratingButton(
+                    title: "Again",
+                    rating:
+                        Rating.again
+                )
+                
+                ratingButton(
+                    title: "Hard",
+                    rating:
+                        Rating.hard
+                )
+                
+                ratingButton(
+                    title: "Good",
+                    rating:
+                        Rating.good
+                )
+                
+                ratingButton(
+                    title: "Easy",
+                    rating:
+                        Rating.easy
+                )
+            }
+        }
+    }
+    
+    private func ratingButton(
+        title: String,
+        rating: Rating
+    ) -> some View {
+        
+        Button(title) {
             
-            ratingButton(
-                title: "Good",
-                rating: .good,
-                prominent: true
-            )
-            
-            ratingButton(
-                title: "Easy",
-                rating: .easy,
-                prominent: false
+            submit(
+                rating:
+                    rating
             )
         }
+        .buttonStyle(
+            .bordered
+        )
         .frame(
-            maxWidth: 600
+            maxWidth:
+                .infinity
         )
     }
     
+    // MARK: - Finished
+    
     @ViewBuilder
-    private func ratingButton(
-        title: String,
-        rating: Rating,
-        prominent: Bool
-    ) -> some View {
-        
-        if prominent {
-            
-            Button(title) {
-                
-                submitRating(
-                    rating
-                )
-            }
-            .buttonStyle(
-                .borderedProminent
-            )
-            .controlSize(
-                .large
-            )
-            
-        } else {
-            
-            Button(title) {
-                
-                submitRating(
-                    rating
-                )
-            }
-            .buttonStyle(
-                .bordered
-            )
-            .controlSize(
-                .large
-            )
-        }
-    }
-    
-    // MARK: - Complete
-    
-    private var completeContent:
+    private var finishedContent:
         some View {
         
         VStack(
-            spacing: 20
+            spacing: 18
         ) {
-            
-            Spacer()
             
             Image(
                 systemName:
                     progress.total == 0
-                    ? "tray"
+                    ? "moon.zzz"
                     : "checkmark.circle"
             )
             .font(
@@ -493,18 +311,17 @@ struct ReviewView: View {
             if progress.total == 0 {
                 
                 Text(
-                    "No Cards to Review"
+                    "Nothing to review"
                 )
-                .font(.title2)
+                .font(
+                    .title2
+                )
                 .fontWeight(
                     .semibold
                 )
                 
                 Text(
-                    "There are currently no due cards matching your configuration."
-                )
-                .multilineTextAlignment(
-                    .center
+                    "There are no cards due right now."
                 )
                 .foregroundStyle(
                     .secondary
@@ -513,81 +330,79 @@ struct ReviewView: View {
             } else {
                 
                 Text(
-                    "Review Complete"
+                    "Review complete"
                 )
-                .font(.title2)
+                .font(
+                    .title2
+                )
                 .fontWeight(
                     .semibold
                 )
                 
                 Text(
-                    "You reviewed \(progress.completed) cards."
+                    "You completed \(progress.total) cards."
                 )
                 .foregroundStyle(
                     .secondary
                 )
             }
             
-            Button {
+            Button(
+                "Go Home"
+            ) {
                 
                 dismiss()
-                
-            } label: {
-                
-                Text(
-                    "Go Home"
-                )
-                .frame(
-                    minWidth: 140
-                )
             }
             .buttonStyle(
                 .borderedProminent
             )
-            
-            Spacer()
         }
-        .frame(
-            maxWidth: 500
+        .padding(
+            .vertical,
+            40
         )
     }
     
-    // MARK: - Load Review
+    // MARK: - Load
     
     private func loadReview() {
         
-        guard !hasLoaded else {
-            return
-        }
-        
-        let manager = CardManager(
-            modelContext:
-                modelContext
-        )
-        
-        currentCard =
-            manager.getNextCard()
+        let manager =
+            CardManager(
+                modelContext:
+                    modelContext
+            )
         
         progress =
             manager.getProgress()
         
-        hasLoaded = true
+        currentCard =
+            manager.getNextCard()
+        
+        showingAnswer =
+            false
+        
+        isReadingHintVisible =
+            false
     }
     
-    // MARK: - Submit Rating
+    // MARK: - Submit
     
-    private func submitRating(
-        _ rating: Rating
+    private func submit(
+        rating: Rating
     ) {
         
-        guard let currentCard else {
+        guard
+            let currentCard
+        else {
             return
         }
         
-        let manager = CardManager(
-            modelContext:
-                modelContext
-        )
+        let manager =
+            CardManager(
+                modelContext:
+                    modelContext
+            )
         
         do {
             
@@ -598,21 +413,36 @@ struct ReviewView: View {
                     rating
             )
             
-            showingAnswer = false
+            showingAnswer =
+                false
             
-            self.currentCard =
-                manager.getNextCard()
+            isReadingHintVisible =
+                false
             
             progress =
                 manager.getProgress()
             
+            self.currentCard =
+                manager.getNextCard()
+            
         } catch {
             
-            errorMessage =
-                error.localizedDescription
-            
-            showingError =
-                true
+            showError(
+                error
+            )
         }
+    }
+    
+    // MARK: - Error
+    
+    private func showError(
+        _ error: Error
+    ) {
+        
+        errorMessage =
+            error.localizedDescription
+        
+        showingError =
+            true
     }
 }

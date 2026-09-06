@@ -12,31 +12,54 @@ struct DataLoaderView: View {
     
     // MARK: - Import
     
-    @State private var importMethod:
-        ImportMethod = .url
+    @State
+    private var importMethod:
+        ImportMethod =
+            ImportMethod.file
     
-    @State private var sourceName = ""
+    @State
+    private var deckName =
+        ""
     
-    @State private var urlString = ""
+    @State
+    private var urlString =
+        ""
     
-    @State private var selectedFileURL:
+    @State
+    private var googleSheetsURL =
+        ""
+    
+    @State
+    private var selectedFileURL:
         URL?
     
-    // MARK: - Card Types
+    // MARK: - Cards
     
-    @State private var createRecognition = true
+    @State
+    private var createRecognition =
+        true
     
-    @State private var createRecall = true
+    @State
+    private var createRecall =
+        true
     
-    // MARK: - UI State
+    // MARK: - UI
     
-    @State private var isLoading = false
+    @State
+    private var isLoading =
+        false
     
-    @State private var showingFilePicker = false
+    @State
+    private var showingFilePicker =
+        false
     
-    @State private var showingError = false
+    @State
+    private var showingError =
+        false
     
-    @State private var errorMessage = ""
+    @State
+    private var errorMessage =
+        ""
     
     // MARK: - Body
     
@@ -44,7 +67,7 @@ struct DataLoaderView: View {
         
         Form {
             
-            sourceSection
+            deckSection
             
             cardTypeSection
             
@@ -53,7 +76,7 @@ struct DataLoaderView: View {
             importSection
         }
         .navigationTitle(
-            "Add Data Source"
+            "Import Deck"
         )
         .fileImporter(
             isPresented:
@@ -62,7 +85,8 @@ struct DataLoaderView: View {
                 .commaSeparatedText,
                 .text
             ],
-            allowsMultipleSelection: false
+            allowsMultipleSelection:
+                false
         ) { result in
             
             handleFileSelection(
@@ -79,20 +103,23 @@ struct DataLoaderView: View {
             
         } message: {
             
-            Text(errorMessage)
+            Text(
+                errorMessage
+            )
         }
     }
     
-    // MARK: - Source
+    // MARK: - Deck
     
-    private var sourceSection:
+    private var deckSection:
         some View {
         
-        Section("Source") {
+        Section {
             
             Picker(
                 "Import From",
-                selection: $importMethod
+                selection:
+                    $importMethod
             ) {
                 
                 ForEach(
@@ -105,115 +132,251 @@ struct DataLoaderView: View {
                     .tag(method)
                 }
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(
+                .segmented
+            )
             
             TextField(
-                "Source Name",
-                text: $sourceName
+                "Deck Name",
+                text:
+                    $deckName
             )
             
             switch importMethod {
                 
-            case .url:
-                
-                urlField
-                
             case .file:
                 
-                filePickerRow
+                fileImportFields
+                
+            case .url:
+                
+                urlImportFields
+                
+            case .googleSheets:
+                
+                googleSheetsFields
             }
+            
+        } header: {
+            
+            Text("Deck")
+        }
+    }
+    
+    // MARK: - File
+    
+    private var fileImportFields:
+        some View {
+        
+        VStack(
+            alignment: .leading,
+            spacing: 8
+        ) {
+            
+            Button {
+                
+                showingFilePicker =
+                    true
+                
+            } label: {
+                
+                HStack {
+                    
+                    Image(
+                        systemName:
+                            "doc"
+                    )
+                    
+                    if let selectedFileURL {
+                        
+                        Text(
+                            selectedFileURL
+                                .lastPathComponent
+                        )
+                        .foregroundStyle(
+                            .primary
+                        )
+                        
+                    } else {
+                        
+                        Text(
+                            "Choose CSV File"
+                        )
+                    }
+                    
+                    Spacer()
+                    
+                    Image(
+                        systemName:
+                            "chevron.right"
+                    )
+                    .font(
+                        .caption
+                    )
+                    .foregroundStyle(
+                        .secondary
+                    )
+                }
+            }
+            
+            Text(
+                "Choose a CSV from Files. Available locations can include local storage, iCloud Drive, Google Drive, and other installed file providers."
+            )
+            .font(
+                .caption
+            )
+            .foregroundStyle(
+                .secondary
+            )
         }
     }
     
     // MARK: - URL
     
-    private var urlField:
+    private var urlImportFields:
         some View {
         
-        TextField(
-            "CSV URL",
-            text: $urlString
-        )
-        .autocorrectionDisabled()
-        .pyokoURLInput()
-    }
-    
-    // MARK: - File
-    
-    private var filePickerRow:
-        some View {
-        
-        Button {
+        VStack(
+            alignment: .leading,
+            spacing: 8
+        ) {
             
-            showingFilePicker = true
+            TextField(
+                "CSV URL",
+                text:
+                    $urlString
+            )
+            .autocorrectionDisabled()
+            .pyokoURLInput()
             
-        } label: {
-            
-            HStack {
-                
-                Image(
-                    systemName: "doc"
-                )
-                
-                if let selectedFileURL {
-                    
-                    Text(
-                        selectedFileURL
-                            .lastPathComponent
-                    )
-                    .foregroundStyle(.primary)
-                    
-                } else {
-                    
-                    Text(
-                        "Choose CSV File"
-                    )
-                }
-                
-                Spacer()
-                
-                Image(
-                    systemName:
-                        "chevron.right"
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            Text(
+                "Enter a direct URL to a CSV file."
+            )
+            .font(.caption)
+            .foregroundStyle(
+                .secondary
+            )
         }
     }
     
-    // MARK: - Card Types
+    // MARK: - Google Sheets
+    
+    private var googleSheetsFields:
+        some View {
+        
+        VStack(
+            alignment: .leading,
+            spacing: 8
+        ) {
+            
+            TextField(
+                "Google Sheets URL",
+                text:
+                    $googleSheetsURL
+            )
+            .autocorrectionDisabled()
+            .pyokoURLInput()
+            
+            Text(
+                "Paste the normal Google Sheets sharing URL. The selected sheet must be publicly readable or published to the web."
+            )
+            .font(
+                .caption
+            )
+            .foregroundStyle(
+                .secondary
+            )
+            
+            Label(
+                "Private Google Sheets are not supported yet.",
+                systemImage:
+                    "lock"
+            )
+            .font(
+                .caption
+            )
+            .foregroundStyle(
+                .secondary
+            )
+        }
+    }
+    
+    // MARK: - Cards
     
     private var cardTypeSection:
         some View {
         
         Section {
             
-            Toggle(
-                "Recognition",
-                isOn: $createRecognition
-            )
+            VStack(
+                alignment: .leading,
+                spacing: 4
+            ) {
+                
+                Toggle(
+                    "Recognition",
+                    isOn:
+                        $createRecognition
+                )
+                
+                Text(
+                    "Target → Source"
+                )
+                .font(
+                    .caption
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+                
+                Text(
+                    "Example: 食べる → to eat"
+                )
+                .font(
+                    .caption
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+            }
             
-            Text(
-                "Target → Source"
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            
-            Toggle(
-                "Recall",
-                isOn: $createRecall
-            )
-            
-            Text(
-                "Source → Target"
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            VStack(
+                alignment: .leading,
+                spacing: 4
+            ) {
+                
+                Toggle(
+                    "Recall",
+                    isOn:
+                        $createRecall
+                )
+                
+                Text(
+                    "Source → Target"
+                )
+                .font(
+                    .caption
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+                
+                Text(
+                    "Example: to eat → 食べる"
+                )
+                .font(
+                    .caption
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+            }
             
         } header: {
             
-            Text("Card Types")
+            Text(
+                "Cards to Create"
+            )
             
         } footer: {
             
@@ -232,10 +395,8 @@ struct DataLoaderView: View {
             
             VStack(
                 alignment: .leading,
-                spacing: 14
+                spacing: 16
             ) {
-                
-                // Required format
                 
                 VStack(
                     alignment: .leading,
@@ -245,7 +406,9 @@ struct DataLoaderView: View {
                     Text(
                         "Required Format"
                     )
-                    .font(.headline)
+                    .font(
+                        .headline
+                    )
                     
                     Text(
                         "source,target,reading,tags"
@@ -253,24 +416,67 @@ struct DataLoaderView: View {
                     .font(
                         .system(
                             .body,
-                            design: .monospaced
+                            design:
+                                .monospaced
                         )
                     )
-                    .textSelection(.enabled)
+                    .textSelection(
+                        .enabled
+                    )
                 }
                 
                 Divider()
                 
-                // Example
+                VStack(
+                    alignment: .leading,
+                    spacing: 10
+                ) {
+                    
+                    csvColumn(
+                        name:
+                            "Source",
+                        description:
+                            "The language you already know."
+                    )
+                    
+                    csvColumn(
+                        name:
+                            "Target",
+                        description:
+                            "The language you are learning."
+                    )
+                    
+                    csvColumn(
+                        name:
+                            "Reading",
+                        description:
+                            "Optional reading or pronunciation of the target."
+                    )
+                    
+                    csvColumn(
+                        name:
+                            "Tags",
+                        description:
+                            "Optional categories separated using |."
+                    )
+                }
+                
+                Divider()
                 
                 VStack(
                     alignment: .leading,
-                    spacing: 8
+                    spacing: 6
                 ) {
                     
-                    Text("Example")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
+                    Text(
+                        "Example"
+                    )
+                    .font(
+                        .subheadline
+                    )
+                    .fontWeight(
+                        .semibold
+                    )
                     
                     Text(
                         """
@@ -278,21 +484,22 @@ struct DataLoaderView: View {
                         to eat,食べる,たべる,N5|Verb
                         library,図書館,としょかん,N5|Place
                         thank you,ありがとう,,Greeting
-                        bread,pain,,Food
+                        data,data,,
                         """
                     )
                     .font(
                         .system(
                             .caption,
-                            design: .monospaced
+                            design:
+                                .monospaced
                         )
                     )
-                    .textSelection(.enabled)
+                    .textSelection(
+                        .enabled
+                    )
                 }
                 
                 Divider()
-                
-                // Rules
                 
                 VStack(
                     alignment: .leading,
@@ -320,15 +527,20 @@ struct DataLoaderView: View {
                     )
                     
                     formatRule(
-                        "Every row must contain exactly 4 columns"
+                        "Every data row must contain exactly 4 columns"
                     )
                 }
             }
-            .padding(.vertical, 4)
+            .padding(
+                .vertical,
+                4
+            )
             
         } header: {
             
-            Text("CSV Format")
+            Text(
+                "CSV Format"
+            )
             
         } footer: {
             
@@ -338,7 +550,32 @@ struct DataLoaderView: View {
         }
     }
     
-    // MARK: - Format Rule
+    private func csvColumn(
+        name: String,
+        description: String
+    ) -> some View {
+        
+        VStack(
+            alignment: .leading,
+            spacing: 2
+        ) {
+            
+            Text(name)
+                .fontWeight(
+                    .medium
+                )
+            
+            Text(
+                description
+            )
+            .font(
+                .caption
+            )
+            .foregroundStyle(
+                .secondary
+            )
+        }
+    }
     
     private func formatRule(
         _ text: String
@@ -349,8 +586,12 @@ struct DataLoaderView: View {
             systemImage:
                 "checkmark.circle"
         )
-        .font(.caption)
-        .foregroundStyle(.secondary)
+        .font(
+            .caption
+        )
+        .foregroundStyle(
+            .secondary
+        )
     }
     
     // MARK: - Import
@@ -379,7 +620,7 @@ struct DataLoaderView: View {
                     } else {
                         
                         Text(
-                            "Import Data"
+                            "Import Deck"
                         )
                         .fontWeight(
                             .semibold
@@ -389,26 +630,31 @@ struct DataLoaderView: View {
                     Spacer()
                 }
             }
-            .disabled(!canImport)
+            .disabled(
+                !canImport
+            )
         }
     }
     
     // MARK: - Validation
     
-    private var canImport: Bool {
+    private var canImport:
+        Bool {
         
-        guard !isLoading else {
+        guard
+            !isLoading
+        else {
             return false
         }
         
-        let trimmedName =
-            sourceName
+        guard
+            !deckName
                 .trimmingCharacters(
                     in:
                         .whitespacesAndNewlines
                 )
-        
-        guard !trimmedName.isEmpty else {
+                .isEmpty
+        else {
             return false
         }
         
@@ -421,6 +667,11 @@ struct DataLoaderView: View {
         
         switch importMethod {
             
+        case .file:
+            
+            return selectedFileURL
+                != nil
+            
         case .url:
             
             return !urlString
@@ -430,77 +681,86 @@ struct DataLoaderView: View {
                 )
                 .isEmpty
             
-        case .file:
+        case .googleSheets:
             
-            return selectedFileURL != nil
+            return !googleSheetsURL
+                .trimmingCharacters(
+                    in:
+                        .whitespacesAndNewlines
+                )
+                .isEmpty
         }
     }
     
     // MARK: - File Selection
     
     private func handleFileSelection(
-        _ result: Result<[URL], Error>
+        _ result:
+            Result<[URL], Error>
     ) {
+        
         switch result {
             
-        case .success(let urls):
+        case .success(
+            let urls
+        ):
             
-            guard let url = urls.first else {
+            guard
+                let url =
+                    urls.first
+            else {
                 return
             }
             
-            selectedFileURL = url
+            selectedFileURL =
+                url
             
-            let trimmedName = sourceName
+            if deckName
                 .trimmingCharacters(
-                    in: .whitespacesAndNewlines
+                    in:
+                        .whitespacesAndNewlines
                 )
-            
-            if trimmedName.isEmpty {
-                sourceName = url
-                    .deletingPathExtension()
-                    .lastPathComponent
+                .isEmpty {
+                
+                deckName =
+                    url
+                        .deletingPathExtension()
+                        .lastPathComponent
             }
             
-        case .failure(let error):
+        case .failure(
+            let error
+        ):
             
-            showError(error)
+            showError(
+                error
+            )
         }
     }
     
-    // MARK: - Import Data
+    // MARK: - Import
     
     private func importData()
         async {
         
-        isLoading = true
+        isLoading =
+            true
         
         defer {
-            isLoading = false
+            
+            isLoading =
+                false
         }
         
-        let loader = DataLoader(
-            modelContext:
-                modelContext
-        )
+        let loader =
+            DataLoader(
+                modelContext:
+                    modelContext
+            )
         
         do {
             
             switch importMethod {
-                
-            case .url:
-                
-                try await loader
-                    .loadFromURL(
-                        sourceName:
-                            sourceName,
-                        urlString:
-                            urlString,
-                        createRecognition:
-                            createRecognition,
-                        createRecall:
-                            createRecall
-                    )
                 
             case .file:
                 
@@ -514,10 +774,38 @@ struct DataLoaderView: View {
                 
                 try loader
                     .loadFromFile(
-                        sourceName:
-                            sourceName,
+                        deckName:
+                            deckName,
                         url:
                             selectedFileURL,
+                        createRecognition:
+                            createRecognition,
+                        createRecall:
+                            createRecall
+                    )
+                
+            case .url:
+                
+                try await loader
+                    .loadFromURL(
+                        deckName:
+                            deckName,
+                        urlString:
+                            urlString,
+                        createRecognition:
+                            createRecognition,
+                        createRecall:
+                            createRecall
+                    )
+                
+            case .googleSheets:
+                
+                try await loader
+                    .loadFromGoogleSheet(
+                        deckName:
+                            deckName,
+                        urlString:
+                            googleSheetsURL,
                         createRecognition:
                             createRecognition,
                         createRecall:
@@ -529,7 +817,9 @@ struct DataLoaderView: View {
             
         } catch {
             
-            showError(error)
+            showError(
+                error
+            )
         }
     }
     
@@ -542,7 +832,8 @@ struct DataLoaderView: View {
         errorMessage =
             error.localizedDescription
         
-        showingError = true
+        showingError =
+            true
     }
 }
 
@@ -553,8 +844,9 @@ private enum ImportMethod:
     CaseIterable,
     Identifiable {
     
-    case url
     case file
+    case url
+    case googleSheets
     
     var id: Self {
         self
@@ -564,16 +856,19 @@ private enum ImportMethod:
         
         switch self {
             
+        case .file:
+            return "File"
+            
         case .url:
             return "URL"
             
-        case .file:
-            return "File"
+        case .googleSheets:
+            return "Sheets"
         }
     }
 }
 
-// MARK: - Platform URL Input
+// MARK: - URL Input
 
 private extension View {
     
@@ -587,7 +882,9 @@ private extension View {
             .textInputAutocapitalization(
                 .never
             )
-            .keyboardType(.URL)
+            .keyboardType(
+                .URL
+            )
         
         #else
         

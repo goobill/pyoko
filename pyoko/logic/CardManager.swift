@@ -14,9 +14,11 @@ enum CardManagerError: LocalizedError {
         switch self {
             
         case .cardNotFound:
+            
             return "The card could not be found."
             
         case .reviewCardNotFound:
+            
             return "The review card could not be found."
         }
     }
@@ -27,23 +29,21 @@ enum CardManagerError: LocalizedError {
 struct ReviewProgress {
     
     let completed: Int
+    
     let total: Int
     
     var remaining: Int {
-        max(total - completed, 0)
+        max(
+            total - completed,
+            0
+        )
     }
-}
-
-// MARK: - Review Configuration
-
-private struct ReviewConfiguration {
     
-    let dailyCardLimit: Int
-    
-    let selectedSourceIDs: Set<UUID>
-    
-    /// Empty means no tag filter.
-    let selectedTagIDs: Set<UUID>
+    var isComplete: Bool {
+        
+        total > 0 &&
+        completed >= total
+    }
 }
 
 // MARK: - Card Manager
@@ -51,18 +51,23 @@ private struct ReviewConfiguration {
 @MainActor
 final class CardManager {
     
-    private let modelContext: ModelContext
+    private let modelContext:
+        ModelContext
     
-    private let scheduler: FSRS
+    private let scheduler:
+        FSRS
     
     init(
         modelContext: ModelContext
     ) {
-        self.modelContext = modelContext
         
-        self.scheduler = FSRS(
-            parameters: .init()
-        )
+        self.modelContext =
+            modelContext
+        
+        self.scheduler =
+            FSRS(
+                parameters: .init()
+            )
     }
     
     // MARK: - Start Review
@@ -75,6 +80,7 @@ final class CardManager {
                 try fetchReviewCards()
             
             // No existing session.
+            
             if reviewCards.isEmpty {
                 
                 try generateReviewCards()
@@ -82,16 +88,24 @@ final class CardManager {
                 return
             }
             
-            // A new day always gets a new queue.
-            if isNewDay(reviewCards) {
+            // A new day always gets
+            // a new review queue.
+            
+            if isNewDay(
+                reviewCards
+            ) {
                 
                 try generateReviewCards()
                 
                 return
             }
             
-            // Otherwise today's existing queue
-            // remains unchanged.
+            // Otherwise today's existing
+            // queue remains unchanged.
+            //
+            // This means changing configuration
+            // does not alter a review session
+            // that has already started today.
             
         } catch {
             
@@ -103,7 +117,8 @@ final class CardManager {
     
     // MARK: - Next Card
     
-    func getNextCard() -> PyokoCard? {
+    func getNextCard()
+        -> PyokoCard? {
         
         do {
             
@@ -128,11 +143,8 @@ final class CardManager {
                     descriptor
                 )
             
-            // The relationship is optional for
-            // future CloudKit compatibility.
-            //
-            // Ignore temporarily incomplete
-            // relationship records.
+            // card is optional for future
+            // CloudKit compatibility.
             
             return reviewCards
                 .compactMap {
@@ -152,7 +164,8 @@ final class CardManager {
     
     // MARK: - Progress
     
-    func getProgress() -> ReviewProgress {
+    func getProgress()
+        -> ReviewProgress {
         
         do {
             
@@ -165,14 +178,17 @@ final class CardManager {
                 }
             
             let completed =
-                validReviewCards.filter {
-                    $0.reviewed
-                }
-                .count
+                validReviewCards
+                    .filter {
+                        $0.reviewed
+                    }
+                    .count
             
             return ReviewProgress(
-                completed: completed,
-                total: validReviewCards.count
+                completed:
+                    completed,
+                total:
+                    validReviewCards.count
             )
             
         } catch {
@@ -195,18 +211,21 @@ final class CardManager {
         rating: Rating
     ) throws {
         
-        guard let card =
-            getCard(
-                id: id
-            )
+        guard
+            let card =
+                getCard(
+                    id: id
+                )
         else {
-            throw CardManagerError.cardNotFound
+            throw CardManagerError
+                .cardNotFound
         }
         
-        guard let reviewCard =
-            try getReviewCard(
-                cardID: id
-            )
+        guard
+            let reviewCard =
+                try getReviewCard(
+                    cardID: id
+                )
         else {
             throw CardManagerError
                 .reviewCardNotFound
@@ -229,7 +248,8 @@ final class CardManager {
             with: result.card
         )
         
-        reviewCard.reviewed = true
+        reviewCard.reviewed =
+            true
         
         try modelContext.save()
     }
@@ -243,7 +263,8 @@ final class CardManager {
             let reviewCards =
                 try fetchReviewCards()
             
-            for reviewCard in reviewCards {
+            for reviewCard
+                in reviewCards {
                 
                 modelContext.delete(
                     reviewCard
@@ -281,7 +302,9 @@ final class CardManager {
         do {
             
             return try modelContext
-                .fetch(descriptor)
+                .fetch(
+                    descriptor
+                )
                 .first
             
         } catch {
@@ -323,7 +346,9 @@ final class CardManager {
         
         return reviewCards.first {
             
-            $0.card?.id == cardID &&
+            $0.card?.id ==
+                cardID
+            &&
             !$0.reviewed
         }
     }
@@ -333,7 +358,7 @@ final class CardManager {
     private func generateReviewCards()
         throws {
         
-        // Remove yesterday's / previous session.
+        // Remove the previous session.
         
         let existingReviewCards =
             try fetchReviewCards()
@@ -346,26 +371,25 @@ final class CardManager {
             )
         }
         
-        let configuration =
-            try getReviewConfiguration()
+        // CardRetrieval is now responsible
+        // for deciding which cards should
+        // appear in the session.
         
-        let eligibleCards =
-            try fetchEligibleCards(
-                configuration:
-                    configuration
+        let retrieval =
+            CardRetrieval(
+                modelContext:
+                    modelContext
             )
         
         let selectedCards =
-            Array(
-                eligibleCards.prefix(
-                    configuration
-                        .dailyCardLimit
-                )
-            )
+            try retrieval
+                .getCardsForReview()
         
-        let reviewDate = Date.now
+        let reviewDate =
+            Date.now
         
-        for card in selectedCards {
+        for card
+            in selectedCards {
             
             let reviewCard =
                 PyokoReviewCard(
@@ -385,172 +409,6 @@ final class CardManager {
         try modelContext.save()
     }
     
-    // MARK: - Configuration
-    
-    private func getReviewConfiguration()
-        throws -> ReviewConfiguration {
-        
-        let descriptor =
-            FetchDescriptor<PyokoConfiguration>()
-        
-        if let configuration =
-            try modelContext
-                .fetch(descriptor)
-                .first {
-            
-            return ReviewConfiguration(
-                dailyCardLimit:
-                    max(
-                        configuration
-                            .dailyCardLimit,
-                        1
-                    ),
-                selectedSourceIDs:
-                    Set(
-                        configuration
-                            .sources
-                            .map(
-                                \.id
-                            )
-                    ),
-                selectedTagIDs:
-                    Set(
-                        configuration
-                            .tags
-                            .map(
-                                \.id
-                            )
-                    )
-            )
-        }
-        
-        // No configuration has been saved yet.
-        //
-        // Default behaviour matches the
-        // ConfigurationView:
-        //
-        // - 20 cards
-        // - all installed sources
-        // - no tag filter
-        
-        let sourceDescriptor =
-            FetchDescriptor<PyokoDataSource>()
-        
-        let sources =
-            try modelContext.fetch(
-                sourceDescriptor
-            )
-        
-        return ReviewConfiguration(
-            dailyCardLimit: 20,
-            selectedSourceIDs:
-                Set(
-                    sources.map(
-                        \.id
-                    )
-                ),
-            selectedTagIDs: []
-        )
-    }
-    
-    // MARK: - Eligible Cards
-    
-    private func fetchEligibleCards(
-        configuration:
-            ReviewConfiguration
-    ) throws -> [PyokoCard] {
-        
-        guard
-            !configuration
-                .selectedSourceIDs
-                .isEmpty
-        else {
-            return []
-        }
-        
-        let now = Date.now
-        
-        // Let SwiftData handle the cheap
-        // due-date filtering and ordering.
-        
-        let descriptor =
-            FetchDescriptor<PyokoCard>(
-                predicate:
-                    #Predicate<PyokoCard> {
-                        card in
-                        
-                        card.due <= now
-                    },
-                sortBy: [
-                    SortDescriptor(
-                        \PyokoCard.due,
-                        order: .forward
-                    )
-                ]
-            )
-        
-        let dueCards =
-            try modelContext.fetch(
-                descriptor
-            )
-        
-        // Relationship filtering happens in
-        // Swift.
-        //
-        // This keeps the predicates simple and
-        // safely handles optional CloudKit-ready
-        // relationships.
-        
-        return dueCards.filter { card in
-            
-            guard let sourceID =
-                card.source?.id
-            else {
-                return false
-            }
-            
-            // Source filter
-            
-            guard configuration
-                .selectedSourceIDs
-                .contains(
-                    sourceID
-                )
-            else {
-                return false
-            }
-            
-            // Empty selected tags means:
-            //
-            // "No tag filter"
-            
-            guard
-                !configuration
-                    .selectedTagIDs
-                    .isEmpty
-            else {
-                return true
-            }
-            
-            // Tag filter
-            
-            let cardTagIDs =
-                Set(
-                    (card.tags ?? [])
-                        .map(
-                            \.id
-                        )
-                )
-            
-            return !cardTagIDs
-                .isDisjoint(
-                    with:
-                        configuration
-                            .selectedTagIDs
-                )
-        }
-    }
-    
     // MARK: - Date
     
     private func isNewDay(
@@ -558,10 +416,11 @@ final class CardManager {
             [PyokoReviewCard]
     ) -> Bool {
         
-        guard let reviewDate =
-            reviewCards
-                .first?
-                .reviewDate
+        guard
+            let reviewDate =
+                reviewCards
+                    .first?
+                    .reviewDate
         else {
             return true
         }
@@ -574,7 +433,7 @@ final class CardManager {
             )
     }
     
-    // MARK: - FSRS
+    // MARK: - SwiftData -> FSRS
     
     private func makeFSRSCard(
         from card: PyokoCard
@@ -603,6 +462,8 @@ final class CardManager {
                 card.lastReview
         )
     }
+    
+    // MARK: - FSRS -> SwiftData
     
     private func update(
         card: PyokoCard,

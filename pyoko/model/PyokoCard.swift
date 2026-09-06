@@ -38,7 +38,7 @@ final class PyokoCard {
     
     // MARK: - Source
     
-    var source: PyokoDataSource?
+    var deck: PyokoDeck?
     
     // MARK: - Tags
     
@@ -86,7 +86,7 @@ final class PyokoCard {
         sourceText: String,
         targetText: String,
         targetReading: String? = nil,
-        source: PyokoDataSource?,
+        deck: PyokoDeck?,
         tags: [PyokoTag] = [],
         due: Date = .now,
         stability: Double = 0,
@@ -106,7 +106,7 @@ final class PyokoCard {
         self.targetText = targetText
         self.targetReading = targetReading
         
-        self.source = source
+        self.deck = deck
         self.tags = tags
         
         self.due = due
