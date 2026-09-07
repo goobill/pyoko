@@ -3,63 +3,63 @@ import SwiftData
 import FSRS
 
 struct ReviewView: View {
-    
+
     @Environment(\.modelContext)
     private var modelContext
-    
+
     @Environment(\.dismiss)
     private var dismiss
-    
+
     @Query
     private var configs:
-    [PyokoConfig]
-    
+        [PyokoConfig]
+
     @State
     private var currentCard:
-    PyokoCard?
-    
+        PyokoCard?
+
     @State
     private var progress =
-    ReviewProgress(
-        completed: 0,
-        total: 0
-    )
-    
+        ReviewProgress(
+            completed: 0,
+            total: 0
+        )
+
     @State
     private var answerRevealed =
-    false
-    
+        false
+
     @State
     private var hintRevealed =
-    false
-    
+        false
+
     @State
     private var intervalPreview:
-    CardManager.IntervalPreview?
-    
+        CardManager.IntervalPreview?
+
     @State
     private var extensionStatus =
-    CardManager
-        .ExtensionStatus
-        .empty
-    
+        CardManager
+            .ExtensionStatus
+            .empty
+
     @State
     private var errorMessage:
-    String?
-    
+        String?
+
     var body: some View {
-        
+
         Group {
-            
+
             if let currentCard {
-                
+
                 reviewContent(
                     card:
                         currentCard
                 )
-                
+
             } else {
-                
+
                 ReviewCompleteView(
                     progress:
                         progress,
@@ -79,7 +79,7 @@ struct ReviewView: View {
             true
         )
         .task {
-            
+
             loadSession()
         }
         .alert(
@@ -96,45 +96,48 @@ struct ReviewView: View {
                     }
                 )
         ) {
-            
+
             Button(
                 "OK",
                 role: .cancel
             ) {}
-            
+
         } message: {
-            
+
             Text(
                 errorMessage
                 ?? "An unknown error occurred."
             )
         }
     }
-    
-    // MARK: - Review Content
-    
+
+    // MARK: - Review
+
     private func reviewContent(
         card: PyokoCard
     ) -> some View {
-        
+
         VStack(
             spacing: 0
         ) {
-            
+
             topBar
-            
+
             Spacer(
                 minLength: 16
             )
-            
+
             ReviewCardView(
-                card: card,
+                card:
+                    card,
                 beforeAnswerDisplayMode:
                     beforeAnswerDisplayMode,
                 afterAnswerDisplayMode:
                     afterAnswerDisplayMode,
                 readingHintEnabled:
                     readingHintEnabled,
+                readingOnlyAnswer:
+                    readingOnlyAnswer,
                 answerRevealed:
                     answerRevealed,
                 hintRevealed:
@@ -146,11 +149,11 @@ struct ReviewView: View {
                 .horizontal,
                 20
             )
-            
+
             Spacer(
                 minLength: 12
             )
-            
+
             actionArea
                 .frame(
                     height: 142
@@ -159,28 +162,28 @@ struct ReviewView: View {
                     .horizontal,
                     20
                 )
-            
+
             Spacer(
                 minLength: 16
             )
         }
     }
-    
+
     // MARK: - Top Bar
-    
+
     private var topBar:
-    some View {
-        
+        some View {
+
         HStack(
             spacing: 12
         ) {
-            
+
             Button {
-                
+
                 dismiss()
-                
+
             } label: {
-                
+
                 Image(
                     systemName:
                         "chevron.left"
@@ -196,7 +199,7 @@ struct ReviewView: View {
             .buttonStyle(
                 .plain
             )
-            
+
             ProgressView(
                 value:
                     Double(
@@ -213,7 +216,7 @@ struct ReviewView: View {
             .tint(
                 .accentColor
             )
-            
+
             Text(
                 "\(progress.completed)/\(progress.total)"
             )
@@ -238,33 +241,33 @@ struct ReviewView: View {
             8
         )
     }
-    
+
     // MARK: - Action Area
-    
+
     @ViewBuilder
     private var actionArea:
-    some View {
-        
+        some View {
+
         if answerRevealed {
-            
+
             ratingArea
-            
+
         } else {
-            
+
             showAnswerArea
         }
     }
-    
+
     private var showAnswerArea:
-    some View {
-        
+        some View {
+
         ZStack {
-            
+
             Rectangle()
                 .fill(
                     .clear
                 )
-            
+
             Text(
                 "Show Answer"
             )
@@ -279,18 +282,18 @@ struct ReviewView: View {
             Rectangle()
         )
         .onTapGesture {
-            
+
             revealAnswer()
         }
     }
-    
+
     private var ratingArea:
-    some View {
-        
+        some View {
+
         VStack(
             spacing: 10
         ) {
-            
+
             Text(
                 "How difficult was this card?"
             )
@@ -300,15 +303,15 @@ struct ReviewView: View {
             .fontWeight(
                 .medium
             )
-            
+
             HStack {
-                
+
                 Text(
                     "Harder"
                 )
-                
+
                 Spacer()
-                
+
                 Text(
                     "Easier"
                 )
@@ -319,58 +322,59 @@ struct ReviewView: View {
             .foregroundStyle(
                 .secondary
             )
-            
+
             HStack(
                 spacing: 8
             ) {
-                
+
                 ratingButton(
                     rating:
-                            .again,
+                        .again,
                     opacity:
                         0.95
                 )
-                
+
                 ratingButton(
                     rating:
-                            .hard,
+                        .hard,
                     opacity:
                         0.78
                 )
-                
+
                 ratingButton(
                     rating:
-                            .good,
+                        .good,
                     opacity:
                         0.60
                 )
-                
+
                 ratingButton(
                     rating:
-                            .easy,
+                        .easy,
                     opacity:
                         0.42
                 )
             }
         }
     }
-    
+
     private func ratingButton(
         rating: Rating,
         opacity: Double
     ) -> some View {
-        
+
         Button {
-            
+
             submitRating(
                 rating
             )
-            
+
         } label: {
-            
+
             Text(
                 intervalText(
-                    for: rating
+                    for:
+                        rating
                 )
             )
             .font(
@@ -381,13 +385,13 @@ struct ReviewView: View {
             )
             .frame(
                 maxWidth:
-                        .infinity
+                    .infinity
             )
             .frame(
                 height: 48
             )
             .background {
-                
+
                 RoundedRectangle(
                     cornerRadius: 12,
                     style: .continuous
@@ -405,265 +409,276 @@ struct ReviewView: View {
         )
         .accessibilityLabel(
             accessibilityLabel(
-                for: rating
+                for:
+                    rating
             )
         )
     }
-    
+
     // MARK: - Session
-    
+
     private func loadSession() {
-        
+
         let manager =
-        CardManager(
-            modelContext:
-                modelContext
-        )
-        
+            CardManager(
+                modelContext:
+                    modelContext
+            )
+
         manager
             .startReviewIfNeeded()
-        
+
         loadNextCard()
     }
-    
+
     private func loadNextCard() {
-        
+
         let manager =
-        CardManager(
-            modelContext:
-                modelContext
-        )
-        
+            CardManager(
+                modelContext:
+                    modelContext
+            )
+
         progress =
-        manager.getProgress()
-        
+            manager.getProgress()
+
         currentCard =
-        manager.getNextCard()
-        
+            manager.getNextCard()
+
         answerRevealed =
-        false
-        
+            false
+
         hintRevealed =
-        false
-        
+            false
+
         intervalPreview =
-        nil
-        
+            nil
+
         if currentCard == nil {
-            
+
             refreshCompletion()
         }
     }
-    
+
     // MARK: - Reveal
-    
+
     private func revealAnswer() {
-        
+
         guard !answerRevealed,
               let currentCard
         else {
             return
         }
-        
+
         answerRevealed =
-        true
-        
+            true
+
         hintRevealed =
-        false
-        
+            false
+
         do {
-            
+
             intervalPreview =
-            try CardManager(
-                modelContext:
-                    modelContext
-            )
-            .getIntervalPreview(
-                id:
-                    currentCard.id
-            )
-            
+                try CardManager(
+                    modelContext:
+                        modelContext
+                )
+                .getIntervalPreview(
+                    id:
+                        currentCard.id
+                )
+
         } catch {
-            
+
             errorMessage =
-            error.localizedDescription
+                error.localizedDescription
         }
     }
-    
+
     // MARK: - Rating
-    
+
     private func submitRating(
         _ rating: Rating
     ) {
-        
+
         guard let currentCard
         else {
             return
         }
-        
+
         do {
-            
+
             let manager =
-            CardManager(
-                modelContext:
-                    modelContext
-            )
-            
+                CardManager(
+                    modelContext:
+                        modelContext
+                )
+
             try manager.reviewCard(
                 id:
                     currentCard.id,
                 rating:
                     rating
             )
-            
+
             loadNextCard()
-            
+
         } catch {
-            
+
             errorMessage =
-            error.localizedDescription
+                error.localizedDescription
         }
     }
-    
+
     // MARK: - Extension
-    
+
     private func refreshCompletion() {
-        
+
         let manager =
-        CardManager(
-            modelContext:
-                modelContext
-        )
-        
-        progress =
-        manager.getProgress()
-        
-        do {
-            
-            extensionStatus =
-            try manager
-                .getReviewExtensionStatus()
-            
-        } catch {
-            
-            extensionStatus =
-                .empty
-            
-            errorMessage =
-            error.localizedDescription
-        }
-    }
-    
-    private func extendReview() {
-        
-        do {
-            
-            let manager =
             CardManager(
                 modelContext:
                     modelContext
             )
-            
-            let added =
-            try manager
-                .extendReviewSession()
-            
-            if added == 0 {
-                
-                refreshCompletion()
-                
-                return
-            }
-            
+
+        progress =
+            manager.getProgress()
+
+        do {
+
+            extensionStatus =
+                try manager
+                    .getReviewExtensionStatus()
+
+        } catch {
+
             extensionStatus =
                 .empty
-            
-            loadNextCard()
-            
-        } catch {
-            
+
             errorMessage =
-            error.localizedDescription
+                error.localizedDescription
         }
     }
-    
+
+    private func extendReview() {
+
+        do {
+
+            let manager =
+                CardManager(
+                    modelContext:
+                        modelContext
+                )
+
+            let added =
+                try manager
+                    .extendReviewSession()
+
+            if added == 0 {
+
+                refreshCompletion()
+
+                return
+            }
+
+            extensionStatus =
+                .empty
+
+            loadNextCard()
+
+        } catch {
+
+            errorMessage =
+                error.localizedDescription
+        }
+    }
+
     // MARK: - Config
-    
+
     private var beforeAnswerDisplayMode:
-    TargetDisplayMode {
-        
+        TargetDisplayMode {
+
         configs
             .first?
             .beforeAnswerDisplayMode
         ?? .target
     }
-    
+
     private var afterAnswerDisplayMode:
-    TargetDisplayMode {
-        
+        TargetDisplayMode {
+
         configs
             .first?
             .afterAnswerDisplayMode
         ?? .reading
     }
-    
+
     private var readingHintEnabled:
-    Bool {
-        
+        Bool {
+
         configs
             .first?
             .readingHintEnabled
         ?? true
     }
-    
-    // MARK: - Interval Text
-    
+
+    private var readingOnlyAnswer:
+        Bool {
+
+        configs
+            .first?
+            .readingOnlyAnswer
+        ?? false
+    }
+
+    // MARK: - Interval
+
     private func intervalText(
         for rating: Rating
     ) -> String {
-        
+
         guard let preview =
-                intervalPreview
+            intervalPreview
         else {
             return "—"
         }
-        
+
         return ReviewIntervalFormatter
             .string(
                 from:
                     preview.generatedAt,
                 to:
                     preview.dueDate(
-                        for: rating
+                        for:
+                            rating
                     )
             )
     }
-    
+
     private func accessibilityLabel(
         for rating: Rating
     ) -> String {
-        
-        let name: String
-        
+
+        let name:
+            String
+
         switch rating {
-            
+
         case .again:
             name = "Again"
-            
+
         case .hard:
             name = "Hard"
-            
+
         case .good:
             name = "Good"
-            
+
         case .easy:
             name = "Easy"
-            
+
         case .manual:
             name = "Manual"
         }
-        
-        return
-            "\(name), next review \(intervalText(for: rating))"
+
+        return "\(name), next review \(intervalText(for: rating))"
     }
 }

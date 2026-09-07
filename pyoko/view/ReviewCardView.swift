@@ -14,6 +14,9 @@ struct ReviewCardView: View {
     let readingHintEnabled:
         Bool
 
+    let readingOnlyAnswer:
+        Bool
+
     let answerRevealed:
         Bool
 
@@ -47,7 +50,14 @@ struct ReviewCardView: View {
 
                 Spacer()
 
-                cardContent
+                if answerRevealed {
+
+                    answerContent
+
+                } else {
+
+                    questionContent
+                }
 
                 Spacer()
 
@@ -79,10 +89,12 @@ struct ReviewCardView: View {
         )
         .onTapGesture {
 
-            if !answerRevealed {
-
-                onReveal()
+            guard !answerRevealed
+            else {
+                return
             }
+
+            onReveal()
         }
     }
 
@@ -138,21 +150,7 @@ struct ReviewCardView: View {
         }
     }
 
-    // MARK: - Content
-
-    @ViewBuilder
-    private var cardContent:
-        some View {
-
-        if answerRevealed {
-
-            answerContent
-
-        } else {
-
-            questionContent
-        }
-    }
+    // MARK: - Question
 
     @ViewBuilder
     private var questionContent:
@@ -166,12 +164,23 @@ struct ReviewCardView: View {
                 spacing: 10
             ) {
 
-                targetContent(
-                    mode:
-                        beforeAnswerDisplayMode,
-                    primary:
-                        true
-                )
+                if usesReadingOnlyAnswer {
+
+                    // Reading-only Recognition must
+                    // hide the reading on the front.
+                    primaryText(
+                        card.targetText
+                    )
+
+                } else {
+
+                    targetContent(
+                        mode:
+                            beforeAnswerDisplayMode,
+                        primary:
+                            true
+                    )
+                }
 
                 if hintRevealed,
                    let reading =
@@ -217,6 +226,8 @@ struct ReviewCardView: View {
         }
     }
 
+    // MARK: - Answer
+
     @ViewBuilder
     private var answerContent:
         some View {
@@ -225,28 +236,41 @@ struct ReviewCardView: View {
 
         case .recognition:
 
-            VStack(
-                spacing: 18
-            ) {
+            if usesReadingOnlyAnswer {
 
-                targetContent(
-                    mode:
-                        afterAnswerDisplayMode,
-                    primary:
-                        true
-                )
+                if let reading =
+                    card.targetReading {
 
-                Divider()
+                    primaryText(
+                        reading
+                    )
+                }
 
-                Text(
-                    card.sourceText
-                )
-                .font(
-                    .title2
-                )
-                .multilineTextAlignment(
-                    .center
-                )
+            } else {
+
+                VStack(
+                    spacing: 18
+                ) {
+
+                    targetContent(
+                        mode:
+                            afterAnswerDisplayMode,
+                        primary:
+                            true
+                    )
+
+                    Divider()
+
+                    Text(
+                        card.sourceText
+                    )
+                    .font(
+                        .title2
+                    )
+                    .multilineTextAlignment(
+                        .center
+                    )
+                }
             }
 
         case .recall:
@@ -275,6 +299,16 @@ struct ReviewCardView: View {
                 )
             }
         }
+    }
+
+    // MARK: - Reading Only
+
+    private var usesReadingOnlyAnswer:
+        Bool {
+
+        readingOnlyAnswer
+        && card.type == .recognition
+        && card.targetReading != nil
     }
 
     // MARK: - Target
@@ -372,6 +406,13 @@ struct ReviewCardView: View {
         }
 
         guard card.targetReading != nil
+        else {
+            return false
+        }
+
+        // In Reading-only Recognition,
+        // the reading IS the answer.
+        guard !usesReadingOnlyAnswer
         else {
             return false
         }

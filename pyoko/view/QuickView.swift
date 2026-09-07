@@ -87,11 +87,16 @@ struct QuickView: View {
             isPresented:
                 Binding(
                     get: {
-                        errorMessage != nil
+
+                        errorMessage
+                            != nil
                     },
                     set: {
+
                         if !$0 {
-                            errorMessage = nil
+
+                            errorMessage =
+                                nil
                         }
                     }
                 )
@@ -140,6 +145,9 @@ struct QuickView: View {
                 readingHintEnabled:
                     config
                         .readingHintEnabled,
+                recognitionReadingOnlyEnabled:
+                    config
+                        .recognitionReadingOnlyEnabled,
                 writingEnabled:
                     config
                         .writingEnabled,
@@ -214,12 +222,14 @@ struct QuickView: View {
                 ProgressView(
                     value:
                         Double(
-                            progress.completed
+                            progress
+                                .completed
                         ),
                     total:
                         Double(
                             max(
-                                progress.total,
+                                progress
+                                    .total,
                                 1
                             )
                         )
@@ -240,7 +250,8 @@ struct QuickView: View {
                 )
                 .frame(
                     minWidth: 42,
-                    alignment: .trailing
+                    alignment:
+                        .trailing
                 )
             }
 
@@ -350,9 +361,13 @@ struct QuickView: View {
             .textFieldStyle(
                 .roundedBorder
             )
+
+            #if os(iOS)
             .submitLabel(
                 .done
             )
+            #endif
+
             .onSubmit {
 
                 submitWriting()
@@ -386,12 +401,21 @@ struct QuickView: View {
 
         guard let currentCard
         else {
-            return "Write your answer"
+
+            return
+                "Write your answer"
         }
 
         switch currentCard.type {
 
         case .recognition:
+
+            if config
+                .recognitionReadingOnlyEnabled {
+
+                return
+                    "Write the reading"
+            }
 
             return
                 "Write the source meaning"
@@ -492,10 +516,12 @@ struct QuickView: View {
 
             Image(
                 systemName:
-                    progress.sessionTotal == 0
+                    progress.sessionTotal
+                        == 0
                     ? "rectangle.stack"
                     : (
-                        progress.incorrect == 0
+                        progress.incorrect
+                            == 0
                         ? "checkmark.circle.fill"
                         : "checkmark.circle"
                     )
@@ -514,7 +540,8 @@ struct QuickView: View {
             ) {
 
                 Text(
-                    progress.sessionTotal == 0
+                    progress.sessionTotal
+                        == 0
                     ? "No Words Available"
                     : "Quick Review Complete"
                 )
@@ -536,7 +563,8 @@ struct QuickView: View {
                 )
             }
 
-            if progress.sessionTotal > 0 {
+            if progress
+                .sessionTotal > 0 {
 
                 resultSummary
 
@@ -544,7 +572,8 @@ struct QuickView: View {
                     spacing: 12
                 ) {
 
-                    if progress.incorrect > 0 {
+                    if progress
+                        .incorrect > 0 {
 
                         Button {
 
@@ -636,6 +665,8 @@ struct QuickView: View {
         )
     }
 
+    // MARK: - Result Summary
+
     private var resultSummary:
         some View {
 
@@ -716,7 +747,8 @@ struct QuickView: View {
     private var completionMessage:
         String {
 
-        if progress.sessionTotal == 0 {
+        if progress
+            .sessionTotal == 0 {
 
             return
                 """
@@ -724,7 +756,8 @@ struct QuickView: View {
                 """
         }
 
-        if progress.incorrect == 0 {
+        if progress
+            .incorrect == 0 {
 
             return
                 """
@@ -741,7 +774,8 @@ struct QuickView: View {
     private var reviewIncorrectTitle:
         String {
 
-        if progress.incorrect == 1 {
+        if progress
+            .incorrect == 1 {
 
             return
                 "Review 1 Incorrect Card"
@@ -799,10 +833,12 @@ struct QuickView: View {
         }
 
         currentCard =
-            manager.currentCard()
+            manager
+                .currentCard()
 
         progress =
-            manager.getProgress()
+            manager
+                .getProgress()
 
         answerRevealed =
             false
@@ -915,7 +951,8 @@ struct QuickView: View {
             return
         }
 
-        manager.reviewIncorrect()
+        manager
+            .reviewIncorrect()
 
         refresh()
     }

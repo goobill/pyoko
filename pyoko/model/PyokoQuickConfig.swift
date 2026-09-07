@@ -17,6 +17,14 @@ final class PyokoQuickConfig {
 
     var includeRecall: Bool = true
 
+    /// When enabled, Recognition becomes:
+    ///
+    /// targetText -> targetReading
+    ///
+    /// Example:
+    /// 食べる -> たべる
+    var recognitionReadingOnlyEnabled: Bool = false
+
     var beforeAnswerDisplayMode:
         TargetDisplayMode =
             TargetDisplayMode.target
@@ -48,6 +56,7 @@ final class PyokoQuickConfig {
         writingEnabled: Bool = false,
         includeRecognition: Bool = true,
         includeRecall: Bool = true,
+        recognitionReadingOnlyEnabled: Bool = false,
         beforeAnswerDisplayMode:
             TargetDisplayMode = .target,
         afterAnswerDisplayMode:
@@ -74,6 +83,9 @@ final class PyokoQuickConfig {
 
         self.includeRecall =
             includeRecall
+
+        self.recognitionReadingOnlyEnabled =
+            recognitionReadingOnlyEnabled
 
         self.beforeAnswerDisplayMode =
             beforeAnswerDisplayMode

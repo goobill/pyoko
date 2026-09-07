@@ -114,6 +114,8 @@ struct QuickConfigView: View {
                 spacing: 18
             ) {
 
+                // MARK: Vocabulary Source
+
                 GroupBox(
                     "Vocabulary Source"
                 ) {
@@ -136,6 +138,8 @@ struct QuickConfigView: View {
                     }
                 }
 
+                // MARK: Decks
+
                 if config.source
                     == .decks {
 
@@ -144,6 +148,8 @@ struct QuickConfigView: View {
                     )
                 }
 
+                // MARK: Tags
+
                 if config.source
                     == .tags {
 
@@ -151,6 +157,8 @@ struct QuickConfigView: View {
                         config
                     )
                 }
+
+                // MARK: Session
 
                 GroupBox(
                     "Session"
@@ -182,10 +190,12 @@ struct QuickConfigView: View {
                             value:
                                 Binding(
                                     get: {
+
                                         config
                                             .cardCount
                                     },
                                     set: {
+
                                         config
                                             .cardCount =
                                                 $0
@@ -198,6 +208,8 @@ struct QuickConfigView: View {
                         .labelsHidden()
                     }
                 }
+
+                // MARK: Practice Mode
 
                 GroupBox(
                     "Practice Mode"
@@ -213,10 +225,12 @@ struct QuickConfigView: View {
                             isOn:
                                 Binding(
                                     get: {
+
                                         config
                                             .writingEnabled
                                     },
                                     set: {
+
                                         config
                                             .writingEnabled =
                                                 $0
@@ -244,11 +258,14 @@ struct QuickConfigView: View {
                     }
                 }
 
+                // MARK: Direction
+
                 GroupBox(
                     "Direction"
                 ) {
 
                     VStack(
+                        alignment: .leading,
                         spacing: 12
                     ) {
 
@@ -282,15 +299,94 @@ struct QuickConfigView: View {
                             .foregroundStyle(
                                 .secondary
                             )
-                            .frame(
-                                maxWidth:
-                                    .infinity,
-                                alignment:
-                                    .leading
+                            .fixedSize(
+                                horizontal: false,
+                                vertical: true
                             )
                         }
                     }
                 }
+
+                // MARK: Recognition Answer
+
+                GroupBox(
+                    "Recognition Answer"
+                ) {
+
+                    VStack(
+                        alignment: .leading,
+                        spacing: 8
+                    ) {
+
+                        Toggle(
+                            "Reading Only",
+                            isOn:
+                                Binding(
+                                    get: {
+
+                                        config
+                                            .recognitionReadingOnlyEnabled
+                                    },
+                                    set: {
+
+                                        config
+                                            .recognitionReadingOnlyEnabled =
+                                                $0
+
+                                        save()
+                                    }
+                                )
+                        )
+                        .disabled(
+                            !config
+                                .includeRecognition
+                        )
+
+                        Text(
+                            """
+                            When enabled, Recognition practises the reading instead of the meaning. The card shows the target word and the answer is only its reading.
+
+                            Example: 食べる → たべる
+                            """
+                        )
+                        .font(
+                            .caption
+                        )
+                        .foregroundStyle(
+                            .secondary
+                        )
+                        .fixedSize(
+                            horizontal: false,
+                            vertical: true
+                        )
+
+                        if config
+                            .writingEnabled
+                            && config
+                                .recognitionReadingOnlyEnabled
+                            && config
+                                .includeRecognition {
+
+                            Text(
+                                """
+                                In Writing mode, Recognition asks you to type the reading yourself.
+                                """
+                            )
+                            .font(
+                                .caption
+                            )
+                            .foregroundStyle(
+                                .secondary
+                            )
+                            .fixedSize(
+                                horizontal: false,
+                                vertical: true
+                            )
+                        }
+                    }
+                }
+
+                // MARK: Card Display
 
                 GroupBox(
                     "Card Display"
@@ -305,10 +401,12 @@ struct QuickConfigView: View {
                             selection:
                                 Binding(
                                     get: {
+
                                         config
                                             .beforeAnswerDisplayMode
                                     },
                                     set: {
+
                                         config
                                             .beforeAnswerDisplayMode =
                                                 $0
@@ -338,10 +436,12 @@ struct QuickConfigView: View {
                             selection:
                                 Binding(
                                     get: {
+
                                         config
                                             .afterAnswerDisplayMode
                                     },
                                     set: {
+
                                         config
                                             .afterAnswerDisplayMode =
                                                 $0
@@ -371,10 +471,12 @@ struct QuickConfigView: View {
                             isOn:
                                 Binding(
                                     get: {
+
                                         config
                                             .readingHintEnabled
                                     },
                                     set: {
+
                                         config
                                             .readingHintEnabled =
                                                 $0
@@ -385,6 +487,8 @@ struct QuickConfigView: View {
                         )
                     }
                 }
+
+                // MARK: Start
 
                 GroupBox {
 
@@ -498,13 +602,31 @@ struct QuickConfigView: View {
         if config.includeRecognition
             && config.includeRecall {
 
+            if config
+                .recognitionReadingOnlyEnabled {
+
+                return
+                    """
+                    Recognition: see the target word and write its reading. Recall: see the source meaning and write the target word. Both types will be mixed during the session.
+                    """
+            }
+
             return
                 """
-                Writing will mix Recognition and Recall cards during the session.
+                Recognition: see the target word and write its source meaning. Recall: see the source meaning and write the target word. Both types will be mixed during the session.
                 """
         }
 
         if config.includeRecognition {
+
+            if config
+                .recognitionReadingOnlyEnabled {
+
+                return
+                    """
+                    Recognition: see the target word and write its reading.
+                    """
+            }
 
             return
                 """
@@ -614,6 +736,7 @@ struct QuickConfigView: View {
         guard source
             == .todaysReview
         else {
+
             return source.subtitle
         }
 
@@ -701,6 +824,7 @@ struct QuickConfigView: View {
 
         (config.selectedDecks ?? [])
             .contains {
+
                 $0.id == deck.id
             }
     }
@@ -720,6 +844,7 @@ struct QuickConfigView: View {
             guard !selectedDecks
                 .contains(
                     where: {
+
                         $0.id
                         == deck.id
                     }
@@ -735,6 +860,7 @@ struct QuickConfigView: View {
         } else {
 
             selectedDecks.removeAll {
+
                 $0.id == deck.id
             }
         }
@@ -812,6 +938,7 @@ struct QuickConfigView: View {
 
         (config.selectedTags ?? [])
             .contains {
+
                 $0.id == tag.id
             }
     }
@@ -831,6 +958,7 @@ struct QuickConfigView: View {
             guard !selectedTags
                 .contains(
                     where: {
+
                         $0.id
                         == tag.id
                     }
@@ -846,6 +974,7 @@ struct QuickConfigView: View {
         } else {
 
             selectedTags.removeAll {
+
                 $0.id == tag.id
             }
         }

@@ -8,18 +8,15 @@ final class PyokoConfig {
 
     var dailyCardLimit: Int = 20
 
-    /// Minimum number of new cards to include
-    /// in a newly generated daily review session,
-    /// when enough eligible new cards are available.
-    ///
-    /// 0 means no new cards are guaranteed.
     var minimumNewCards: Int = 0
 
-    var beforeAnswerDisplayMode: TargetDisplayMode =
-        TargetDisplayMode.target
+    var beforeAnswerDisplayMode:
+        TargetDisplayMode =
+            TargetDisplayMode.target
 
-    var afterAnswerDisplayMode: TargetDisplayMode =
-        TargetDisplayMode.reading
+    var afterAnswerDisplayMode:
+        TargetDisplayMode =
+            TargetDisplayMode.reading
 
     var showRecognitionCards: Bool = true
 
@@ -27,39 +24,78 @@ final class PyokoConfig {
 
     var readingHintEnabled: Bool = true
 
+    /// When enabled, Recognition cards that have
+    /// a reading become:
+    ///
+    /// Target -> Reading
+    ///
+    /// Example:
+    /// 食べる -> たべる
+    ///
+    /// Recall cards are unaffected.
+    var readingOnlyAnswer: Bool = false
+
     @Relationship(
         deleteRule: .nullify,
         inverse: \PyokoDeck.configs
     )
-    var selectedDecks: [PyokoDeck]? = []
+    var selectedDecks:
+        [PyokoDeck]? = []
 
     @Relationship(
         deleteRule: .nullify,
         inverse: \PyokoTag.configs
     )
-    var selectedTags: [PyokoTag]? = []
+    var selectedTags:
+        [PyokoTag]? = []
 
     init(
         id: UUID = UUID(),
         dailyCardLimit: Int = 20,
         minimumNewCards: Int = 0,
-        beforeAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.target,
-        afterAnswerDisplayMode: TargetDisplayMode = TargetDisplayMode.reading,
+        beforeAnswerDisplayMode:
+            TargetDisplayMode = .target,
+        afterAnswerDisplayMode:
+            TargetDisplayMode = .reading,
         showRecognitionCards: Bool = true,
         showRecallCards: Bool = true,
         readingHintEnabled: Bool = true,
+        readingOnlyAnswer: Bool = false,
         selectedDecks: [PyokoDeck]? = [],
         selectedTags: [PyokoTag]? = []
     ) {
-        self.id = id
-        self.dailyCardLimit = dailyCardLimit
-        self.minimumNewCards = minimumNewCards
-        self.beforeAnswerDisplayMode = beforeAnswerDisplayMode
-        self.afterAnswerDisplayMode = afterAnswerDisplayMode
-        self.showRecognitionCards = showRecognitionCards
-        self.showRecallCards = showRecallCards
-        self.readingHintEnabled = readingHintEnabled
-        self.selectedDecks = selectedDecks
-        self.selectedTags = selectedTags
+
+        self.id =
+            id
+
+        self.dailyCardLimit =
+            dailyCardLimit
+
+        self.minimumNewCards =
+            minimumNewCards
+
+        self.beforeAnswerDisplayMode =
+            beforeAnswerDisplayMode
+
+        self.afterAnswerDisplayMode =
+            afterAnswerDisplayMode
+
+        self.showRecognitionCards =
+            showRecognitionCards
+
+        self.showRecallCards =
+            showRecallCards
+
+        self.readingHintEnabled =
+            readingHintEnabled
+
+        self.readingOnlyAnswer =
+            readingOnlyAnswer
+
+        self.selectedDecks =
+            selectedDecks
+
+        self.selectedTags =
+            selectedTags
     }
 }

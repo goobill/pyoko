@@ -11,410 +11,238 @@ struct ExampleCardView: View {
     let readingHintEnabled:
         Bool
 
-    @State
-    private var direction:
-        ExampleDirection =
-            ExampleDirection.recognition
+    let readingOnlyAnswer:
+        Bool
 
     @State
     private var answerRevealed =
         false
 
     @State
-    private var readingRevealed =
+    private var hintRevealed =
         false
 
-    private let sourceText =
+    private let source =
         "to eat"
 
-    private let targetText =
+    private let target =
         "食べる"
 
-    private let targetReading =
+    private let reading =
         "たべる"
 
     var body: some View {
 
-        VStack(
-            alignment: .leading,
-            spacing: 14
-        ) {
+        ZStack {
 
-            Picker(
-                "Example Type",
-                selection:
-                    $direction
-            ) {
-
-                ForEach(
-                    ExampleDirection.allCases
-                ) { direction in
-
-                    Text(
-                        direction.title
-                    )
-                    .tag(
-                        direction
-                    )
-                }
-            }
-            .pickerStyle(
-                .segmented
+            RoundedRectangle(
+                cornerRadius: 20,
+                style: .continuous
             )
-            .onChange(
-                of: direction
+            .fill(
+                Color.primary
+                    .opacity(
+                        0.06
+                    )
+            )
+
+            VStack(
+                spacing: 14
             ) {
 
-                reset()
-            }
+                HStack {
 
-            ZStack {
-
-                cardBackground
-
-                cardContent
-                    .allowsHitTesting(
-                        false
+                    Label(
+                        "Recognition",
+                        systemImage:
+                            "eye"
+                    )
+                    .font(
+                        .caption
+                    )
+                    .foregroundStyle(
+                        .secondary
                     )
 
-                if shouldShowReadingHint {
+                    Spacer()
 
-                    VStack {
+                    if canShowHint {
 
-                        HStack {
+                        Button {
 
-                            Spacer()
+                            hintRevealed.toggle()
 
-                            hintButton
+                        } label: {
+
+                            Label(
+                                "Hint",
+                                systemImage:
+                                    "lightbulb"
+                            )
+                            .font(
+                                .caption
+                            )
                         }
-
-                        Spacer()
+                        .buttonStyle(
+                            .plain
+                        )
+                        .foregroundStyle(
+                            .tint
+                        )
                     }
-                    .padding(
-                        22
-                    )
                 }
-            }
-            .frame(
-                maxWidth: .infinity
-            )
-            .frame(
-                minHeight: 250
-            )
 
-            if answerRevealed {
+                Spacer()
 
-                Button(
-                    "Reset Example"
-                ) {
+                if answerRevealed {
 
-                    reset()
+                    answerContent
+
+                } else {
+
+                    questionContent
                 }
-                .buttonStyle(
-                    .borderless
+
+                Spacer()
+
+                Text(
+                    answerRevealed
+                    ? "Tap to reset"
+                    : "Tap to reveal"
                 )
                 .font(
                     .caption
                 )
+                .foregroundStyle(
+                    .secondary
+                )
             }
-        }
-    }
-
-    // MARK: - Background
-
-    private var cardBackground:
-        some View {
-
-        RoundedRectangle(
-            cornerRadius: 20,
-            style: .continuous
-        )
-        .fill(
-            .regularMaterial
-        )
-        .overlay {
-
-            RoundedRectangle(
-                cornerRadius: 20,
-                style: .continuous
-            )
-            .stroke(
-                .quaternary,
-                lineWidth: 1
+            .padding(
+                20
             )
         }
+        .frame(
+            height: 250
+        )
         .contentShape(
-            RoundedRectangle(
-                cornerRadius: 20,
-                style: .continuous
-            )
+            Rectangle()
         )
         .onTapGesture {
 
-            withAnimation(
-                .easeInOut(
-                    duration: 0.18
-                )
-            ) {
-
-                answerRevealed =
-                    true
-            }
-        }
-    }
-
-    // MARK: - Card
-
-    private var cardContent:
-        some View {
-
-        VStack(
-            spacing: 18
-        ) {
-
-            HStack {
-
-                Label(
-                    direction.title,
-                    systemImage:
-                        direction ==
-                            ExampleDirection.recognition
-                        ? "eye"
-                        : "arrow.turn.down.right"
-                )
-                .font(
-                    .subheadline
-                )
-                .foregroundStyle(
-                    .secondary
-                )
-
-                Spacer()
-            }
-
-            Spacer(
-                minLength: 4
-            )
-
-            frontContent
-
-            if readingRevealed,
-               !answerRevealed {
-
-                Text(
-                    targetReading
-                )
-                .font(
-                    .title3
-                )
-                .foregroundStyle(
-                    .secondary
-                )
-            }
-
             if answerRevealed {
 
-                Divider()
+                answerRevealed =
+                    false
 
-                answerContent
+                hintRevealed =
+                    false
 
             } else {
 
-                Text(
-                    "Tap card to reveal"
-                )
-                .font(
-                    .caption
-                )
-                .foregroundStyle(
-                    .secondary
-                )
+                answerRevealed =
+                    true
+
+                hintRevealed =
+                    false
             }
-
-            Spacer(
-                minLength: 4
-            )
         }
-        .padding(
-            22
-        )
     }
-
-    // MARK: - Hint
-
-    private var hintButton:
-        some View {
-
-        Button {
-
-            withAnimation(
-                .easeInOut(
-                    duration: 0.15
-                )
-            ) {
-
-                readingRevealed
-                    .toggle()
-            }
-
-        } label: {
-
-            Label(
-                "Hint",
-                systemImage:
-                    readingRevealed
-                    ? "lightbulb.fill"
-                    : "lightbulb"
-            )
-            .font(
-                .subheadline
-            )
-        }
-        .buttonStyle(
-            .plain
-        )
-        .foregroundStyle(
-            .secondary
-        )
-    }
-
-    // MARK: - Front
 
     @ViewBuilder
-    private var frontContent:
+    private var questionContent:
         some View {
 
-        switch direction {
+        if readingOnlyAnswer {
 
-        case .recognition:
-
-            targetDisplay(
-                mode:
-                    beforeAnswerDisplayMode
+            mainText(
+                target
             )
 
-        case .recall:
+        } else {
+
+            targetContent(
+                beforeAnswerDisplayMode
+            )
+        }
+
+        if hintRevealed {
 
             Text(
-                sourceText
+                reading
             )
             .font(
-                .system(
-                    size: 30,
-                    weight: .semibold
-                )
+                .title3
             )
-            .multilineTextAlignment(
-                .center
-            )
-            .frame(
-                maxWidth: .infinity
+            .foregroundStyle(
+                .secondary
             )
         }
     }
-
-    // MARK: - Answer
 
     @ViewBuilder
     private var answerContent:
         some View {
 
-        switch direction {
+        if readingOnlyAnswer {
 
-        case .recognition:
+            mainText(
+                reading
+            )
+
+        } else {
 
             VStack(
-                spacing: 12
+                spacing: 14
             ) {
 
-                targetDisplay(
-                    mode:
-                        afterAnswerDisplayMode
+                targetContent(
+                    afterAnswerDisplayMode
                 )
 
+                Divider()
+
                 Text(
-                    sourceText
+                    source
                 )
                 .font(
                     .title3
                 )
-                .foregroundStyle(
-                    .secondary
-                )
             }
-
-        case .recall:
-
-            targetDisplay(
-                mode:
-                    afterAnswerDisplayMode
-            )
         }
     }
 
-    // MARK: - Target
-
     @ViewBuilder
-    private func targetDisplay(
-        mode: TargetDisplayMode
+    private func targetContent(
+        _ mode:
+            TargetDisplayMode
     ) -> some View {
 
         switch mode {
 
         case .target:
 
-            Text(
-                targetText
-            )
-            .font(
-                .system(
-                    size: 34,
-                    weight: .semibold
-                )
-            )
-            .multilineTextAlignment(
-                .center
-            )
-            .frame(
-                maxWidth: .infinity
+            mainText(
+                target
             )
 
         case .reading:
 
-            Text(
-                targetReading
-            )
-            .font(
-                .system(
-                    size: 30,
-                    weight: .semibold
-                )
-            )
-            .multilineTextAlignment(
-                .center
-            )
-            .frame(
-                maxWidth: .infinity
+            mainText(
+                reading
             )
 
         case .targetAndReading:
 
             VStack(
-                spacing: 6
+                spacing: 5
             ) {
 
-                Text(
-                    targetText
-                )
-                .font(
-                    .system(
-                        size: 34,
-                        weight: .semibold
-                    )
+                mainText(
+                    target
                 )
 
                 Text(
-                    targetReading
+                    reading
                 )
                 .font(
                     .title3
@@ -423,73 +251,40 @@ struct ExampleCardView: View {
                     .secondary
                 )
             }
-            .multilineTextAlignment(
-                .center
-            )
-            .frame(
-                maxWidth: .infinity
-            )
         }
     }
 
-    private var shouldShowReadingHint:
+    private func mainText(
+        _ text: String
+    ) -> some View {
+
+        Text(
+            text
+        )
+        .font(
+            .system(
+                size: 32,
+                weight: .semibold
+            )
+        )
+        .minimumScaleFactor(
+            0.5
+        )
+        .lineLimit(
+            2
+        )
+        .multilineTextAlignment(
+            .center
+        )
+    }
+
+    private var canShowHint:
         Bool {
 
-        guard
-            readingHintEnabled,
-            !answerRevealed
-        else {
-            return false
-        }
-
-        if direction ==
-            ExampleDirection.recognition,
-           beforeAnswerDisplayMode
-            .includesReading {
-
-            return false
-        }
-
-        return true
-    }
-
-    // MARK: - Reset
-
-    private func reset() {
-
-        answerRevealed =
-            false
-
-        readingRevealed =
-            false
-    }
-}
-
-// MARK: - Direction
-
-private enum ExampleDirection:
-    String,
-    CaseIterable,
-    Identifiable {
-
-    case recognition
-    case recall
-
-    var id: Self {
-        self
-    }
-
-    var title: String {
-
-        switch self {
-
-        case .recognition:
-
-            return "Recognition"
-
-        case .recall:
-
-            return "Recall"
-        }
+        readingHintEnabled
+        && !answerRevealed
+        && !readingOnlyAnswer
+        && !beforeAnswerDisplayMode
+            .includesReading
     }
 }

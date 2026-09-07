@@ -14,6 +14,9 @@ struct QuickCardView: View {
     let readingHintEnabled:
         Bool
 
+    let recognitionReadingOnlyEnabled:
+        Bool
+
     let writingEnabled:
         Bool
 
@@ -164,7 +167,8 @@ struct QuickCardView: View {
 
         if writingEnabled {
 
-            return "\(direction) · Writing"
+            return
+                "\(direction) · Writing"
         }
 
         return direction
@@ -174,6 +178,7 @@ struct QuickCardView: View {
         String {
 
         if writingEnabled {
+
             return "pencil"
         }
 
@@ -192,58 +197,18 @@ struct QuickCardView: View {
 
         case .recognition:
 
-            VStack(
-                spacing: 10
-            ) {
+            // Even in reading-only mode we want
+            // to SHOW the actual target/kanji.
 
-                targetContent(
-                    mode:
-                        beforeAnswerDisplayMode,
-                    primary:
-                        true
-                )
-
-                if hintRevealed,
-                   let reading =
-                    card.targetReading {
-
-                    Text(
-                        reading
-                    )
-                    .font(
-                        .title3
-                    )
-                    .foregroundStyle(
-                        .secondary
-                    )
-                }
-            }
+            primaryText(
+                card.targetText
+            )
 
         case .recall:
 
-            VStack(
-                spacing: 10
-            ) {
-
-                primaryText(
-                    card.sourceText
-                )
-
-                if hintRevealed,
-                   let reading =
-                    card.targetReading {
-
-                    Text(
-                        reading
-                    )
-                    .font(
-                        .title3
-                    )
-                    .foregroundStyle(
-                        .secondary
-                    )
-                }
-            }
+            primaryText(
+                card.sourceText
+            )
         }
     }
 
@@ -263,6 +228,8 @@ struct QuickCardView: View {
         }
     }
 
+    // MARK: Normal Answer
+
     @ViewBuilder
     private var normalAnswerContent:
         some View {
@@ -271,28 +238,58 @@ struct QuickCardView: View {
 
         case .recognition:
 
-            VStack(
-                spacing: 18
-            ) {
+            if recognitionReadingOnlyEnabled {
 
-                targetContent(
-                    mode:
-                        afterAnswerDisplayMode,
-                    primary:
-                        true
-                )
+                VStack(
+                    spacing: 18
+                ) {
 
-                Divider()
+                    Text(
+                        card.targetText
+                    )
+                    .font(
+                        .title2
+                    )
+                    .foregroundStyle(
+                        .secondary
+                    )
+                    .multilineTextAlignment(
+                        .center
+                    )
 
-                Text(
-                    card.sourceText
-                )
-                .font(
-                    .title2
-                )
-                .multilineTextAlignment(
-                    .center
-                )
+                    Divider()
+
+                    primaryText(
+                        card.targetReading
+                        ?? card.targetText
+                    )
+                }
+
+            } else {
+
+                VStack(
+                    spacing: 18
+                ) {
+
+                    targetContent(
+                        mode:
+                            afterAnswerDisplayMode,
+                        primary:
+                            true
+                    )
+
+                    Divider()
+
+                    Text(
+                        card.sourceText
+                    )
+                    .font(
+                        .title2
+                    )
+                    .multilineTextAlignment(
+                        .center
+                    )
+                }
             }
 
         case .recall:
@@ -323,6 +320,8 @@ struct QuickCardView: View {
         }
     }
 
+    // MARK: Writing Answer
+
     @ViewBuilder
     private var writingAnswerContent:
         some View {
@@ -331,34 +330,76 @@ struct QuickCardView: View {
 
         case .recognition:
 
-            VStack(
-                spacing: 14
-            ) {
+            if recognitionReadingOnlyEnabled {
 
-                targetContent(
-                    mode:
-                        afterAnswerDisplayMode,
-                    primary:
-                        false
-                )
+                VStack(
+                    spacing: 14
+                ) {
 
-                Divider()
+                    Text(
+                        card.targetText
+                    )
+                    .font(
+                        .title3
+                    )
+                    .foregroundStyle(
+                        .secondary
+                    )
+                    .multilineTextAlignment(
+                        .center
+                    )
 
-                answerSection(
-                    title:
-                        "Correct answer",
-                    text:
-                        card.sourceText
-                )
+                    Divider()
 
-                Divider()
+                    answerSection(
+                        title:
+                            "Correct answer",
+                        text:
+                            card.targetReading
+                            ?? card.targetText
+                    )
 
-                answerSection(
-                    title:
-                        "Your answer",
-                    text:
-                        submittedAnswer
-                )
+                    Divider()
+
+                    answerSection(
+                        title:
+                            "Your answer",
+                        text:
+                            submittedAnswer
+                    )
+                }
+
+            } else {
+
+                VStack(
+                    spacing: 14
+                ) {
+
+                    targetContent(
+                        mode:
+                            afterAnswerDisplayMode,
+                        primary:
+                            false
+                    )
+
+                    Divider()
+
+                    answerSection(
+                        title:
+                            "Correct answer",
+                        text:
+                            card.sourceText
+                    )
+
+                    Divider()
+
+                    answerSection(
+                        title:
+                            "Your answer",
+                        text:
+                            submittedAnswer
+                    )
+                }
             }
 
         case .recall:
@@ -597,12 +638,20 @@ struct QuickCardView: View {
 
         guard writingEnabled
         else {
-            return "Tap card to reveal"
+
+            return
+                "Tap card to reveal"
         }
 
         switch card.type {
 
         case .recognition:
+
+            if recognitionReadingOnlyEnabled {
+
+                return
+                    "Write the reading below"
+            }
 
             return
                 "Write the source meaning below"
@@ -632,6 +681,15 @@ struct QuickCardView: View {
         guard card.targetReading
             != nil
         else {
+            return false
+        }
+
+        // A reading hint would literally reveal
+        // the answer in this mode.
+
+        if card.type == .recognition,
+           recognitionReadingOnlyEnabled {
+
             return false
         }
 
