@@ -65,6 +65,22 @@ struct HomeView: View {
 
             NavigationLink {
 
+                QuickConfigView()
+
+            } label: {
+
+                menuRow(
+                    title:
+                        "Quick Review",
+                    subtitle:
+                        "Practise vocabulary without changing scheduling.",
+                    systemImage:
+                        "bolt"
+                )
+            }
+
+            NavigationLink {
+
                 SentenceConfigView()
 
             } label: {
@@ -235,7 +251,8 @@ struct HomeView: View {
         additionalDue =
             0
 
-        guard progress.remaining == 0
+        guard progress.remaining
+            == 0
         else {
             return
         }

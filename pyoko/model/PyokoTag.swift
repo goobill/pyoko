@@ -17,6 +17,9 @@ final class PyokoTag {
     var sentenceConfigs:
         [PyokoSentenceConfig]? = []
 
+    var quickConfigs:
+        [PyokoQuickConfig]? = []
+
     // MARK: - Initializer
 
     init(

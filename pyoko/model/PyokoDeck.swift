@@ -41,6 +41,9 @@ final class PyokoDeck {
     var sentenceConfigs:
         [PyokoSentenceConfig]? = []
 
+    var quickConfigs:
+        [PyokoQuickConfig]? = []
+
     // MARK: - Initializer
 
     init(
@@ -103,14 +106,17 @@ final class PyokoDeck {
 
     var originDetail: String? {
 
-        guard let originName else {
+        guard let originName
+        else {
             return nil
         }
 
         let trimmed =
-            originName.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
+            originName
+                .trimmingCharacters(
+                    in:
+                        .whitespacesAndNewlines
+                )
 
         return trimmed.isEmpty
             ? nil

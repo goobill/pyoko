@@ -7,10 +7,8 @@ struct pyokoApp: App {
     @AppStorage(
         "appearancePreference"
     )
-    private var appearanceRawValue =
-        AppearancePreference
-            .system
-            .rawValue
+    private var appearancePreference =
+        "system"
 
     private let modelContainer:
         ModelContainer
@@ -20,16 +18,17 @@ struct pyokoApp: App {
         let schema =
             Schema(
                 [
-                    PyokoCard.self,
-                    PyokoConfig.self,
                     PyokoDeck.self,
-                    PyokoReviewCard.self,
                     PyokoTag.self,
-                    PyokoSentenceConfig.self
+                    PyokoCard.self,
+                    PyokoReviewCard.self,
+                    PyokoConfig.self,
+                    PyokoSentenceConfig.self,
+                    PyokoQuickConfig.self
                 ]
             )
 
-        let modelConfig =
+        let configuration =
             ModelConfiguration(
                 "Pyoko",
                 schema:
@@ -46,19 +45,16 @@ struct pyokoApp: App {
                 try ModelContainer(
                     for:
                         schema,
-                    configurations:
-                        [
-                            modelConfig
-                        ]
+                    configurations: [
+                        configuration
+                    ]
                 )
 
         } catch {
 
             fatalError(
                 """
-                Failed to create Pyoko ModelContainer:
-
-                \(error)
+                Failed to create Pyoko model container: \(error)
                 """
             )
         }
@@ -81,24 +77,16 @@ struct pyokoApp: App {
     private var preferredColorScheme:
         ColorScheme? {
 
-        let preference =
-            AppearancePreference(
-                rawValue:
-                    appearanceRawValue
-            )
-            ?? AppearancePreference
-                .system
+        switch appearancePreference {
 
-        switch preference {
-
-        case .system:
-            return nil
-
-        case .light:
+        case "light":
             return .light
 
-        case .dark:
+        case "dark":
             return .dark
+
+        default:
+            return nil
         }
     }
 }
