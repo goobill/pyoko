@@ -5,20 +5,20 @@ import FSRS
 // MARK: - Errors
 
 enum CardManagerError: LocalizedError {
-    
+
     case cardNotFound
     case reviewCardNotFound
-    
+
     var errorDescription: String? {
-        
+
         switch self {
-            
+
         case .cardNotFound:
-            
+
             return "The card could not be found."
-            
+
         case .reviewCardNotFound:
-            
+
             return "The review card could not be found."
         }
     }
@@ -27,22 +27,56 @@ enum CardManagerError: LocalizedError {
 // MARK: - Review Progress
 
 struct ReviewProgress {
-    
+
     let completed: Int
-    
     let total: Int
-    
+
     var remaining: Int {
+
         max(
             total - completed,
             0
         )
     }
-    
-    var isComplete: Bool {
-        
-        total > 0 &&
-        completed >= total
+}
+
+// MARK: - Rating Previews
+
+struct RatingPreviews {
+
+    let generatedAt: Date
+
+    let againDue: Date
+    let hardDue: Date
+    let goodDue: Date
+    let easyDue: Date
+
+    func dueDate(
+        for rating: Rating
+    ) -> Date {
+
+        switch rating {
+
+        case .again:
+
+            return againDue
+
+        case .hard:
+
+            return hardDue
+
+        case .good:
+
+            return goodDue
+
+        case .easy:
+
+            return easyDue
+
+        default:
+
+            return goodDue
+        }
     }
 }
 
@@ -50,347 +84,406 @@ struct ReviewProgress {
 
 @MainActor
 final class CardManager {
-    
+
     private let modelContext:
         ModelContext
-    
+
     private let scheduler:
         FSRS
-    
+
     init(
         modelContext: ModelContext
     ) {
-        
+
         self.modelContext =
             modelContext
-        
+
         self.scheduler =
             FSRS(
                 parameters: .init()
             )
     }
-    
+
     // MARK: - Start Review
-    
+
     func startReviewIfNeeded() {
-        
+
         do {
-            
+
             let reviewCards =
                 try fetchReviewCards()
-            
+
             // No existing session.
-            
             if reviewCards.isEmpty {
-                
+
                 try generateReviewCards()
-                
+
                 return
             }
-            
-            // A new day always gets
-            // a new review queue.
-            
+
+            // New day gets a new queue.
             if isNewDay(
                 reviewCards
             ) {
-                
+
                 try generateReviewCards()
-                
+
                 return
             }
-            
+
             // Otherwise today's existing
-            // queue remains unchanged.
-            //
-            // This means changing configuration
-            // does not alter a review session
-            // that has already started today.
-            
+            // session remains unchanged.
+
         } catch {
-            
+
             print(
                 "Failed to start review: \(error)"
             )
         }
     }
-    
+
     // MARK: - Next Card
-    
+
     func getNextCard()
         -> PyokoCard? {
-        
+
         do {
-            
+
             let descriptor =
-                FetchDescriptor<PyokoReviewCard>(
+                FetchDescriptor<
+                    PyokoReviewCard
+                >(
                     predicate:
-                        #Predicate<PyokoReviewCard> {
+                        #Predicate<
+                            PyokoReviewCard
+                        > {
                             reviewCard in
-                            
+
                             !reviewCard.reviewed
                         },
                     sortBy: [
                         SortDescriptor(
-                            \PyokoReviewCard.reviewDate,
-                            order: .forward
+                            \PyokoReviewCard
+                                .reviewDate,
+                            order:
+                                .forward
                         )
                     ]
                 )
-            
+
             let reviewCards =
                 try modelContext.fetch(
                     descriptor
                 )
-            
-            // card is optional for future
-            // CloudKit compatibility.
-            
+
             return reviewCards
                 .compactMap {
                     $0.card
                 }
                 .first
-            
+
         } catch {
-            
+
             print(
                 "Failed to get next card: \(error)"
             )
-            
+
             return nil
         }
     }
-    
+
     // MARK: - Progress
-    
+
     func getProgress()
         -> ReviewProgress {
-        
+
         do {
-            
+
             let reviewCards =
                 try fetchReviewCards()
-            
+
             let validReviewCards =
                 reviewCards.filter {
                     $0.card != nil
                 }
-            
+
             let completed =
-                validReviewCards
-                    .filter {
-                        $0.reviewed
-                    }
-                    .count
-            
+                validReviewCards.filter {
+                    $0.reviewed
+                }
+                .count
+
             return ReviewProgress(
                 completed:
                     completed,
                 total:
                     validReviewCards.count
             )
-            
+
         } catch {
-            
+
             print(
                 "Failed to get review progress: \(error)"
             )
-            
+
             return ReviewProgress(
                 completed: 0,
                 total: 0
             )
         }
     }
-    
+
+    // MARK: - Rating Previews
+
+    func getRatingPreviews(
+        for card: PyokoCard
+    ) throws -> RatingPreviews {
+
+        let now =
+            Date.now
+
+        let fsrsCard =
+            makeFSRSCard(
+                from: card
+            )
+
+        let again =
+            try scheduler.next(
+                card: fsrsCard,
+                now: now,
+                grade: Rating.again
+            )
+
+        let hard =
+            try scheduler.next(
+                card: fsrsCard,
+                now: now,
+                grade: Rating.hard
+            )
+
+        let good =
+            try scheduler.next(
+                card: fsrsCard,
+                now: now,
+                grade: Rating.good
+            )
+
+        let easy =
+            try scheduler.next(
+                card: fsrsCard,
+                now: now,
+                grade: Rating.easy
+            )
+
+        return RatingPreviews(
+            generatedAt:
+                now,
+            againDue:
+                again.card.due,
+            hardDue:
+                hard.card.due,
+            goodDue:
+                good.card.due,
+            easyDue:
+                easy.card.due
+        )
+    }
+
     // MARK: - Review Card
-    
+
     func reviewCard(
         id: UUID,
         rating: Rating
     ) throws {
-        
+
         guard
             let card =
                 getCard(
                     id: id
                 )
         else {
+
             throw CardManagerError
                 .cardNotFound
         }
-        
+
         guard
             let reviewCard =
                 try getReviewCard(
                     cardID: id
                 )
         else {
+
             throw CardManagerError
                 .reviewCardNotFound
         }
-        
+
         let fsrsCard =
             makeFSRSCard(
                 from: card
             )
-        
+
         let result =
             try scheduler.next(
-                card: fsrsCard,
-                now: .now,
-                grade: rating
+                card:
+                    fsrsCard,
+                now:
+                    Date.now,
+                grade:
+                    rating
             )
-        
+
         update(
             card: card,
             with: result.card
         )
-        
+
         reviewCard.reviewed =
             true
-        
+
         try modelContext.save()
     }
-    
+
     // MARK: - Reset
-    
+
     func resetReviewCards() {
-        
+
         do {
-            
+
             let reviewCards =
                 try fetchReviewCards()
-            
+
             for reviewCard
                 in reviewCards {
-                
+
                 modelContext.delete(
                     reviewCard
                 )
             }
-            
+
             try modelContext.save()
-            
+
         } catch {
-            
+
             print(
                 "Failed to reset review cards: \(error)"
             )
         }
     }
-    
+
     // MARK: - Card
-    
+
     func getCard(
         id: UUID
     ) -> PyokoCard? {
-        
-        let cardID = id
-        
+
+        let cardID =
+            id
+
         let descriptor =
-            FetchDescriptor<PyokoCard>(
+            FetchDescriptor<
+                PyokoCard
+            >(
                 predicate:
-                    #Predicate<PyokoCard> {
+                    #Predicate<
+                        PyokoCard
+                    > {
                         card in
-                        
-                        card.id == cardID
+
+                        card.id ==
+                            cardID
                     }
             )
-        
+
         do {
-            
+
             return try modelContext
                 .fetch(
                     descriptor
                 )
                 .first
-            
+
         } catch {
-            
+
             print(
                 "Failed to fetch card: \(error)"
             )
-            
+
             return nil
         }
     }
-    
-    // MARK: - Review Cards
-    
+
+    // MARK: - Review Records
+
     private func fetchReviewCards()
-        throws -> [PyokoReviewCard] {
-        
+        throws
+        -> [PyokoReviewCard] {
+
         let descriptor =
-            FetchDescriptor<PyokoReviewCard>(
+            FetchDescriptor<
+                PyokoReviewCard
+            >(
                 sortBy: [
                     SortDescriptor(
-                        \PyokoReviewCard.reviewDate,
-                        order: .forward
+                        \PyokoReviewCard
+                            .reviewDate,
+                        order:
+                            .forward
                     )
                 ]
             )
-        
+
         return try modelContext.fetch(
             descriptor
         )
     }
-    
+
     private func getReviewCard(
         cardID: UUID
     ) throws -> PyokoReviewCard? {
-        
+
         let reviewCards =
             try fetchReviewCards()
-        
+
         return reviewCards.first {
-            
+
             $0.card?.id ==
-                cardID
-            &&
+                cardID &&
             !$0.reviewed
         }
     }
-    
+
     // MARK: - Generate Session
-    
+
     private func generateReviewCards()
         throws {
-        
-        // Remove the previous session.
-        
+
         let existingReviewCards =
             try fetchReviewCards()
-        
+
         for reviewCard
             in existingReviewCards {
-            
+
             modelContext.delete(
                 reviewCard
             )
         }
-        
-        // CardRetrieval is now responsible
-        // for deciding which cards should
-        // appear in the session.
-        
+
         let retrieval =
             CardRetrieval(
                 modelContext:
                     modelContext
             )
-        
-        let selectedCards =
+
+        let cards =
             try retrieval
                 .getCardsForReview()
-        
+
         let reviewDate =
             Date.now
-        
-        for card
-            in selectedCards {
-            
+
+        for card in cards {
+
             let reviewCard =
                 PyokoReviewCard(
                     reviewDate:
@@ -400,31 +493,32 @@ final class CardManager {
                     card:
                         card
                 )
-            
+
             modelContext.insert(
                 reviewCard
             )
         }
-        
+
         try modelContext.save()
     }
-    
+
     // MARK: - Date
-    
+
     private func isNewDay(
         _ reviewCards:
             [PyokoReviewCard]
     ) -> Bool {
-        
+
         guard
             let reviewDate =
                 reviewCards
                     .first?
                     .reviewDate
         else {
+
             return true
         }
-        
+
         return !Calendar.current
             .isDate(
                 reviewDate,
@@ -432,13 +526,13 @@ final class CardManager {
                     Date.now
             )
     }
-    
-    // MARK: - SwiftData -> FSRS
-    
+
+    // MARK: - FSRS
+
     private func makeFSRSCard(
         from card: PyokoCard
     ) -> Card {
-        
+
         Card(
             due:
                 card.due,
@@ -462,41 +556,39 @@ final class CardManager {
                 card.lastReview
         )
     }
-    
-    // MARK: - FSRS -> SwiftData
-    
+
     private func update(
         card: PyokoCard,
         with fsrsCard: Card
     ) {
-        
+
         card.due =
             fsrsCard.due
-        
+
         card.stability =
             fsrsCard.stability
-        
+
         card.difficulty =
             fsrsCard.difficulty
-        
+
         card.elapsedDays =
             fsrsCard.elapsedDays
-        
+
         card.scheduledDays =
             fsrsCard.scheduledDays
-        
+
         card.learningSteps =
             fsrsCard.learningSteps
-        
+
         card.reps =
             fsrsCard.reps
-        
+
         card.lapses =
             fsrsCard.lapses
-        
+
         card.state =
             fsrsCard.state
-        
+
         card.lastReview =
             fsrsCard.lastReview
     }

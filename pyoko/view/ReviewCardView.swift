@@ -1,386 +1,289 @@
-//
-//  ReviewCardView.swift
-//  pyoko
-//
-//  Created by Bill on 06/09/2026.
-//
-
 import SwiftUI
 
 struct ReviewCardView: View {
-    
-    let card:
-        PyokoCard
-    
-    let isAnswerVisible:
-        Bool
-    
+
+    let card: PyokoCard
+
+    @Binding
+    var answerRevealed: Bool
+
     let beforeAnswerDisplayMode:
         TargetDisplayMode
-    
+
     let afterAnswerDisplayMode:
         TargetDisplayMode
-    
+
     let readingHintEnabled:
         Bool
-    
-    let isReadingHintVisible:
-        Bool
-    
-    let onReveal:
-        () -> Void
-    
-    let onShowReadingHint:
-        () -> Void
-    
+
+    @State
+    private var readingHintRevealed =
+        false
+
     var body: some View {
-        
-        VStack(
-            spacing: 14
-        ) {
-            
-            cardSurface
-            
-            if shouldShowHintButton {
-                
-                Button {
-                    onShowReadingHint()
-                } label: {
-                    
-                    Label(
-                        "Show Reading",
-                        systemImage:
-                            "lightbulb"
-                    )
-                }
-                .buttonStyle(
-                    .bordered
+
+        ZStack {
+
+            cardBackground
+
+            cardContent
+                .allowsHitTesting(
+                    false
                 )
+
+            if shouldShowReadingHint {
+
+                VStack {
+
+                    HStack {
+
+                        Spacer()
+
+                        hintButton
+                    }
+
+                    Spacer()
+                }
+                .padding(
+                    24
+                )
+            }
+        }
+        .frame(
+            maxWidth: .infinity
+        )
+        .frame(
+            minHeight: 360
+        )
+        .onChange(
+            of: card.id
+        ) {
+
+            resetHint()
+        }
+        .onChange(
+            of: answerRevealed
+        ) {
+
+            if answerRevealed {
+                resetHint()
             }
         }
     }
-    
-    // MARK: - Surface
-    
-    private var cardSurface:
+
+    // MARK: - Background
+
+    private var cardBackground:
         some View {
-        
-        VStack(
-            spacing: 24
-        ) {
-            
-            cardTypeHeader
-            
-            Spacer(
-                minLength: 10
-            )
-            
-            cardContent
-            
-            Spacer(
-                minLength: 10
-            )
-            
-            if !isAnswerVisible {
-                
-                Label(
-                    "Tap anywhere to reveal",
-                    systemImage:
-                        "hand.tap"
-                )
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
-            }
-        }
-        .padding(28)
-        .frame(
-            maxWidth: .infinity,
-            minHeight: 330
+
+        RoundedRectangle(
+            cornerRadius: 24,
+            style: .continuous
         )
-        .contentShape(
-            Rectangle()
-        )
-        .background(
-            .regularMaterial,
-            in:
-                RoundedRectangle(
-                    cornerRadius: 24,
-                    style:
-                        .continuous
-                )
+        .fill(
+            .regularMaterial
         )
         .overlay {
-            
+
             RoundedRectangle(
                 cornerRadius: 24,
-                style:
-                    .continuous
+                style: .continuous
             )
             .stroke(
-                Color.primary
-                    .opacity(0.08),
+                .quaternary,
                 lineWidth: 1
             )
         }
+        .contentShape(
+            RoundedRectangle(
+                cornerRadius: 24,
+                style: .continuous
+            )
+        )
         .onTapGesture {
-            
-            guard
-                !isAnswerVisible
-            else {
-                return
-            }
-            
-            onReveal()
+
+            revealAnswer()
         }
     }
-    
-    // MARK: - Header
-    
-    private var cardTypeHeader:
-        some View {
-        
-        HStack {
-            
-            Label(
-                card.type ==
-                    .recognition
-                    ? "Recognition"
-                    : "Recall",
-                systemImage:
-                    card.type ==
-                    .recognition
-                    ? "eye"
-                    : "arrow.uturn.forward"
-            )
-            .font(.caption)
-            .foregroundStyle(
-                .secondary
-            )
-            
-            Spacer()
-        }
-    }
-    
+
     // MARK: - Content
-    
-    @ViewBuilder
+
     private var cardContent:
         some View {
-        
-        switch card.type {
-            
-        case .recognition:
-            
-            recognitionContent
-            
-        case .recall:
-            
-            recallContent
-        }
-    }
-    
-    // MARK: - Recognition
-    
-    @ViewBuilder
-    private var recognitionContent:
-        some View {
-        
-        if isAnswerVisible {
-            
-            targetContent(
-                mode:
-                    afterAnswerDisplayMode
-            )
-            
-            Divider()
-            
-            Text(
-                card.sourceText
-            )
-            .font(
-                .title2
-                    .weight(
-                        .semibold
-                    )
-            )
-            .multilineTextAlignment(
-                .center
-            )
-            
-        } else {
-            
-            targetContent(
-                mode:
-                    beforeAnswerDisplayMode
-            )
-            
-            visibleReadingHint
-        }
-    }
-    
-    // MARK: - Recall
-    
-    @ViewBuilder
-    private var recallContent:
-        some View {
-        
-        if isAnswerVisible {
-            
-            Text(
-                card.sourceText
-            )
-            .font(.title3)
-            .foregroundStyle(
-                .secondary
-            )
-            .multilineTextAlignment(
-                .center
-            )
-            
-            Divider()
-            
-            targetContent(
-                mode:
-                    afterAnswerDisplayMode
-            )
-            
-        } else {
-            
-            Text(
-                card.sourceText
-            )
-            .font(
-                .largeTitle
-                    .weight(
-                        .semibold
-                    )
-            )
-            .multilineTextAlignment(
-                .center
-            )
-            
-            visibleReadingHint
-        }
-    }
-    
-    // MARK: - Target
-    
-    @ViewBuilder
-    private func targetContent(
-        mode:
-            TargetDisplayMode
-    ) -> some View {
-        
-        switch mode {
-            
-        case .target:
-            
-            targetText
-            
-        case .reading:
-            
-            Text(
-                usableReading ??
-                card.targetText
-            )
-            .font(
-                .largeTitle
-                    .weight(
-                        .semibold
-                    )
-            )
-            .multilineTextAlignment(
-                .center
-            )
-            
-        case .targetAndReading:
-            
-            targetText
-            
-            if let reading =
-                usableReading {
-                
-                Text(reading)
-                    .font(.title3)
-                    .foregroundStyle(
-                        .secondary
-                    )
-                    .multilineTextAlignment(
-                        .center
-                    )
+
+        VStack(
+            spacing: 22
+        ) {
+
+            HStack {
+
+                cardTypeLabel
+
+                Spacer()
+
+                // Space is left here for
+                // the Hint button overlay.
             }
-        }
-    }
-    
-    private var targetText:
-        some View {
-        
-        Text(
-            card.targetText
-        )
-        .font(
-            .largeTitle
-                .weight(
-                    .semibold
+
+            Spacer(
+                minLength: 20
+            )
+
+            frontContent
+
+            if readingHintRevealed,
+               let readingText {
+
+                Text(
+                    readingText
                 )
-        )
-        .multilineTextAlignment(
-            .center
-        )
-    }
-    
-    // MARK: - Reading Hint
-    
-    @ViewBuilder
-    private var visibleReadingHint:
-        some View {
-        
-        if isReadingHintVisible,
-           let reading =
-            usableReading {
-            
-            Text(reading)
-                .font(.title3)
+                .font(
+                    .title3
+                )
                 .foregroundStyle(
                     .secondary
-                )
-                .multilineTextAlignment(
-                    .center
                 )
                 .transition(
                     .opacity
                 )
+            }
+
+            if answerRevealed {
+
+                Divider()
+                    .padding(
+                        .vertical,
+                        4
+                    )
+
+                answerContent
+
+            } else {
+
+                Spacer(
+                    minLength: 8
+                )
+
+                Text(
+                    "Tap card to reveal"
+                )
+                .font(
+                    .caption
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+            }
+
+            Spacer(
+                minLength: 20
+            )
         }
+        .padding(
+            24
+        )
     }
-    
-    private var shouldShowHintButton:
+
+    // MARK: - Card Type
+
+    private var cardTypeLabel:
+        some View {
+
+        Group {
+
+            switch card.type {
+
+            case .recognition:
+
+                Label(
+                    "Recognition",
+                    systemImage:
+                        "eye"
+                )
+
+            case .recall:
+
+                Label(
+                    "Recall",
+                    systemImage:
+                        "arrow.turn.down.right"
+                )
+            }
+        }
+        .font(
+            .subheadline
+        )
+        .foregroundStyle(
+            .secondary
+        )
+    }
+
+    // MARK: - Hint
+
+    private var hintButton:
+        some View {
+
+        Button {
+
+            withAnimation(
+                .easeInOut(
+                    duration: 0.15
+                )
+            ) {
+
+                readingHintRevealed
+                    .toggle()
+            }
+
+        } label: {
+
+            Label(
+                "Hint",
+                systemImage:
+                    readingHintRevealed
+                    ? "lightbulb.fill"
+                    : "lightbulb"
+            )
+            .font(
+                .subheadline
+            )
+        }
+        .buttonStyle(
+            .plain
+        )
+        .foregroundStyle(
+            .secondary
+        )
+        .help(
+            "Show Reading"
+        )
+    }
+
+    private var shouldShowReadingHint:
         Bool {
-        
+
         guard
             readingHintEnabled,
-            !isAnswerVisible,
-            !isReadingHintVisible,
-            usableReading != nil
+            !answerRevealed,
+            readingText != nil
         else {
             return false
         }
-        
+
         if card.type ==
-            .recognition,
+            CardType.recognition,
            beforeAnswerDisplayMode
             .includesReading {
-            
+
             return false
         }
-        
+
         return true
     }
-    
-    private var usableReading:
+
+    private var readingText:
         String? {
-        
+
         guard
             let reading =
                 card.targetReading?
@@ -390,9 +293,193 @@ struct ReviewCardView: View {
                     ),
             !reading.isEmpty
         else {
+
             return nil
         }
-        
+
         return reading
+    }
+
+    // MARK: - Front
+
+    @ViewBuilder
+    private var frontContent:
+        some View {
+
+        switch card.type {
+
+        case .recognition:
+
+            targetDisplay(
+                mode:
+                    beforeAnswerDisplayMode
+            )
+
+        case .recall:
+
+            Text(
+                card.sourceText
+            )
+            .font(
+                .system(
+                    size: 30,
+                    weight: .medium
+                )
+            )
+            .multilineTextAlignment(
+                .center
+            )
+            .frame(
+                maxWidth: .infinity
+            )
+        }
+    }
+
+    // MARK: - Answer
+
+    @ViewBuilder
+    private var answerContent:
+        some View {
+
+        switch card.type {
+
+        case .recognition:
+
+            VStack(
+                spacing: 14
+            ) {
+
+                targetDisplay(
+                    mode:
+                        afterAnswerDisplayMode
+                )
+
+                Text(
+                    card.sourceText
+                )
+                .font(
+                    .title3
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+                .multilineTextAlignment(
+                    .center
+                )
+            }
+
+        case .recall:
+
+            targetDisplay(
+                mode:
+                    afterAnswerDisplayMode
+            )
+        }
+    }
+
+    // MARK: - Target
+
+    @ViewBuilder
+    private func targetDisplay(
+        mode: TargetDisplayMode
+    ) -> some View {
+
+        switch mode {
+
+        case .target:
+
+            targetTextView(
+                card.targetText
+            )
+
+        case .reading:
+
+            targetTextView(
+                displayReading
+            )
+
+        case .targetAndReading:
+
+            VStack(
+                spacing: 7
+            ) {
+
+                targetTextView(
+                    card.targetText
+                )
+
+                if displayReading !=
+                    card.targetText {
+
+                    Text(
+                        displayReading
+                    )
+                    .font(
+                        .title3
+                    )
+                    .foregroundStyle(
+                        .secondary
+                    )
+                    .multilineTextAlignment(
+                        .center
+                    )
+                }
+            }
+        }
+    }
+
+    private func targetTextView(
+        _ text: String
+    ) -> some View {
+
+        Text(
+            text
+        )
+        .font(
+            .system(
+                size: 36,
+                weight: .semibold
+            )
+        )
+        .multilineTextAlignment(
+            .center
+        )
+        .frame(
+            maxWidth: .infinity
+        )
+    }
+
+    private var displayReading:
+        String {
+
+        readingText ??
+            card.targetText
+    }
+
+    // MARK: - Actions
+
+    private func revealAnswer() {
+
+        guard
+            !answerRevealed
+        else {
+            return
+        }
+
+        withAnimation(
+            .easeInOut(
+                duration: 0.18
+            )
+        ) {
+
+            answerRevealed =
+                true
+        }
+    }
+
+    private func resetHint() {
+
+        readingHintRevealed =
+            false
     }
 }

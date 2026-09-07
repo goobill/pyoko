@@ -3,202 +3,228 @@ import SwiftData
 import FSRS
 
 struct ReviewView: View {
-    
-    @Environment(\.modelContext)
+
+    @Environment(
+        \.modelContext
+    )
     private var modelContext
-    
-    @Environment(\.dismiss)
+
+    @Environment(
+        \.dismiss
+    )
     private var dismiss
-    
+
     @Query
     private var configurations:
         [PyokoConfiguration]
-    
+
     @State
     private var currentCard:
         PyokoCard?
-    
-    @State
-    private var showingAnswer =
-        false
-    
-    @State
-    private var isReadingHintVisible =
-        false
-    
+
     @State
     private var progress =
         ReviewProgress(
             completed: 0,
             total: 0
         )
-    
+
+    @State
+    private var answerRevealed =
+        false
+
+    @State
+    private var ratingPreviews:
+        RatingPreviews?
+
     @State
     private var showingError =
         false
-    
+
     @State
     private var errorMessage =
         ""
-    
-    // MARK: - Body
-    
+
     var body: some View {
-        
-        ScrollView {
-            
-            VStack(
-                spacing: 24
-            ) {
-                
-                progressHeader
-                
-                if let currentCard {
-                    
-                    ReviewCardView(
-                        card:
-                            currentCard,
-                        isAnswerVisible:
-                            showingAnswer,
-                        beforeAnswerDisplayMode:
-                            beforeAnswerDisplayMode,
-                        afterAnswerDisplayMode:
-                            afterAnswerDisplayMode,
-                        readingHintEnabled:
-                            readingHintEnabled,
-                        isReadingHintVisible:
-                            isReadingHintVisible,
-                        onReveal: {
-                            
-                            withAnimation(
-                                .easeInOut(
-                                    duration: 0.2
-                                )
-                            ) {
-                                
-                                showingAnswer =
-                                    true
-                            }
-                        },
-                        onShowReadingHint: {
-                            
-                            withAnimation(
-                                .easeInOut(
-                                    duration: 0.2
-                                )
-                            ) {
-                                
-                                isReadingHintVisible =
-                                    true
-                            }
-                        }
+
+        VStack(
+            alignment: .leading,
+            spacing: 0
+        ) {
+
+            header
+
+            if progress.total > 0 {
+
+                progressSection
+                    .padding(
+                        .top,
+                        28
                     )
-                    
-                    if showingAnswer {
-                        
-                        ratingButtons
-                    }
-                    
-                } else {
-                    
-                    finishedContent
-                }
             }
-            .padding()
-            .frame(
-                maxWidth: 700
-            )
-            .frame(
-                maxWidth:
-                    .infinity
+
+            reviewContent
+                .padding(
+                    .top,
+                    28
+                )
+
+            Spacer(
+                minLength: 0
             )
         }
-        .navigationTitle(
-            "Review"
+        .frame(
+            maxWidth: 760
         )
+        .frame(
+            maxWidth: .infinity,
+            alignment: .top
+        )
+        .padding(
+            .horizontal,
+            24
+        )
+        .padding(
+            .top,
+            8
+        )
+        .safeAreaInset(
+            edge: .bottom,
+            spacing: 0
+        ) {
+
+            bottomReviewControls
+        }
         .onAppear {
-            loadReview()
+
+            loadReviewState()
+        }
+        .onChange(
+            of: answerRevealed
+        ) {
+
+            if answerRevealed {
+
+                loadRatingPreviews()
+
+            } else {
+
+                ratingPreviews =
+                    nil
+            }
         }
         .alert(
             "Review Error",
             isPresented:
                 $showingError
         ) {
-            
-            Button("OK") {}
-            
+
+            Button(
+                "OK"
+            ) {}
+
         } message: {
-            
+
             Text(
                 errorMessage
             )
         }
+        .pyokoReviewNavigationStyle()
     }
-    
-    // MARK: - Configuration
-    
-    private var configuration:
-        PyokoConfiguration? {
-        
-        configurations.first
-    }
-    
-    private var beforeAnswerDisplayMode:
-        TargetDisplayMode {
-        
-        configuration?
-            .beforeAnswerDisplayMode
-        ??
-        TargetDisplayMode.target
-    }
-    
-    private var afterAnswerDisplayMode:
-        TargetDisplayMode {
-        
-        configuration?
-            .afterAnswerDisplayMode
-        ??
-        TargetDisplayMode
-            .targetAndReading
-    }
-    
-    private var readingHintEnabled:
-        Bool {
-        
-        configuration?
-            .readingHintEnabled
-        ??
-        true
-    }
-    
-    // MARK: - Progress
-    
-    private var progressHeader:
+
+    // MARK: - Header
+
+    private var header:
         some View {
-        
+
         VStack(
-            spacing: 8
+            alignment: .leading,
+            spacing: 24
         ) {
-            
+
+            Button {
+
+                dismiss()
+
+            } label: {
+
+                Image(
+                    systemName:
+                        "chevron.left"
+                )
+                .font(
+                    .title2
+                        .weight(
+                            .semibold
+                        )
+                )
+                .frame(
+                    width: 52,
+                    height: 52
+                )
+                .background(
+                    .regularMaterial,
+                    in:
+                        Circle()
+                )
+                .overlay {
+
+                    Circle()
+                        .stroke(
+                            .quaternary,
+                            lineWidth: 1
+                        )
+                }
+            }
+            .buttonStyle(
+                .plain
+            )
+            .accessibilityLabel(
+                "Go Back"
+            )
+
+            Text(
+                "Review"
+            )
+            .font(
+                .largeTitle
+                    .bold()
+            )
+        }
+    }
+
+    // MARK: - Progress
+
+    private var progressSection:
+        some View {
+
+        VStack(
+            spacing: 10
+        ) {
+
             HStack {
-                
+
                 Text(
                     "Progress"
                 )
                 .font(
                     .headline
                 )
-                
+
                 Spacer()
-                
+
                 Text(
                     "\(progress.completed) / \(progress.total)"
+                )
+                .font(
+                    .title3
                 )
                 .foregroundStyle(
                     .secondary
                 )
+                .monospacedDigit()
             }
-            
+
             ProgressView(
                 value:
                     Double(
@@ -214,235 +240,450 @@ struct ReviewView: View {
             )
         }
     }
-    
-    // MARK: - Rating Buttons
-    
-    private var ratingButtons:
+
+    // MARK: - Review Content
+
+    @ViewBuilder
+    private var reviewContent:
         some View {
-        
-        VStack(
-            spacing: 12
-        ) {
-            
-            Text(
-                "How well did you remember?"
+
+        if let currentCard {
+
+            ReviewCardView(
+                card:
+                    currentCard,
+                answerRevealed:
+                    $answerRevealed,
+                beforeAnswerDisplayMode:
+                    beforeAnswerDisplayMode,
+                afterAnswerDisplayMode:
+                    afterAnswerDisplayMode,
+                readingHintEnabled:
+                    readingHintEnabled
             )
-            .font(
-                .headline
-            )
-            
-            HStack(
-                spacing: 10
-            ) {
-                
-                ratingButton(
-                    title: "Again",
-                    rating:
-                        Rating.again
-                )
-                
-                ratingButton(
-                    title: "Hard",
-                    rating:
-                        Rating.hard
-                )
-                
-                ratingButton(
-                    title: "Good",
-                    rating:
-                        Rating.good
-                )
-                
-                ratingButton(
-                    title: "Easy",
-                    rating:
-                        Rating.easy
-                )
-            }
+
+        } else if
+            progress.total > 0,
+            progress.remaining == 0 {
+
+            reviewCompleteView
+
+        } else {
+
+            noCardsView
         }
     }
-    
+
+    // MARK: - Bottom Controls
+
+    @ViewBuilder
+    private var bottomReviewControls:
+        some View {
+
+        if currentCard != nil,
+           answerRevealed {
+
+            VStack(
+                spacing: 12
+            ) {
+
+                Divider()
+
+                Text(
+                    "How well did you remember?"
+                )
+                .font(
+                    .headline
+                )
+                .multilineTextAlignment(
+                    .center
+                )
+
+                HStack(
+                    spacing: 10
+                ) {
+
+                    ratingButton(
+                        title:
+                            "Again",
+                        rating:
+                            Rating.again
+                    )
+
+                    ratingButton(
+                        title:
+                            "Hard",
+                        rating:
+                            Rating.hard
+                    )
+
+                    ratingButton(
+                        title:
+                            "Good",
+                        rating:
+                            Rating.good
+                    )
+
+                    ratingButton(
+                        title:
+                            "Easy",
+                        rating:
+                            Rating.easy
+                    )
+                }
+            }
+            .padding(
+                .horizontal,
+                20
+            )
+            .padding(
+                .top,
+                8
+            )
+            .padding(
+                .bottom,
+                8
+            )
+            .background(
+                .regularMaterial
+            )
+        }
+    }
+
     private func ratingButton(
         title: String,
         rating: Rating
     ) -> some View {
-        
-        Button(title) {
-            
-            submit(
-                rating:
-                    rating
+
+        Button {
+
+            submitReview(
+                rating
+            )
+
+        } label: {
+
+            VStack(
+                spacing: 5
+            ) {
+
+                Text(
+                    intervalText(
+                        for: rating
+                    )
+                )
+                .font(
+                    .caption
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+                .monospacedDigit()
+
+                Text(
+                    title
+                )
+                .font(
+                    .headline
+                )
+            }
+            .frame(
+                maxWidth: .infinity
+            )
+            .frame(
+                minHeight: 64
             )
         }
         .buttonStyle(
             .bordered
         )
-        .frame(
-            maxWidth:
-                .infinity
+        .controlSize(
+            .large
         )
     }
-    
-    // MARK: - Finished
-    
-    @ViewBuilder
-    private var finishedContent:
+
+    // MARK: - Completion
+
+    private var reviewCompleteView:
         some View {
-        
+
         VStack(
-            spacing: 18
+            spacing: 20
         ) {
-            
-            Image(
-                systemName:
-                    progress.total == 0
-                    ? "moon.zzz"
-                    : "checkmark.circle"
-            )
-            .font(
-                .system(
-                    size: 52
+
+            ContentUnavailableView {
+
+                Label(
+                    "Review Complete",
+                    systemImage:
+                        "checkmark.circle"
                 )
-            )
-            .foregroundStyle(
-                .secondary
-            )
-            
-            if progress.total == 0 {
-                
+
+            } description: {
+
                 Text(
-                    "Nothing to review"
-                )
-                .font(
-                    .title2
-                )
-                .fontWeight(
-                    .semibold
-                )
-                
-                Text(
-                    "There are no cards due right now."
-                )
-                .foregroundStyle(
-                    .secondary
-                )
-                
-            } else {
-                
-                Text(
-                    "Review complete"
-                )
-                .font(
-                    .title2
-                )
-                .fontWeight(
-                    .semibold
-                )
-                
-                Text(
-                    "You completed \(progress.total) cards."
-                )
-                .foregroundStyle(
-                    .secondary
+                    "You've finished today's review."
                 )
             }
-            
+
             Button(
                 "Go Home"
             ) {
-                
+
                 dismiss()
             }
             .buttonStyle(
                 .borderedProminent
             )
         }
+        .frame(
+            maxWidth: .infinity
+        )
         .padding(
-            .vertical,
+            .top,
             40
         )
     }
-    
-    // MARK: - Load
-    
-    private func loadReview() {
-        
+
+    private var noCardsView:
+        some View {
+
+        VStack(
+            spacing: 20
+        ) {
+
+            ContentUnavailableView {
+
+                Label(
+                    "No Cards Due",
+                    systemImage:
+                        "checkmark.circle"
+                )
+
+            } description: {
+
+                Text(
+                    "There are no cards available for review right now."
+                )
+            }
+
+            Button(
+                "Go Home"
+            ) {
+
+                dismiss()
+            }
+            .buttonStyle(
+                .bordered
+            )
+        }
+        .frame(
+            maxWidth: .infinity
+        )
+        .padding(
+            .top,
+            40
+        )
+    }
+
+    // MARK: - Configuration
+
+    private var configuration:
+        PyokoConfiguration? {
+
+        configurations.first
+    }
+
+    private var beforeAnswerDisplayMode:
+        TargetDisplayMode {
+
+        configuration?
+            .beforeAnswerDisplayMode ??
+            TargetDisplayMode.target
+    }
+
+    private var afterAnswerDisplayMode:
+        TargetDisplayMode {
+
+        configuration?
+            .afterAnswerDisplayMode ??
+            TargetDisplayMode.reading
+    }
+
+    private var readingHintEnabled:
+        Bool {
+
+        configuration?
+            .readingHintEnabled ??
+            true
+    }
+
+    // MARK: - Preview
+
+    private func loadRatingPreviews() {
+
+        guard
+            let currentCard
+        else {
+
+            ratingPreviews =
+                nil
+
+            return
+        }
+
         let manager =
             CardManager(
                 modelContext:
                     modelContext
             )
-        
-        progress =
-            manager.getProgress()
-        
-        currentCard =
-            manager.getNextCard()
-        
-        showingAnswer =
-            false
-        
-        isReadingHintVisible =
-            false
+
+        do {
+
+            ratingPreviews =
+                try manager
+                    .getRatingPreviews(
+                        for:
+                            currentCard
+                    )
+
+        } catch {
+
+            showError(
+                error
+            )
+        }
     }
-    
-    // MARK: - Submit
-    
-    private func submit(
-        rating: Rating
+
+    private func intervalText(
+        for rating: Rating
+    ) -> String {
+
+        guard
+            let ratingPreviews
+        else {
+
+            return "—"
+        }
+
+        let dueDate =
+            ratingPreviews
+                .dueDate(
+                    for:
+                        rating
+                )
+
+        return ReviewIntervalFormatter
+            .string(
+                from:
+                    ratingPreviews
+                        .generatedAt,
+                to:
+                    dueDate
+            )
+    }
+
+    // MARK: - Review
+
+    private func submitReview(
+        _ rating: Rating
     ) {
-        
+
         guard
             let currentCard
         else {
             return
         }
-        
+
         let manager =
             CardManager(
                 modelContext:
                     modelContext
             )
-        
+
         do {
-            
+
             try manager.reviewCard(
                 id:
                     currentCard.id,
                 rating:
                     rating
             )
-            
-            showingAnswer =
+
+            answerRevealed =
                 false
-            
-            isReadingHintVisible =
-                false
-            
-            progress =
-                manager.getProgress()
-            
-            self.currentCard =
-                manager.getNextCard()
-            
+
+            ratingPreviews =
+                nil
+
+            loadReviewState()
+
         } catch {
-            
+
             showError(
                 error
             )
         }
     }
-    
+
+    // MARK: - State
+
+    private func loadReviewState() {
+
+        let manager =
+            CardManager(
+                modelContext:
+                    modelContext
+            )
+
+        progress =
+            manager.getProgress()
+
+        currentCard =
+            manager.getNextCard()
+
+        answerRevealed =
+            false
+
+        ratingPreviews =
+            nil
+    }
+
     // MARK: - Error
-    
+
     private func showError(
         _ error: Error
     ) {
-        
+
         errorMessage =
             error.localizedDescription
-        
+
         showingError =
             true
+    }
+}
+
+// MARK: - Cross-platform Navigation
+
+private extension View {
+
+    @ViewBuilder
+    func pyokoReviewNavigationStyle()
+        -> some View {
+
+        #if os(iOS)
+
+        self
+            .toolbar(
+                .hidden,
+                for:
+                    .navigationBar
+            )
+
+        #else
+
+        self
+
+        #endif
     }
 }

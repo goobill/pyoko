@@ -68,107 +68,39 @@ struct ExampleCardView: View {
                 reset()
             }
 
-            VStack(
-                spacing: 18
-            ) {
+            ZStack {
 
-                Spacer(
-                    minLength: 4
-                )
+                cardBackground
 
-                frontContent
-
-                if answerRevealed {
-
-                    Divider()
-
-                    answerContent
-
-                } else {
-
-                    Text(
-                        "Tap card to reveal"
+                cardContent
+                    .allowsHitTesting(
+                        false
                     )
-                    .font(
-                        .caption
-                    )
-                    .foregroundStyle(
-                        .secondary
+
+                if shouldShowReadingHint {
+
+                    VStack {
+
+                        HStack {
+
+                            Spacer()
+
+                            hintButton
+                        }
+
+                        Spacer()
+                    }
+                    .padding(
+                        22
                     )
                 }
-
-                Spacer(
-                    minLength: 4
-                )
             }
             .frame(
                 maxWidth: .infinity
             )
             .frame(
-                minHeight: 210
+                minHeight: 250
             )
-            .padding(
-                22
-            )
-            .background(
-                .regularMaterial,
-                in:
-                    RoundedRectangle(
-                        cornerRadius: 20,
-                        style: .continuous
-                    )
-            )
-            .overlay {
-
-                RoundedRectangle(
-                    cornerRadius: 20,
-                    style: .continuous
-                )
-                .stroke(
-                    .quaternary,
-                    lineWidth: 1
-                )
-            }
-            .contentShape(
-                RoundedRectangle(
-                    cornerRadius: 20,
-                    style: .continuous
-                )
-            )
-            .onTapGesture {
-
-                withAnimation(
-                    .easeInOut(
-                        duration: 0.18
-                    )
-                ) {
-
-                    answerRevealed =
-                        true
-                }
-            }
-
-            if shouldShowReadingHint {
-
-                Button {
-
-                    readingRevealed =
-                        true
-
-                } label: {
-
-                    Label(
-                        readingRevealed
-                            ? targetReading
-                            : "Show Reading",
-                        systemImage:
-                            "eye"
-                    )
-                }
-                .buttonStyle(
-                    .bordered
-                )
-            }
 
             if answerRevealed {
 
@@ -186,6 +118,164 @@ struct ExampleCardView: View {
                 )
             }
         }
+    }
+
+    // MARK: - Background
+
+    private var cardBackground:
+        some View {
+
+        RoundedRectangle(
+            cornerRadius: 20,
+            style: .continuous
+        )
+        .fill(
+            .regularMaterial
+        )
+        .overlay {
+
+            RoundedRectangle(
+                cornerRadius: 20,
+                style: .continuous
+            )
+            .stroke(
+                .quaternary,
+                lineWidth: 1
+            )
+        }
+        .contentShape(
+            RoundedRectangle(
+                cornerRadius: 20,
+                style: .continuous
+            )
+        )
+        .onTapGesture {
+
+            withAnimation(
+                .easeInOut(
+                    duration: 0.18
+                )
+            ) {
+
+                answerRevealed =
+                    true
+            }
+        }
+    }
+
+    // MARK: - Card
+
+    private var cardContent:
+        some View {
+
+        VStack(
+            spacing: 18
+        ) {
+
+            HStack {
+
+                Label(
+                    direction.title,
+                    systemImage:
+                        direction ==
+                            ExampleDirection.recognition
+                        ? "eye"
+                        : "arrow.turn.down.right"
+                )
+                .font(
+                    .subheadline
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+
+                Spacer()
+            }
+
+            Spacer(
+                minLength: 4
+            )
+
+            frontContent
+
+            if readingRevealed,
+               !answerRevealed {
+
+                Text(
+                    targetReading
+                )
+                .font(
+                    .title3
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+            }
+
+            if answerRevealed {
+
+                Divider()
+
+                answerContent
+
+            } else {
+
+                Text(
+                    "Tap card to reveal"
+                )
+                .font(
+                    .caption
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+            }
+
+            Spacer(
+                minLength: 4
+            )
+        }
+        .padding(
+            22
+        )
+    }
+
+    // MARK: - Hint
+
+    private var hintButton:
+        some View {
+
+        Button {
+
+            withAnimation(
+                .easeInOut(
+                    duration: 0.15
+                )
+            ) {
+
+                readingRevealed
+                    .toggle()
+            }
+
+        } label: {
+
+            Label(
+                "Hint",
+                systemImage:
+                    readingRevealed
+                    ? "lightbulb.fill"
+                    : "lightbulb"
+            )
+            .font(
+                .subheadline
+            )
+        }
+        .buttonStyle(
+            .plain
+        )
+        .foregroundStyle(
+            .secondary
+        )
     }
 
     // MARK: - Front
@@ -262,7 +352,7 @@ struct ExampleCardView: View {
         }
     }
 
-    // MARK: - Target Display
+    // MARK: - Target
 
     @ViewBuilder
     private func targetDisplay(
@@ -342,8 +432,6 @@ struct ExampleCardView: View {
         }
     }
 
-    // MARK: - Reading Hint
-
     private var shouldShowReadingHint:
         Bool {
 
@@ -377,7 +465,7 @@ struct ExampleCardView: View {
     }
 }
 
-// MARK: - Example Direction
+// MARK: - Direction
 
 private enum ExampleDirection:
     String,
@@ -396,9 +484,11 @@ private enum ExampleDirection:
         switch self {
 
         case .recognition:
+
             return "Recognition"
 
         case .recall:
+
             return "Recall"
         }
     }
