@@ -268,7 +268,8 @@ struct QuickConfigView: View {
                                 )
                         )
 
-                        if config.writingEnabled {
+                        if config
+                            .writingEnabled {
 
                             Text(
                                 directionDescription(
@@ -393,7 +394,7 @@ struct QuickConfigView: View {
 
                         Text(
                             """
-                            Quick Review is separate from your scheduled reviews. Nothing you do here changes FSRS scheduling.
+                            Quick Review is separate from your scheduled reviews. Correct and Incorrect results are only used during this Quick Review session and never change FSRS scheduling.
                             """
                         )
                         .font(
@@ -479,13 +480,13 @@ struct QuickConfigView: View {
 
             return
                 """
-                Type your answer before revealing the correct answer. In Recognition you write the source meaning; in Recall you write the target word. Your response is shown beside the correct answer so you can compare them yourself. It is not graded and does not affect FSRS.
+                Write your answer before revealing the card. Pyoko then shows your response beside the correct answer so you can compare them yourself. After checking, mark the card Correct or Incorrect. Incorrect cards can be reviewed again at the end of the session.
                 """
         }
 
         return
             """
-            Leave Writing off for a faster review: think of the answer, reveal the card, then move straight to the next word.
+            Think of the answer, reveal the card, then mark yourself Correct or Incorrect. Incorrect cards can be reviewed again at the end.
             """
     }
 

@@ -47,3 +47,11 @@ enum QuickSource: String, Codable, CaseIterable, Identifiable {
         }
     }
 }
+
+// MARK: - Quick Review Result
+
+enum QuickAnswerResult {
+
+    case correct
+    case incorrect
+}

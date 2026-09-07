@@ -1,10 +1,3 @@
-//
-//  PyokoQuickCard.swift
-//  pyoko
-//
-//  Created by Bill on 07/09/2026.
-//
-
 import Foundation
 
 struct PyokoQuickCard: Identifiable {
@@ -27,29 +20,41 @@ struct PyokoQuickCard: Identifiable {
         targetReading: String?
     ) {
 
-        self.id = id
-        self.type = type
-        self.sourceText = sourceText
-        self.targetText = targetText
-        self.targetReading = targetReading
-    }
+        self.id =
+            id
 
-    func repeatedCopy() -> PyokoQuickCard {
+        self.type =
+            type
 
-        PyokoQuickCard(
-            type: type,
-            sourceText: sourceText,
-            targetText: targetText,
-            targetReading: targetReading
-        )
+        self.sourceText =
+            sourceText
+
+        self.targetText =
+            targetText
+
+        self.targetReading =
+            targetReading
     }
 }
 
+// MARK: - Progress
+
 struct QuickProgress {
 
+    /// Number completed in the current round.
     let completed: Int
 
+    /// Number of cards in the current round.
     let total: Int
+
+    /// Number of cards in the original session.
+    let sessionTotal: Int
+
+    /// Current overall result for the original session.
+    let correct: Int
+
+    /// Current overall result for the original session.
+    let incorrect: Int
 
     var remaining: Int {
 
@@ -57,5 +62,11 @@ struct QuickProgress {
             total - completed,
             0
         )
+    }
+
+    var reviewed: Int {
+
+        correct
+        + incorrect
     }
 }

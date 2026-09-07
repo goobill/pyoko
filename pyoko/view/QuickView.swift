@@ -24,7 +24,10 @@ struct QuickView: View {
     private var progress =
         QuickProgress(
             completed: 0,
-            total: 0
+            total: 0,
+            sessionTotal: 0,
+            correct: 0,
+            incorrect: 0
         )
 
     @State
@@ -178,62 +181,94 @@ struct QuickView: View {
     private var topBar:
         some View {
 
-        HStack(
-            spacing: 12
+        VStack(
+            spacing: 7
         ) {
 
-            Button {
+            HStack(
+                spacing: 12
+            ) {
 
-                dismiss()
+                Button {
 
-            } label: {
+                    dismiss()
 
-                Image(
-                    systemName:
-                        "chevron.left"
+                } label: {
+
+                    Image(
+                        systemName:
+                            "chevron.left"
+                    )
+                    .font(
+                        .headline
+                    )
+                    .frame(
+                        width: 36,
+                        height: 36
+                    )
+                }
+                .buttonStyle(
+                    .plain
+                )
+
+                ProgressView(
+                    value:
+                        Double(
+                            progress.completed
+                        ),
+                    total:
+                        Double(
+                            max(
+                                progress.total,
+                                1
+                            )
+                        )
+                )
+                .tint(
+                    .accentColor
+                )
+
+                Text(
+                    "\(progress.completed)/\(progress.total)"
                 )
                 .font(
-                    .headline
+                    .caption
+                )
+                .monospacedDigit()
+                .foregroundStyle(
+                    .secondary
                 )
                 .frame(
-                    width: 36,
-                    height: 36
+                    minWidth: 42,
+                    alignment: .trailing
                 )
             }
-            .buttonStyle(
-                .plain
-            )
 
-            ProgressView(
-                value:
-                    Double(
-                        progress.completed
-                    ),
-                total:
-                    Double(
-                        max(
-                            progress.total,
-                            1
-                        )
-                    )
-            )
-            .tint(
-                .accentColor
-            )
+            HStack(
+                spacing: 18
+            ) {
 
-            Text(
-                "\(progress.completed)/\(progress.total)"
-            )
+                Spacer(
+                    minLength: 48
+                )
+
+                Label(
+                    "\(progress.correct) Correct",
+                    systemImage:
+                        "checkmark"
+                )
+
+                Label(
+                    "\(progress.incorrect) Incorrect",
+                    systemImage:
+                        "xmark"
+                )
+            }
             .font(
                 .caption
             )
-            .monospacedDigit()
             .foregroundStyle(
                 .secondary
-            )
-            .frame(
-                minWidth: 42,
-                alignment: .trailing
             )
         }
         .padding(
@@ -254,7 +289,7 @@ struct QuickView: View {
 
         if answerRevealed {
 
-            nextArea
+            resultArea
 
         } else if config
             .writingEnabled {
@@ -368,34 +403,79 @@ struct QuickView: View {
         }
     }
 
-    // MARK: - Next
+    // MARK: - Correct / Incorrect
 
-    private var nextArea:
+    private var resultArea:
         some View {
 
-        ZStack {
-
-            Rectangle()
-                .fill(
-                    .clear
-                )
+        VStack(
+            spacing: 12
+        ) {
 
             Text(
-                "Next Card"
+                "How did you do?"
+            )
+            .font(
+                .subheadline
             )
             .fontWeight(
                 .medium
             )
-            .foregroundStyle(
-                .tint
-            )
-        }
-        .contentShape(
-            Rectangle()
-        )
-        .onTapGesture {
 
-            nextCard()
+            HStack(
+                spacing: 12
+            ) {
+
+                Button {
+
+                    submitResult(
+                        .incorrect
+                    )
+
+                } label: {
+
+                    Label(
+                        "Incorrect",
+                        systemImage:
+                            "xmark"
+                    )
+                    .frame(
+                        maxWidth:
+                            .infinity
+                    )
+                    .frame(
+                        height: 48
+                    )
+                }
+                .buttonStyle(
+                    .bordered
+                )
+
+                Button {
+
+                    submitResult(
+                        .correct
+                    )
+
+                } label: {
+
+                    Label(
+                        "Correct",
+                        systemImage:
+                            "checkmark"
+                    )
+                    .frame(
+                        maxWidth:
+                            .infinity
+                    )
+                    .frame(
+                        height: 48
+                    )
+                }
+                .buttonStyle(
+                    .borderedProminent
+                )
+            }
         }
     }
 
@@ -412,9 +492,13 @@ struct QuickView: View {
 
             Image(
                 systemName:
-                    progress.total == 0
+                    progress.sessionTotal == 0
                     ? "rectangle.stack"
-                    : "checkmark.circle.fill"
+                    : (
+                        progress.incorrect == 0
+                        ? "checkmark.circle.fill"
+                        : "checkmark.circle"
+                    )
             )
             .font(
                 .system(
@@ -430,7 +514,7 @@ struct QuickView: View {
             ) {
 
                 Text(
-                    progress.total == 0
+                    progress.sessionTotal == 0
                     ? "No Words Available"
                     : "Quick Review Complete"
                 )
@@ -452,26 +536,98 @@ struct QuickView: View {
                 )
             }
 
-            Button {
+            if progress.sessionTotal > 0 {
 
-                dismiss()
+                resultSummary
 
-            } label: {
+                VStack(
+                    spacing: 12
+                ) {
 
-                Text(
-                    "Back to Quick Review"
+                    if progress.incorrect > 0 {
+
+                        Button {
+
+                            reviewIncorrect()
+
+                        } label: {
+
+                            Text(
+                                reviewIncorrectTitle
+                            )
+                            .frame(
+                                maxWidth:
+                                    .infinity
+                            )
+                        }
+                        .buttonStyle(
+                            .borderedProminent
+                        )
+                    }
+
+                    Button {
+
+                        resetReview()
+
+                    } label: {
+
+                        Text(
+                            "Reset Review"
+                        )
+                        .frame(
+                            maxWidth:
+                                .infinity
+                        )
+                    }
+                    .buttonStyle(
+                        .bordered
+                    )
+
+                    Button {
+
+                        dismiss()
+
+                    } label: {
+
+                        Text(
+                            "Back to Quick Review"
+                        )
+                        .frame(
+                            maxWidth:
+                                .infinity
+                        )
+                    }
+                    .buttonStyle(
+                        .plain
+                    )
+                }
+                .frame(
+                    maxWidth: 360
+                )
+
+            } else {
+
+                Button {
+
+                    dismiss()
+
+                } label: {
+
+                    Text(
+                        "Back to Quick Review"
+                    )
+                    .frame(
+                        maxWidth:
+                            .infinity
+                    )
+                }
+                .buttonStyle(
+                    .borderedProminent
                 )
                 .frame(
-                    maxWidth:
-                        .infinity
+                    maxWidth: 360
                 )
             }
-            .buttonStyle(
-                .borderedProminent
-            )
-            .frame(
-                maxWidth: 360
-            )
 
             Spacer()
         }
@@ -480,10 +636,87 @@ struct QuickView: View {
         )
     }
 
+    private var resultSummary:
+        some View {
+
+        HStack(
+            spacing: 32
+        ) {
+
+            VStack(
+                spacing: 5
+            ) {
+
+                Image(
+                    systemName:
+                        "checkmark.circle"
+                )
+                .font(
+                    .title2
+                )
+
+                Text(
+                    "\(progress.correct)"
+                )
+                .font(
+                    .title2
+                )
+                .fontWeight(
+                    .semibold
+                )
+                .monospacedDigit()
+
+                Text(
+                    "Correct"
+                )
+                .font(
+                    .caption
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+            }
+
+            VStack(
+                spacing: 5
+            ) {
+
+                Image(
+                    systemName:
+                        "xmark.circle"
+                )
+                .font(
+                    .title2
+                )
+
+                Text(
+                    "\(progress.incorrect)"
+                )
+                .font(
+                    .title2
+                )
+                .fontWeight(
+                    .semibold
+                )
+                .monospacedDigit()
+
+                Text(
+                    "Incorrect"
+                )
+                .font(
+                    .caption
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+            }
+        }
+    }
+
     private var completionMessage:
         String {
 
-        if progress.total == 0 {
+        if progress.sessionTotal == 0 {
 
             return
                 """
@@ -491,12 +724,31 @@ struct QuickView: View {
                 """
         }
 
+        if progress.incorrect == 0 {
+
+            return
+                """
+                All \(progress.sessionTotal) cards are now correct.
+                """
+        }
+
         return
             """
-            You reviewed \(progress.completed) cards.
-
-            Your FSRS scheduling was not changed.
+            Review the cards you missed, or reset the full session and start again.
             """
+    }
+
+    private var reviewIncorrectTitle:
+        String {
+
+        if progress.incorrect == 1 {
+
+            return
+                "Review 1 Incorrect Card"
+        }
+
+        return
+            "Review \(progress.incorrect) Incorrect Cards"
     }
 
     // MARK: - Session
@@ -630,9 +882,12 @@ struct QuickView: View {
             true
     }
 
-    // MARK: - Next
+    // MARK: - Result
 
-    private func nextCard() {
+    private func submitResult(
+        _ result:
+            QuickAnswerResult
+    ) {
 
         guard answerRevealed
         else {
@@ -644,7 +899,37 @@ struct QuickView: View {
             return
         }
 
-        manager.next()
+        manager.markCurrent(
+            result
+        )
+
+        refresh()
+    }
+
+    // MARK: - Incorrect Review
+
+    private func reviewIncorrect() {
+
+        guard let manager
+        else {
+            return
+        }
+
+        manager.reviewIncorrect()
+
+        refresh()
+    }
+
+    // MARK: - Reset
+
+    private func resetReview() {
+
+        guard let manager
+        else {
+            return
+        }
+
+        manager.reset()
 
         refresh()
     }
