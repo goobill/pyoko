@@ -13,6 +13,10 @@ struct DecksView: View {
     private var decks:
         [PyokoDeck]
 
+    @Query
+    private var configurations:
+        [PyokoConfiguration]
+
     @State
     private var downloadingDeckKeys:
         Set<String> = []
@@ -47,7 +51,8 @@ struct DecksView: View {
         .toolbar {
 
             ToolbarItem(
-                placement: .primaryAction
+                placement:
+                    .primaryAction
             ) {
 
                 NavigationLink {
@@ -58,10 +63,15 @@ struct DecksView: View {
 
                     Label(
                         "Import Deck",
-                        systemImage: "plus"
+                        systemImage:
+                            "plus"
                     )
                 }
             }
+        }
+        .onAppear {
+
+            ensureConfigurationExists()
         }
         .alert(
             "Delete Deck?",
@@ -71,7 +81,8 @@ struct DecksView: View {
 
             Button(
                 "Cancel",
-                role: .cancel
+                role:
+                    .cancel
             ) {
 
                 deckPendingDeletion =
@@ -80,7 +91,8 @@ struct DecksView: View {
 
             Button(
                 "Delete",
-                role: .destructive
+                role:
+                    .destructive
             ) {
 
                 deletePendingDeck()
@@ -92,7 +104,7 @@ struct DecksView: View {
                 deckPendingDeletion {
 
                 Text(
-                    "\"\(deck.name)\" and its review cards will be deleted."
+                    "\"\(deck.name)\" and all of its cards will be deleted."
                 )
             }
         }
@@ -114,7 +126,42 @@ struct DecksView: View {
         }
     }
 
-    // MARK: - Imported Decks
+    // MARK: - Manager
+
+    private var deckManager:
+        DeckManager {
+
+        DeckManager(
+            modelContext:
+                modelContext
+        )
+    }
+
+    // MARK: - Configuration
+
+    private var configuration:
+        PyokoConfiguration? {
+
+        configurations.first
+    }
+
+    private func ensureConfigurationExists() {
+
+        do {
+
+            _ =
+                try deckManager
+                    .ensureReviewConfigurationExists()
+
+        } catch {
+
+            showError(
+                error
+            )
+        }
+    }
+
+    // MARK: - Imported Decks Section
 
     private var importedDecksSection:
         some View {
@@ -155,10 +202,16 @@ struct DecksView: View {
             Text(
                 "Imported Decks"
             )
+
+        } footer: {
+
+            Text(
+                "Selected decks are included when future review sessions are created."
+            )
         }
     }
 
-    // MARK: - Built-in Decks
+    // MARK: - Built-in Decks Section
 
     private var builtInDecksSection:
         some View {
@@ -183,25 +236,29 @@ struct DecksView: View {
         } footer: {
 
             Text(
-                "Built-in decks contain both Recognition and Recall cards."
+                "Deselect a deck to exclude it from future reviews without deleting its cards or progress."
             )
         }
     }
 
-    // MARK: - Installed Deck Row
+    // MARK: - Imported Deck Row
 
     private func installedDeckRow(
         _ deck: PyokoDeck
     ) -> some View {
 
         HStack(
-            alignment: .center,
-            spacing: 14
+            alignment:
+                .center,
+            spacing:
+                14
         ) {
 
             VStack(
-                alignment: .leading,
-                spacing: 5
+                alignment:
+                    .leading,
+                spacing:
+                    5
             ) {
 
                 Text(
@@ -211,20 +268,9 @@ struct DecksView: View {
                     .medium
                 )
 
-                HStack(
-                    spacing: 4
-                ) {
-
-                    Text(
-                        deck
-                            .vocabularyCount
-                            .formatted()
-                    )
-
-                    Text(
-                        "vocabulary"
-                    )
-                }
+                Text(
+                    "\(deck.vocabularyCount.formatted()) vocabulary"
+                )
                 .font(
                     .caption
                 )
@@ -233,32 +279,22 @@ struct DecksView: View {
                 )
 
                 DeckOriginView(
-                    deck: deck
+                    deck:
+                        deck
                 )
             }
 
-            Spacer()
-
-            Button(
-                role: .destructive
-            ) {
-
-                requestDelete(
-                    deck
-                )
-
-            } label: {
-
-                Image(
-                    systemName:
-                        "trash"
-                )
-            }
-            .buttonStyle(
-                .borderless
+            Spacer(
+                minLength:
+                    12
             )
-            .help(
-                "Delete Deck"
+
+            deckEnabledButton(
+                deck
+            )
+
+            deleteButton(
+                deck
             )
         }
         .padding(
@@ -267,33 +303,56 @@ struct DecksView: View {
         )
     }
 
-    // MARK: - Built-in Row
+    // MARK: - Built-in Deck Row
 
+    @ViewBuilder
     private func builtInDeckRow(
         _ defaultDeck:
             DefaultDeck
     ) -> some View {
 
-        let installed =
+        if let installedDeck =
             installedBuiltInDeck(
                 key:
                     defaultDeck.key
+            ) {
+
+            installedBuiltInDeckRow(
+                defaultDeck:
+                    defaultDeck,
+                installedDeck:
+                    installedDeck
             )
 
-        let downloading =
-            downloadingDeckKeys
-                .contains(
-                    defaultDeck.key
-                )
+        } else {
 
-        return HStack(
-            alignment: .center,
-            spacing: 14
+            uninstalledBuiltInDeckRow(
+                defaultDeck
+            )
+        }
+    }
+
+    // MARK: - Installed Built-in Deck
+
+    private func installedBuiltInDeckRow(
+        defaultDeck:
+            DefaultDeck,
+        installedDeck:
+            PyokoDeck
+    ) -> some View {
+
+        HStack(
+            alignment:
+                .center,
+            spacing:
+                14
         ) {
 
             VStack(
-                alignment: .leading,
-                spacing: 5
+                alignment:
+                    .leading,
+                spacing:
+                    5
             ) {
 
                 Text(
@@ -313,50 +372,106 @@ struct DecksView: View {
                     .secondary
                 )
 
-                if let installed {
+                HStack(
+                    spacing:
+                        5
+                ) {
 
-                    HStack(
-                        spacing: 5
-                    ) {
-
-                        Image(
-                            systemName:
-                                DeckOrigin
-                                    .builtIn
-                                    .systemImage
-                        )
-
-                        Text(
-                            "Built-in"
-                        )
-
-                        Text(
-                            "•"
-                        )
-
-                        Text(
-                            "\(installed.vocabularyCount.formatted()) vocabulary"
-                        )
-                    }
-                    .font(
-                        .caption
+                    Image(
+                        systemName:
+                            "checkmark.circle"
                     )
-                    .foregroundStyle(
-                        .secondary
+
+                    Text(
+                        "Installed"
+                    )
+
+                    Text(
+                        "•"
+                    )
+
+                    Text(
+                        "\(installedDeck.vocabularyCount.formatted()) vocabulary"
                     )
                 }
+                .font(
+                    .caption
+                )
+                .foregroundStyle(
+                    .secondary
+                )
             }
 
-            Spacer()
+            Spacer(
+                minLength:
+                    12
+            )
 
-            if let installed {
+            deckEnabledButton(
+                installedDeck
+            )
 
-                installedBuiltInActions(
-                    deck:
-                        installed
+            deleteButton(
+                installedDeck
+            )
+        }
+        .padding(
+            .vertical,
+            4
+        )
+    }
+
+    // MARK: - Uninstalled Built-in Deck
+
+    private func uninstalledBuiltInDeckRow(
+        _ defaultDeck:
+            DefaultDeck
+    ) -> some View {
+
+        let downloading =
+            downloadingDeckKeys
+                .contains(
+                    defaultDeck.key
                 )
 
-            } else if downloading {
+        return HStack(
+            alignment:
+                .center,
+            spacing:
+                14
+        ) {
+
+            VStack(
+                alignment:
+                    .leading,
+                spacing:
+                    5
+            ) {
+
+                Text(
+                    defaultDeck.name
+                )
+                .fontWeight(
+                    .medium
+                )
+
+                Text(
+                    defaultDeck.description
+                )
+                .font(
+                    .caption
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+            }
+
+            Spacer(
+                minLength:
+                    12
+            )
+
+            if downloading {
 
                 ProgressView()
                     .controlSize(
@@ -390,48 +505,152 @@ struct DecksView: View {
         )
     }
 
-    // MARK: - Built-in Actions
+    // MARK: - Enabled Button
 
-    private func installedBuiltInActions(
-        deck: PyokoDeck
+    private func deckEnabledButton(
+        _ deck: PyokoDeck
     ) -> some View {
 
-        HStack(
-            spacing: 10
-        ) {
+        let enabled =
+            isDeckEnabled(
+                deck
+            )
 
-            Label(
-                "Installed",
-                systemImage:
-                    "checkmark.circle.fill"
+        return Button {
+
+            setDeckEnabled(
+                deck,
+                enabled:
+                    !enabled
+            )
+
+        } label: {
+
+            Image(
+                systemName:
+                    enabled
+                    ? "checkmark.circle.fill"
+                    : "circle"
             )
             .font(
-                .caption
+                .system(
+                    size:
+                        24,
+                    weight:
+                        .regular
+                )
             )
             .foregroundStyle(
-                .secondary
+                enabled
+                ? Color.accentColor
+                : Color.secondary
+            )
+            .frame(
+                width:
+                    36,
+                height:
+                    36
+            )
+            .contentShape(
+                Circle()
+            )
+        }
+        .buttonStyle(
+            .plain
+        )
+        .accessibilityLabel(
+            enabled
+            ? "Disable \(deck.name) for review"
+            : "Enable \(deck.name) for review"
+        )
+        .accessibilityValue(
+            enabled
+            ? "Selected"
+            : "Not selected"
+        )
+        .help(
+            enabled
+            ? "Disable for Review"
+            : "Enable for Review"
+        )
+    }
+
+    // MARK: - Delete Button
+
+    private func deleteButton(
+        _ deck: PyokoDeck
+    ) -> some View {
+
+        Button(
+            role:
+                .destructive
+        ) {
+
+            requestDelete(
+                deck
             )
 
-            Button(
-                role: .destructive
-            ) {
+        } label: {
 
-                requestDelete(
-                    deck
-                )
-
-            } label: {
-
-                Image(
-                    systemName:
-                        "trash"
-                )
-            }
-            .buttonStyle(
-                .borderless
+            Image(
+                systemName:
+                    "trash"
             )
-            .help(
-                "Delete Deck"
+            .frame(
+                width:
+                    36,
+                height:
+                    36
+            )
+        }
+        .buttonStyle(
+            .plain
+        )
+        .foregroundStyle(
+            .red
+        )
+        .accessibilityLabel(
+            "Delete \(deck.name)"
+        )
+        .help(
+            "Delete Deck"
+        )
+    }
+
+    // MARK: - Enabled State
+
+    private func isDeckEnabled(
+        _ deck: PyokoDeck
+    ) -> Bool {
+
+        deckManager
+            .isEnabledForReview(
+                deck,
+                configuration:
+                    configuration
+            )
+    }
+
+    private func setDeckEnabled(
+        _ deck: PyokoDeck,
+        enabled: Bool
+    ) {
+
+        do {
+
+            try deckManager
+                .setEnabledForReview(
+                    deck,
+                    enabled:
+                        enabled,
+                    configuration:
+                        configuration
+                )
+
+        } catch {
+
+            showError(
+                error
             )
         }
     }
@@ -475,10 +694,9 @@ struct DecksView: View {
             return
         }
 
-        downloadingDeckKeys
-            .insert(
-                defaultDeck.key
-            )
+        downloadingDeckKeys.insert(
+            defaultDeck.key
+        )
 
         Task {
 
@@ -490,15 +708,9 @@ struct DecksView: View {
                     )
             }
 
-            let manager =
-                DeckManager(
-                    modelContext:
-                        modelContext
-                )
-
             do {
 
-                try await manager
+                try await deckManager
                     .install(
                         defaultDeck
                     )
@@ -534,17 +746,12 @@ struct DecksView: View {
             return
         }
 
-        let manager =
-            DeckManager(
-                modelContext:
-                    modelContext
-            )
-
         do {
 
-            try manager.delete(
-                deck
-            )
+            try deckManager
+                .delete(
+                    deck
+                )
 
             deckPendingDeletion =
                 nil
