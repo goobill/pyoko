@@ -4,15 +4,14 @@ import FSRS
 
 struct ReviewView: View {
 
-    @Environment(
-        \.modelContext
-    )
+    @Environment(\.modelContext)
     private var modelContext
 
-    @Environment(
-        \.dismiss
-    )
+    @Environment(\.dismiss)
     private var dismiss
+
+    @Environment(\.colorScheme)
+    private var colorScheme
 
     @Query
     private var configurations:
@@ -47,53 +46,53 @@ struct ReviewView: View {
 
     var body: some View {
 
-        VStack(
-            alignment: .leading,
-            spacing: 0
-        ) {
+        GeometryReader { geometry in
 
-            header
+            VStack(
+                spacing: 0
+            ) {
 
-            if progress.total > 0 {
+                topBar
 
-                progressSection
-                    .padding(
-                        .top,
-                        28
-                    )
-            }
-
-            reviewContent
-                .padding(
-                    .top,
-                    28
+                Spacer(
+                    minLength: 18
                 )
 
-            Spacer(
-                minLength: 0
-            )
-        }
-        .frame(
-            maxWidth: 760
-        )
-        .frame(
-            maxWidth: .infinity,
-            alignment: .top
-        )
-        .padding(
-            .horizontal,
-            24
-        )
-        .padding(
-            .top,
-            8
-        )
-        .safeAreaInset(
-            edge: .bottom,
-            spacing: 0
-        ) {
+                reviewContent(
+                    cardHeight:
+                        cardHeight(
+                            availableHeight:
+                                geometry.size.height
+                        )
+                )
 
-            bottomReviewControls
+                Spacer(
+                    minLength: 12
+                )
+
+                actionArea
+                    .frame(
+                        height: 142
+                    )
+            }
+            .frame(
+                maxWidth: 720
+            )
+            .frame(
+                maxWidth: .infinity
+            )
+            .padding(
+                .horizontal,
+                20
+            )
+            .padding(
+                .top,
+                8
+            )
+            .padding(
+                .bottom,
+                8
+            )
         }
         .onAppear {
 
@@ -132,14 +131,13 @@ struct ReviewView: View {
         .pyokoReviewNavigationStyle()
     }
 
-    // MARK: - Header
+    // MARK: - Top Bar
 
-    private var header:
+    private var topBar:
         some View {
 
-        VStack(
-            alignment: .leading,
-            spacing: 24
+        HStack(
+            spacing: 14
         ) {
 
             Button {
@@ -153,14 +151,14 @@ struct ReviewView: View {
                         "chevron.left"
                 )
                 .font(
-                    .title2
-                        .weight(
-                            .semibold
-                        )
+                    .system(
+                        size: 19,
+                        weight: .semibold
+                    )
                 )
                 .frame(
-                    width: 52,
-                    height: 52
+                    width: 44,
+                    height: 44
                 )
                 .background(
                     .regularMaterial,
@@ -183,48 +181,6 @@ struct ReviewView: View {
                 "Go Back"
             )
 
-            Text(
-                "Review"
-            )
-            .font(
-                .largeTitle
-                    .bold()
-            )
-        }
-    }
-
-    // MARK: - Progress
-
-    private var progressSection:
-        some View {
-
-        VStack(
-            spacing: 10
-        ) {
-
-            HStack {
-
-                Text(
-                    "Progress"
-                )
-                .font(
-                    .headline
-                )
-
-                Spacer()
-
-                Text(
-                    "\(progress.completed) / \(progress.total)"
-                )
-                .font(
-                    .title3
-                )
-                .foregroundStyle(
-                    .secondary
-                )
-                .monospacedDigit()
-            }
-
             ProgressView(
                 value:
                     Double(
@@ -238,14 +194,30 @@ struct ReviewView: View {
                         )
                     )
             )
+            .frame(
+                maxWidth: .infinity
+            )
+
+            Text(
+                "\(progress.completed)/\(progress.total)"
+            )
+            .font(
+                .subheadline
+            )
+            .foregroundStyle(
+                .secondary
+            )
+            .monospacedDigit()
+            .fixedSize()
         }
     }
 
-    // MARK: - Review Content
+    // MARK: - Card
 
     @ViewBuilder
-    private var reviewContent:
-        some View {
+    private func reviewContent(
+        cardHeight: CGFloat
+    ) -> some View {
 
         if let currentCard {
 
@@ -261,101 +233,194 @@ struct ReviewView: View {
                 readingHintEnabled:
                     readingHintEnabled
             )
+            .frame(
+                height: cardHeight
+            )
 
         } else if
-            progress.total > 0,
+            progress.total > 0 &&
             progress.remaining == 0 {
 
             reviewCompleteView
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity
+                )
 
         } else {
 
             noCardsView
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity
+                )
         }
     }
 
-    // MARK: - Bottom Controls
+    // MARK: - Action Area
 
     @ViewBuilder
-    private var bottomReviewControls:
+    private var actionArea:
         some View {
 
-        if currentCard != nil,
-           answerRevealed {
+        if currentCard != nil {
+
+            if answerRevealed {
+
+                ratingControls
+
+            } else {
+
+                showAnswerArea
+            }
+
+        } else {
+
+            Color.clear
+        }
+    }
+
+    // MARK: - Show Answer
+
+    private var showAnswerArea:
+        some View {
+
+        Button {
+
+            revealAnswer()
+
+        } label: {
 
             VStack(
-                spacing: 12
+                spacing: 0
             ) {
 
-                Divider()
+                Spacer()
 
                 Text(
-                    "How well did you remember?"
+                    "Show Answer"
                 )
                 .font(
                     .headline
                 )
-                .multilineTextAlignment(
-                    .center
+                .foregroundStyle(
+                    .tint
                 )
 
-                HStack(
-                    spacing: 10
-                ) {
-
-                    ratingButton(
-                        title:
-                            "Again",
-                        rating:
-                            Rating.again
-                    )
-
-                    ratingButton(
-                        title:
-                            "Hard",
-                        rating:
-                            Rating.hard
-                    )
-
-                    ratingButton(
-                        title:
-                            "Good",
-                        rating:
-                            Rating.good
-                    )
-
-                    ratingButton(
-                        title:
-                            "Easy",
-                        rating:
-                            Rating.easy
-                    )
-                }
+                Spacer()
             }
-            .padding(
-                .horizontal,
-                20
+            .frame(
+                maxWidth: .infinity,
+                maxHeight: .infinity
             )
-            .padding(
-                .top,
-                8
+            .contentShape(
+                Rectangle()
             )
-            .padding(
-                .bottom,
-                8
+        }
+        .buttonStyle(
+            .plain
+        )
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: .infinity
+        )
+        .contentShape(
+            Rectangle()
+        )
+        .accessibilityLabel(
+            "Show Answer"
+        )
+        .accessibilityHint(
+            "Reveals the answer to the current card"
+        )
+    }
+
+    // MARK: - Rating Controls
+
+    private var ratingControls:
+        some View {
+
+        VStack(
+            spacing: 10
+        ) {
+
+            Text(
+                "How difficult was this card?"
             )
-            .background(
-                .regularMaterial
+            .font(
+                .subheadline
+                    .weight(
+                        .semibold
+                    )
             )
+
+            HStack {
+
+                Text(
+                    "Harder"
+                )
+
+                Spacer()
+
+                Text(
+                    "Easier"
+                )
+            }
+            .font(
+                .caption
+            )
+            .foregroundStyle(
+                .secondary
+            )
+
+            HStack(
+                spacing: 8
+            ) {
+
+                ratingButton(
+                    rating:
+                        Rating.again,
+                    position:
+                        0
+                )
+
+                ratingButton(
+                    rating:
+                        Rating.hard,
+                    position:
+                        1
+                )
+
+                ratingButton(
+                    rating:
+                        Rating.good,
+                    position:
+                        2
+                )
+
+                ratingButton(
+                    rating:
+                        Rating.easy,
+                    position:
+                        3
+                )
+            }
         }
     }
 
+    // MARK: - Rating Button
+
     private func ratingButton(
-        title: String,
-        rating: Rating
+        rating: Rating,
+        position: Int
     ) -> some View {
 
-        Button {
+        let interval =
+            intervalText(
+                for: rating
+            )
+
+        return Button {
 
             submitReview(
                 rating
@@ -363,43 +428,160 @@ struct ReviewView: View {
 
         } label: {
 
-            VStack(
-                spacing: 5
-            ) {
-
-                Text(
-                    intervalText(
-                        for: rating
-                    )
+            Text(
+                interval
+            )
+            .font(
+                .system(
+                    size: 17,
+                    weight: .semibold,
+                    design: .rounded
                 )
-                .font(
-                    .caption
-                )
-                .foregroundStyle(
-                    .secondary
-                )
-                .monospacedDigit()
-
-                Text(
-                    title
-                )
-                .font(
-                    .headline
-                )
-            }
+            )
+            .monospacedDigit()
+            .lineLimit(
+                1
+            )
+            .minimumScaleFactor(
+                0.75
+            )
             .frame(
                 maxWidth: .infinity
             )
             .frame(
-                minHeight: 64
+                height: 58
             )
+            .background(
+                ratingBackground(
+                    position:
+                        position
+                ),
+                in:
+                    RoundedRectangle(
+                        cornerRadius: 14,
+                        style: .continuous
+                    )
+            )
+            .overlay {
+
+                RoundedRectangle(
+                    cornerRadius: 14,
+                    style: .continuous
+                )
+                .stroke(
+                    .quaternary,
+                    lineWidth: 1
+                )
+            }
         }
         .buttonStyle(
-            .bordered
+            .plain
         )
-        .controlSize(
-            .large
+        .accessibilityLabel(
+            accessibilityText(
+                for:
+                    rating,
+                interval:
+                    interval
+            )
         )
+    }
+
+    // MARK: - Rating Gradient
+
+    private func ratingBackground(
+        position: Int
+    ) -> Color {
+
+        let darkModeOpacities = [
+            0.24,
+            0.34,
+            0.46,
+            0.60
+        ]
+
+        let lightModeOpacities = [
+            0.78,
+            0.62,
+            0.46,
+            0.30
+        ]
+
+        let safePosition =
+            min(
+                max(
+                    position,
+                    0
+                ),
+                3
+            )
+
+        let opacity:
+            Double
+
+        switch colorScheme {
+
+        case .dark:
+
+            opacity =
+                darkModeOpacities[
+                    safePosition
+                ]
+
+        default:
+
+            opacity =
+                lightModeOpacities[
+                    safePosition
+                ]
+        }
+
+        return Color.accentColor
+            .opacity(
+                opacity
+            )
+    }
+
+    // MARK: - Accessibility
+
+    private func accessibilityText(
+        for rating: Rating,
+        interval: String
+    ) -> String {
+
+        let ratingName:
+            String
+
+        switch rating {
+
+        case .again:
+
+            ratingName =
+                "Again"
+
+        case .hard:
+
+            ratingName =
+                "Hard"
+
+        case .good:
+
+            ratingName =
+                "Good"
+
+        case .easy:
+
+            ratingName =
+                "Easy"
+
+        default:
+
+            ratingName =
+                "Review"
+        }
+
+        return
+            "\(ratingName), next review \(interval)"
     }
 
     // MARK: - Completion
@@ -411,20 +593,35 @@ struct ReviewView: View {
             spacing: 20
         ) {
 
-            ContentUnavailableView {
+            Spacer()
 
-                Label(
-                    "Review Complete",
-                    systemImage:
-                        "checkmark.circle"
+            Image(
+                systemName:
+                    "checkmark.circle"
+            )
+            .font(
+                .system(
+                    size: 46
                 )
+            )
+            .foregroundStyle(
+                .secondary
+            )
 
-            } description: {
+            Text(
+                "Review Complete"
+            )
+            .font(
+                .title2
+                    .bold()
+            )
 
-                Text(
-                    "You've finished today's review."
-                )
-            }
+            Text(
+                "You've finished today's review."
+            )
+            .foregroundStyle(
+                .secondary
+            )
 
             Button(
                 "Go Home"
@@ -435,14 +632,9 @@ struct ReviewView: View {
             .buttonStyle(
                 .borderedProminent
             )
+
+            Spacer()
         }
-        .frame(
-            maxWidth: .infinity
-        )
-        .padding(
-            .top,
-            40
-        )
     }
 
     private var noCardsView:
@@ -452,20 +644,38 @@ struct ReviewView: View {
             spacing: 20
         ) {
 
-            ContentUnavailableView {
+            Spacer()
 
-                Label(
-                    "No Cards Due",
-                    systemImage:
-                        "checkmark.circle"
+            Image(
+                systemName:
+                    "checkmark.circle"
+            )
+            .font(
+                .system(
+                    size: 46
                 )
+            )
+            .foregroundStyle(
+                .secondary
+            )
 
-            } description: {
+            Text(
+                "No Cards Due"
+            )
+            .font(
+                .title2
+                    .bold()
+            )
 
-                Text(
-                    "There are no cards available for review right now."
-                )
-            }
+            Text(
+                "There are no cards available for review right now."
+            )
+            .multilineTextAlignment(
+                .center
+            )
+            .foregroundStyle(
+                .secondary
+            )
 
             Button(
                 "Go Home"
@@ -476,13 +686,26 @@ struct ReviewView: View {
             .buttonStyle(
                 .bordered
             )
+
+            Spacer()
         }
-        .frame(
-            maxWidth: .infinity
-        )
-        .padding(
-            .top,
-            40
+    }
+
+    // MARK: - Card Height
+
+    private func cardHeight(
+        availableHeight: CGFloat
+    ) -> CGFloat {
+
+        let proposedHeight =
+            availableHeight * 0.60
+
+        return min(
+            max(
+                proposedHeight,
+                320
+            ),
+            500
         )
     }
 
@@ -518,7 +741,29 @@ struct ReviewView: View {
             true
     }
 
-    // MARK: - Preview
+    // MARK: - Reveal
+
+    private func revealAnswer() {
+
+        guard
+            currentCard != nil,
+            !answerRevealed
+        else {
+            return
+        }
+
+        withAnimation(
+            .easeInOut(
+                duration: 0.18
+            )
+        ) {
+
+            answerRevealed =
+                true
+        }
+    }
+
+    // MARK: - Rating Preview
 
     private func loadRatingPreviews() {
 
@@ -583,7 +828,7 @@ struct ReviewView: View {
             )
     }
 
-    // MARK: - Review
+    // MARK: - Submit Rating
 
     private func submitReview(
         _ rating: Rating
