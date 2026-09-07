@@ -64,11 +64,15 @@ struct ConfigView: View {
             isPresented:
                 Binding(
                     get: {
+
                         errorMessage != nil
                     },
                     set: {
+
                         if !$0 {
-                            errorMessage = nil
+
+                            errorMessage =
+                                nil
                         }
                     }
                 )
@@ -105,6 +109,8 @@ struct ConfigView: View {
                 spacing: 18
             ) {
 
+                // MARK: Daily Review
+
                 GroupBox(
                     "Daily Review"
                 ) {
@@ -135,6 +141,7 @@ struct ConfigView: View {
                             value:
                                 Binding(
                                     get: {
+
                                         config
                                             .dailyCardLimit
                                     },
@@ -184,20 +191,28 @@ struct ConfigView: View {
                             value:
                                 Binding(
                                     get: {
-                                        config.minimumNewCards
+
+                                        config
+                                            .minimumNewCards
                                     },
                                     set: {
-                                        config.minimumNewCards =
-                                            $0
+
+                                        config
+                                            .minimumNewCards =
+                                                $0
 
                                         save()
                                     }
                                 ),
-                            in: 0...config.dailyCardLimit
+                            in:
+                                0...config
+                                    .dailyCardLimit
                         )
                         .labelsHidden()
                     }
                 }
+
+                // MARK: Card Types
 
                 GroupBox(
                     "Card Types"
@@ -225,6 +240,8 @@ struct ConfigView: View {
                     }
                 }
 
+                // MARK: Target Display
+
                 GroupBox(
                     "Target Display"
                 ) {
@@ -239,10 +256,12 @@ struct ConfigView: View {
                             selection:
                                 Binding(
                                     get: {
+
                                         config
                                             .beforeAnswerDisplayMode
                                     },
                                     set: {
+
                                         config
                                             .beforeAnswerDisplayMode =
                                                 $0
@@ -260,10 +279,12 @@ struct ConfigView: View {
                             selection:
                                 Binding(
                                     get: {
+
                                         config
                                             .afterAnswerDisplayMode
                                     },
                                     set: {
+
                                         config
                                             .afterAnswerDisplayMode =
                                                 $0
@@ -283,10 +304,12 @@ struct ConfigView: View {
                             isOn:
                                 Binding(
                                     get: {
+
                                         config
                                             .readingOnlyAnswer
                                     },
                                     set: {
+
                                         config
                                             .readingOnlyAnswer =
                                                 $0
@@ -314,6 +337,8 @@ struct ConfigView: View {
                     }
                 }
 
+                // MARK: Reading Hint
+
                 GroupBox(
                     "Reading Hint"
                 ) {
@@ -328,10 +353,12 @@ struct ConfigView: View {
                             isOn:
                                 Binding(
                                     get: {
+
                                         config
                                             .readingHintEnabled
                                     },
                                     set: {
+
                                         config
                                             .readingHintEnabled =
                                                 $0
@@ -359,6 +386,8 @@ struct ConfigView: View {
                     }
                 }
 
+                // MARK: Card Preview
+
                 GroupBox(
                     "Card Preview"
                 ) {
@@ -378,6 +407,8 @@ struct ConfigView: View {
                                 .readingOnlyAnswer
                     )
                 }
+
+                // MARK: Appearance
 
                 GroupBox(
                     "Appearance"
@@ -412,6 +443,8 @@ struct ConfigView: View {
                     }
                 }
 
+                // MARK: Decks
+
                 GroupBox(
                     "Decks"
                 ) {
@@ -440,6 +473,7 @@ struct ConfigView: View {
                                     isOn:
                                         Binding(
                                             get: {
+
                                                 isDeckSelected(
                                                     deck,
                                                     config:
@@ -447,6 +481,7 @@ struct ConfigView: View {
                                                 )
                                             },
                                             set: {
+
                                                 setDeckSelected(
                                                     deck,
                                                     selected:
@@ -461,6 +496,8 @@ struct ConfigView: View {
                         }
                     }
                 }
+
+                // MARK: Tags
 
                 GroupBox(
                     "Tags"
@@ -487,6 +524,77 @@ struct ConfigView: View {
 
                         } else {
 
+                            HStack(
+                                spacing: 12
+                            ) {
+
+                                Text(
+                                    tagSelectionText(
+                                        available:
+                                            available,
+                                        config:
+                                            config
+                                    )
+                                )
+                                .font(
+                                    .caption
+                                )
+                                .foregroundStyle(
+                                    .secondary
+                                )
+
+                                Spacer()
+
+                                Button(
+                                    "Select All"
+                                ) {
+
+                                    selectAllTags(
+                                        available:
+                                            available,
+                                        config:
+                                            config
+                                    )
+                                }
+                                .buttonStyle(
+                                    .borderless
+                                )
+                                .disabled(
+                                    areAllTagsSelected(
+                                        available:
+                                            available,
+                                        config:
+                                            config
+                                    )
+                                )
+
+                                Button(
+                                    "Deselect All"
+                                ) {
+
+                                    deselectAllTags(
+                                        available:
+                                            available,
+                                        config:
+                                            config
+                                    )
+                                }
+                                .buttonStyle(
+                                    .borderless
+                                )
+                                .disabled(
+                                    selectedAvailableTagCount(
+                                        available:
+                                            available,
+                                        config:
+                                            config
+                                    )
+                                    == 0
+                                )
+                            }
+
+                            Divider()
+
                             ForEach(
                                 available
                             ) { tag in
@@ -496,6 +604,7 @@ struct ConfigView: View {
                                     isOn:
                                         Binding(
                                             get: {
+
                                                 isTagSelected(
                                                     tag,
                                                     config:
@@ -503,6 +612,7 @@ struct ConfigView: View {
                                                 )
                                             },
                                             set: {
+
                                                 setTagSelected(
                                                     tag,
                                                     selected:
@@ -512,6 +622,26 @@ struct ConfigView: View {
                                                 )
                                             }
                                         )
+                                )
+                            }
+
+                            if (config.selectedTags ?? [])
+                                .isEmpty {
+
+                                Text(
+                                    """
+                                    No tags selected means no tag filter. Cards from all tags in the enabled decks remain eligible.
+                                    """
+                                )
+                                .font(
+                                    .caption
+                                )
+                                .foregroundStyle(
+                                    .secondary
+                                )
+                                .fixedSize(
+                                    horizontal: false,
+                                    vertical: true
                                 )
                             }
                         }
@@ -615,20 +745,26 @@ struct ConfigView: View {
     // MARK: - Decks
 
     private func isDeckSelected(
-        _ deck: PyokoDeck,
-        config: PyokoConfig
+        _ deck:
+            PyokoDeck,
+        config:
+            PyokoConfig
     ) -> Bool {
 
         (config.selectedDecks ?? [])
             .contains {
+
                 $0.id == deck.id
             }
     }
 
     private func setDeckSelected(
-        _ deck: PyokoDeck,
-        selected: Bool,
-        config: PyokoConfig
+        _ deck:
+            PyokoDeck,
+        selected:
+            Bool,
+        config:
+            PyokoConfig
     ) {
 
         var selectedDecks =
@@ -640,8 +776,9 @@ struct ConfigView: View {
             guard !selectedDecks
                 .contains(
                     where: {
+
                         $0.id
-                        == deck.id
+                            == deck.id
                     }
                 )
             else {
@@ -655,7 +792,9 @@ struct ConfigView: View {
         } else {
 
             selectedDecks.removeAll {
-                $0.id == deck.id
+
+                $0.id
+                    == deck.id
             }
         }
 
@@ -673,7 +812,8 @@ struct ConfigView: View {
     // MARK: - Tags
 
     private func availableTags(
-        config: PyokoConfig
+        config:
+            PyokoConfig
     ) -> [PyokoTag] {
 
         let selectedDeckIDs =
@@ -688,15 +828,18 @@ struct ConfigView: View {
             Set(
                 decks
                     .filter {
+
                         selectedDeckIDs
                             .contains(
                                 $0.id
                             )
                     }
                     .flatMap {
+
                         $0.cards ?? []
                     }
                     .flatMap {
+
                         $0.tags ?? []
                     }
                     .map(
@@ -705,27 +848,35 @@ struct ConfigView: View {
             )
 
         return tags.filter {
-            availableIDs.contains(
-                $0.id
-            )
+
+            availableIDs
+                .contains(
+                    $0.id
+                )
         }
     }
 
     private func isTagSelected(
-        _ tag: PyokoTag,
-        config: PyokoConfig
+        _ tag:
+            PyokoTag,
+        config:
+            PyokoConfig
     ) -> Bool {
 
         (config.selectedTags ?? [])
             .contains {
+
                 $0.id == tag.id
             }
     }
 
     private func setTagSelected(
-        _ tag: PyokoTag,
-        selected: Bool,
-        config: PyokoConfig
+        _ tag:
+            PyokoTag,
+        selected:
+            Bool,
+        config:
+            PyokoConfig
     ) {
 
         var selectedTags =
@@ -737,8 +888,9 @@ struct ConfigView: View {
             guard !selectedTags
                 .contains(
                     where: {
+
                         $0.id
-                        == tag.id
+                            == tag.id
                     }
                 )
             else {
@@ -752,7 +904,9 @@ struct ConfigView: View {
         } else {
 
             selectedTags.removeAll {
-                $0.id == tag.id
+
+                $0.id
+                    == tag.id
             }
         }
 
@@ -762,8 +916,141 @@ struct ConfigView: View {
         save()
     }
 
+    // MARK: Tag Bulk Selection
+
+    private func selectedAvailableTagCount(
+        available:
+            [PyokoTag],
+        config:
+            PyokoConfig
+    ) -> Int {
+
+        let selectedIDs =
+            Set(
+                (config.selectedTags ?? [])
+                    .map(
+                        \.id
+                    )
+            )
+
+        return available
+            .filter {
+
+                selectedIDs
+                    .contains(
+                        $0.id
+                    )
+            }
+            .count
+    }
+
+    private func areAllTagsSelected(
+        available:
+            [PyokoTag],
+        config:
+            PyokoConfig
+    ) -> Bool {
+
+        guard !available.isEmpty
+        else {
+            return false
+        }
+
+        return selectedAvailableTagCount(
+            available:
+                available,
+            config:
+                config
+        )
+        == available.count
+    }
+
+    private func tagSelectionText(
+        available:
+            [PyokoTag],
+        config:
+            PyokoConfig
+    ) -> String {
+
+        let selected =
+            selectedAvailableTagCount(
+                available:
+                    available,
+                config:
+                    config
+            )
+
+        return
+            "\(selected) of \(available.count) selected"
+    }
+
+    private func selectAllTags(
+        available:
+            [PyokoTag],
+        config:
+            PyokoConfig
+    ) {
+
+        var selected =
+            config.selectedTags
+            ?? []
+
+        let selectedIDs =
+            Set(
+                selected.map(
+                    \.id
+                )
+            )
+
+        for tag in available {
+
+            if !selectedIDs
+                .contains(
+                    tag.id
+                ) {
+
+                selected.append(
+                    tag
+                )
+            }
+        }
+
+        config.selectedTags =
+            selected
+
+        save()
+    }
+
+    private func deselectAllTags(
+        available:
+            [PyokoTag],
+        config:
+            PyokoConfig
+    ) {
+
+        let availableIDs =
+            Set(
+                available.map(
+                    \.id
+                )
+            )
+
+        config.selectedTags =
+            (config.selectedTags ?? [])
+                .filter {
+
+                    !availableIDs
+                        .contains(
+                            $0.id
+                        )
+                }
+
+        save()
+    }
+
     private func removeUnavailableTags(
-        config: PyokoConfig
+        config:
+            PyokoConfig
     ) {
 
         let availableIDs =
@@ -780,6 +1067,7 @@ struct ConfigView: View {
         config.selectedTags =
             (config.selectedTags ?? [])
                 .filter {
+
                     availableIDs
                         .contains(
                             $0.id

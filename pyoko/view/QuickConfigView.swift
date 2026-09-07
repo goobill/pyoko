@@ -76,7 +76,9 @@ struct QuickConfigView: View {
                     },
                     set: {
                         if !$0 {
-                            errorMessage = nil
+
+                            errorMessage =
+                                nil
                         }
                     }
                 )
@@ -114,8 +116,6 @@ struct QuickConfigView: View {
                 spacing: 18
             ) {
 
-                // MARK: Vocabulary Source
-
                 GroupBox(
                     "Vocabulary Source"
                 ) {
@@ -138,8 +138,6 @@ struct QuickConfigView: View {
                     }
                 }
 
-                // MARK: Decks
-
                 if config.source
                     == .decks {
 
@@ -148,17 +146,24 @@ struct QuickConfigView: View {
                     )
                 }
 
-                // MARK: Tags
-
                 if config.source
                     == .tags {
 
-                    tagSection(
-                        config
+                    TagSelectionView(
+                        title:
+                            "Selected Tags",
+                        tags:
+                            tags,
+                        selectedTags:
+                            tagBinding(
+                                config
+                            ),
+                        emptySelectionMessage:
+                            """
+                            Select at least one tag to start Quick Review.
+                            """
                     )
                 }
-
-                // MARK: Session
 
                 GroupBox(
                     "Session"
@@ -209,8 +214,6 @@ struct QuickConfigView: View {
                     }
                 }
 
-                // MARK: Practice Mode
-
                 GroupBox(
                     "Practice Mode"
                 ) {
@@ -258,8 +261,6 @@ struct QuickConfigView: View {
                     }
                 }
 
-                // MARK: Direction
-
                 GroupBox(
                     "Direction"
                 ) {
@@ -306,8 +307,6 @@ struct QuickConfigView: View {
                         }
                     }
                 }
-
-                // MARK: Recognition Answer
 
                 GroupBox(
                     "Recognition Answer"
@@ -385,8 +384,6 @@ struct QuickConfigView: View {
                         }
                     }
                 }
-
-                // MARK: Card Display
 
                 GroupBox(
                     "Card Display"
@@ -488,8 +485,6 @@ struct QuickConfigView: View {
                     }
                 }
 
-                // MARK: Start
-
                 GroupBox {
 
                     VStack(
@@ -573,7 +568,7 @@ struct QuickConfigView: View {
         }
     }
 
-    // MARK: - Writing Description
+    // MARK: - Writing
 
     private func writingDescription(
         _ config:
@@ -730,7 +725,8 @@ struct QuickConfigView: View {
     }
 
     private func sourceSubtitle(
-        _ source: QuickSource
+        _ source:
+            QuickSource
     ) -> String {
 
         guard source
@@ -818,8 +814,10 @@ struct QuickConfigView: View {
     }
 
     private func isDeckSelected(
-        _ deck: PyokoDeck,
-        config: PyokoQuickConfig
+        _ deck:
+            PyokoDeck,
+        config:
+            PyokoQuickConfig
     ) -> Bool {
 
         (config.selectedDecks ?? [])
@@ -830,9 +828,11 @@ struct QuickConfigView: View {
     }
 
     private func setDeckSelected(
-        _ deck: PyokoDeck,
+        _ deck:
+            PyokoDeck,
         selected: Bool,
-        config: PyokoQuickConfig
+        config:
+            PyokoQuickConfig
     ) {
 
         var selectedDecks =
@@ -873,116 +873,25 @@ struct QuickConfigView: View {
 
     // MARK: - Tags
 
-    private func tagSection(
+    private func tagBinding(
         _ config:
             PyokoQuickConfig
-    ) -> some View {
+    ) -> Binding<[PyokoTag]> {
 
-        GroupBox(
-            "Selected Tags"
-        ) {
+        Binding(
+            get: {
 
-            VStack(
-                spacing: 10
-            ) {
+                config.selectedTags
+                ?? []
+            },
+            set: {
 
-                if tags.isEmpty {
+                config.selectedTags =
+                    $0
 
-                    Text(
-                        "No tags are available."
-                    )
-                    .foregroundStyle(
-                        .secondary
-                    )
-
-                } else {
-
-                    ForEach(
-                        tags
-                    ) { tag in
-
-                        Toggle(
-                            tag.name,
-                            isOn:
-                                Binding(
-                                    get: {
-
-                                        isTagSelected(
-                                            tag,
-                                            config:
-                                                config
-                                        )
-                                    },
-                                    set: {
-
-                                        setTagSelected(
-                                            tag,
-                                            selected:
-                                                $0,
-                                            config:
-                                                config
-                                        )
-                                    }
-                                )
-                        )
-                    }
-                }
+                save()
             }
-        }
-    }
-
-    private func isTagSelected(
-        _ tag: PyokoTag,
-        config: PyokoQuickConfig
-    ) -> Bool {
-
-        (config.selectedTags ?? [])
-            .contains {
-
-                $0.id == tag.id
-            }
-    }
-
-    private func setTagSelected(
-        _ tag: PyokoTag,
-        selected: Bool,
-        config: PyokoQuickConfig
-    ) {
-
-        var selectedTags =
-            config.selectedTags
-            ?? []
-
-        if selected {
-
-            guard !selectedTags
-                .contains(
-                    where: {
-
-                        $0.id
-                        == tag.id
-                    }
-                )
-            else {
-                return
-            }
-
-            selectedTags.append(
-                tag
-            )
-
-        } else {
-
-            selectedTags.removeAll {
-
-                $0.id == tag.id
-            }
-        }
-
-        config.selectedTags =
-            selectedTags
-
-        save()
+        )
     }
 
     // MARK: - Direction

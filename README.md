@@ -1,176 +1,224 @@
 # Pyoko
 
-## 1. Introduction
+Pyoko is a native SwiftUI language-learning app for iPhone and macOS.
 
-Pyoko is a language-learning app built around spaced repetition and contextual sentence practice.
+The app combines:
 
-The app helps learners:
+- FSRS-based daily spaced-repetition reviews
+- persistent review configuration
+- quick vocabulary practice that does not affect FSRS
+- on-device sentence practice using Apple Foundation Models where available
+- configurable Recognition / Recall directions
+- reading-focused Japanese study
+- deck and tag filtering
+- local, URL, and public Google Sheets vocabulary imports
 
-- import or install vocabulary decks
-- review vocabulary using spaced repetition
-- study in both Recognition and Recall directions
-- filter study sessions by deck and tag
-- control how target-language text and readings are displayed
-- receive reading hints while reviewing
-- practise vocabulary inside generated sentences
-- retain their preferred study settings between sessions
-
-Pyoko began as a Japanese-learning app, but the core product should remain generic enough to support other language pairs in the future.
-
-The current reference implementation is native Apple, but this document describes the product and system at a high level so the app could be recreated using another platform or technology stack if needed.
+Pyoko started as a Japanese vocabulary app, but the vocabulary and review model is intentionally generic enough to support other language pairs later.
 
 ---
 
-# 2. Product Goals
+# 1. Technology Stack
 
-Pyoko should be:
+## Core
 
-- simple to use
-- focused on daily study rather than config overhead
-- flexible enough for different vocabulary sources
-- useful for both recognition and recall
-- transparent about review scheduling
-- able to grow from flashcards into contextual sentence practice
-- usable offline where practical
-- designed so user data and review progress can later sync across devices
+- Swift
+- SwiftUI
+- SwiftData
+- FSRS via `open-spaced-repetition/swift-fsrs`
 
-The product should avoid becoming a complicated study-management tool.
+## Platforms
 
-The main experience is:
+Minimum deployment target:
+
+- iOS 17+
+- macOS 14+
+
+Sentence generation uses Apple's Foundation Models framework only where available.
+
+Foundation Models requires newer OS versions and Apple Intelligence-compatible hardware. The rest of Pyoko should continue to work normally when sentence generation is unavailable.
+
+## Persistence
+
+The current local model configuration explicitly disables CloudKit:
+
+```swift
+ModelConfiguration(
+    "Pyoko",
+    schema: schema,
+    isStoredInMemoryOnly: false,
+    cloudKitDatabase: .none
+)
+```
+
+The schema should remain CloudKit-friendly so syncing can be added later.
+
+---
+
+# 2. Product Principles
+
+Pyoko should remain:
+
+- simple
+- native-first
+- focused on study rather than configuration overhead
+- offline-friendly where practical
+- readable and maintainable
+- testable
+- transparent about review behaviour
+- protective of existing FSRS progress
+- usable on both iPhone and native macOS
+
+The app should feel like a lightweight study tool, not a complicated learning-management system.
+
+---
+
+# 3. Main Study Modes
+
+Pyoko currently has three distinct study modes:
 
 ```text
-Import vocabulary
-        ↓
-Choose what to study
-        ↓
-Review due cards
-        ↓
-Schedule next review
-        ↓
-Practise vocabulary in context
+Study
+├── Review
+│   └── Scheduled FSRS review
+│
+├── Quick Review
+│   └── Temporary vocabulary practice
+│       No FSRS changes
+│
+└── Practice Sentences
+    └── Generated contextual practice
+        No FSRS changes
+```
+
+These modes deliberately have separate configuration and session logic.
+
+---
+
+# 4. Current Project Structure
+
+Conceptually:
+
+```text
+Pyoko
+│
+├── enum/
+│   ├── TargetDisplayMode.swift
+│   ├── QuickEnums.swift
+│   └── SentenceEnums.swift
+│
+├── logic/
+│   ├── CardRetrieval.swift
+│   ├── CardManager.swift
+│   ├── DeckManager.swift
+│   ├── TodayReviewProvider.swift
+│   │
+│   ├── QuickSelector.swift
+│   ├── QuickManager.swift
+│   │
+│   ├── SentenceSelector.swift
+│   ├── SentenceManager.swift
+│   └── SentenceGenerator.swift
+│
+├── model/
+│   ├── PyokoCard.swift
+│   ├── PyokoDeck.swift
+│   ├── PyokoTag.swift
+│   ├── PyokoReviewCard.swift
+│   ├── PyokoConfig.swift
+│   ├── PyokoQuickConfig.swift
+│   ├── PyokoQuickCard.swift
+│   ├── PyokoSentenceConfig.swift
+│   └── PyokoSentence.swift
+│
+├── view/
+│   ├── HomeView.swift
+│   ├── ConfigView.swift
+│   ├── ExampleCardView.swift
+│   ├── DecksView.swift
+│   ├── DeckOriginView.swift
+│   │
+│   ├── ReviewView.swift
+│   ├── ReviewCardView.swift
+│   ├── ReviewCompleteView.swift
+│   │
+│   ├── QuickConfigView.swift
+│   ├── QuickCardView.swift
+│   ├── QuickView.swift
+│   │
+│   ├── SentenceConfigView.swift
+│   ├── SentenceCardView.swift
+│   └── SentenceView.swift
+│
+└── Assets.xcassets/
+    └── AppIcon
+```
+
+Exact folder layout may evolve, but responsibilities should remain separated.
+
+---
+
+# 5. Naming Conventions
+
+Use **Deck** everywhere.
+
+Do not reintroduce the older `DataSource` terminology.
+
+Current configuration naming:
+
+```text
+PyokoConfig
+PyokoQuickConfig
+PyokoSentenceConfig
+
+ConfigView
+QuickConfigView
+SentenceConfigView
+```
+
+Use `Config`, not `Configuration`, for current project naming where the refactor has already been completed.
+
+---
+
+# 6. Vocabulary Import Format
+
+CSV import uses exactly four columns:
+
+```csv
+source,target,reading,tags
+to eat,食べる,たべる,N5|Verbs
+mother,母,はは,N5|Family
+hello,bonjour,,Greetings
+```
+
+Rules:
+
+- the first row is always treated as a header and ignored
+- header names are not inspected
+- every later row must contain exactly four columns
+- `source` is required
+- `target` is required
+- empty `reading` becomes `nil`
+- empty `tags` becomes `No Tag`
+- tags are pipe-separated
+- malformed rows should be rejected
+
+This is valid:
+
+```csv
+data,data,,
 ```
 
 ---
 
-# 3. Main User Types
+# 7. Card Directions
 
-## Learner
+Pyoko uses two standard vocabulary directions.
 
-The primary user.
-
-A learner can:
-
-- install built-in vocabulary decks
-- import their own vocabulary
-- configure review preferences
-- complete daily flashcard reviews
-- use reading hints
-- practise generated sentences
-- control how Japanese text is displayed
-- resume later with the same saved settings
-
-## Maintainer / Content Manager
-
-A maintainer can:
-
-- add or update built-in decks
-- manage supported import formats
-- add new sentence-generation features
-- improve review logic
-- introduce new language support
-- add syncing and migrations
-- maintain test coverage
-
----
-
-# 4. Use Case Overview
+## Recognition
 
 ```text
-                         ┌────────────────────┐
-                         │      Learner       │
-                         └─────────┬──────────┘
-                                   │
-          ┌────────────────────────┼─────────────────────────┐
-          │                        │                         │
-          ▼                        ▼                         ▼
- ┌─────────────────┐      ┌──────────────────┐      ┌──────────────────┐
- │ Manage Decks    │      │ Review Vocabulary│      │ Practice Sentences│
- └────────┬────────┘      └─────────┬────────┘      └─────────┬────────┘
-          │                         │                         │
-  ┌───────┼────────┐        ┌───────┼────────┐        ┌───────┼──────────┐
-  │       │        │        │       │        │        │       │          │
-  ▼       ▼        ▼        ▼       ▼        ▼        ▼       ▼          ▼
-Install Import   Delete   Hint   Reveal   Rate     Select  Configure   Review
-built-   custom   deck    reading answer  recall   vocab   sentence    generated
-in deck  deck                              quality  source  style       sentences
+Target → Source
 ```
-
----
-
-# 5. Core Features and Requirements
-
-## 5.1 Deck Management
-
-The user must be able to:
-
-- view installed decks
-- install built-in decks
-- import custom decks
-- delete decks
-- reinstall built-in decks after deletion
-- see where a deck came from
-- see high-level deck statistics
-
-Supported deck origins currently include:
-
-- built-in
-- local/system file
-- direct URL
-- Google Sheets
-
-Future origins may include:
-
-- native Google Drive integration
-- native iCloud integration
-
-The user-facing term is always **Deck**.
-
----
-
-## 5.2 Vocabulary Import
-
-Pyoko accepts a simple four-column vocabulary structure:
-
-```text
-source
-target
-reading
-tags
-```
-
-Requirements:
-
-- source is required
-- target is required
-- reading is optional
-- tags are optional
-- multiple tags may be attached to one vocabulary item
-- missing tags fall back to a default tag
-- the same vocabulary may produce both Recognition and Recall cards
-
-The first row of imported tabular data is treated as a header.
-
-The importer should reject malformed rows rather than silently importing corrupted data.
-
----
-
-## 5.3 Recognition and Recall
-
-Every vocabulary item may generate two study directions.
-
-### Recognition
-
-The learner sees the target language and recalls the source meaning.
 
 Example:
 
@@ -180,9 +228,11 @@ Example:
 to eat
 ```
 
-### Recall
+## Recall
 
-The learner sees the source meaning and recalls the target language.
+```text
+Source → Target
+```
 
 Example:
 
@@ -192,870 +242,1793 @@ to eat
 食べる
 ```
 
-The user may enable:
-
-- Recognition only
-- Recall only
-- both
+Recognition and Recall may both be enabled.
 
 At least one direction must remain enabled.
 
 ---
 
-## 5.4 Daily Review
+# 8. Reading Behaviour
 
-The app creates a daily review session from eligible cards.
+A vocabulary card may contain:
 
-Eligibility is based on:
+```text
+sourceText
+targetText
+targetReading
+```
 
-- due date
+Example:
+
+```text
+sourceText      = "to eat"
+targetText      = "食べる"
+targetReading   = "たべる"
+```
+
+If `targetReading == nil`:
+
+```text
+reading display = targetText
+```
+
+Pyoko does not use furigana.
+
+---
+
+# 9. Target Display Modes
+
+`TargetDisplayMode` supports:
+
+```swift
+enum TargetDisplayMode: String, Codable, CaseIterable {
+    case target
+    case reading
+    case targetAndReading
+}
+```
+
+Meaning:
+
+## Target
+
+```text
+食べる
+```
+
+## Reading
+
+```text
+たべる
+```
+
+## Target + Reading
+
+Prefer stacked presentation:
+
+```text
+食べる
+たべる
+```
+
+The user can independently configure target presentation before and after reveal.
+
+---
+
+# 10. Reading-Only Recognition
+
+Daily Review and Quick Review support an additional Recognition mode intended for reading practice.
+
+Normal Recognition:
+
+```text
+食べる
+↓
+to eat
+```
+
+Reading-only Recognition:
+
+```text
+食べる
+↓
+たべる
+```
+
+This is useful for practising:
+
+```text
+Kanji → Hiragana
+```
+
+The persisted property names currently differ between the two configs:
+
+```text
+Daily Review:  PyokoConfig.readingOnlyAnswer
+Quick Review:  PyokoQuickConfig.recognitionReadingOnlyEnabled
+```
+
+This naming difference is historical and does not change the user-facing behaviour.
+
+Behaviour:
+
+- applies only to Recognition cards
+- the question shows `targetText`
+- the answer shows `targetReading`
+- if reading is missing, fall back to `targetText`
+- Reading Hint must be hidden in this mode because it would reveal the answer
+- Recall behaviour remains unchanged
+
+The setting exists independently in:
+
+```text
+PyokoConfig
+PyokoQuickConfig
+```
+
+---
+
+# 11. Core SwiftData Models
+
+The persistent schema currently includes the main vocabulary, review, and configuration models.
+
+Conceptually:
+
+```text
+PyokoDeck
+PyokoTag
+PyokoCard
+PyokoReviewCard
+PyokoConfig
+PyokoQuickConfig
+PyokoSentenceConfig
+```
+
+Generated sentence items and Quick Review session cards should remain in memory rather than becoming persisted study-history models.
+
+---
+
+# 12. PyokoDeck
+
+A deck groups imported vocabulary and stores provenance.
+
+Important fields include:
+
+```text
+id
+catalogKey
+name
+origin
+originName
+originURLString
+originIdentifier
+vocabularyCount
+recognitionCount
+recallCount
+importedAt
+cards
+configs
+quickConfigs
+sentenceConfigs
+```
+
+`originDetail` is a computed presentation property used by `DeckOriginView`.
+
+Deleting a deck should delete its cards.
+
+Tags should not be deleted simply because a deck is removed.
+
+---
+
+# 13. Deck Origins
+
+Current supported origins:
+
+```text
+builtIn
+file
+url
+googleSheets
+```
+
+Reserved/future origins may include:
+
+```text
+googleDrive
+iCloudDrive
+```
+
+Generic `.fileImporter` imports remain `.file`.
+
+Do not infer the provider from a generic File Provider URL.
+
+---
+
+# 14. Import Sources
+
+Current import UI:
+
+```text
+File
+URL
+Google Sheets
+```
+
+## File
+
+Uses the system file picker.
+
+This may expose:
+
+- local files
+- iCloud Drive
+- Google Drive
+- Dropbox
+- other File Providers
+
+## URL
+
+Supports direct HTTP/HTTPS CSV URLs.
+
+## Google Sheets
+
+Supports public or published Google Sheets converted into CSV export URLs.
+
+Private Google Sheets are not currently supported.
+
+---
+
+# 15. Deck Selection
+
+The normal review configuration's:
+
+```swift
+selectedDecks
+```
+
+is the source of truth for whether a deck participates in future daily reviews.
+
+Do not add a separate `isEnabled` flag to `PyokoDeck`.
+
+An empty selected-deck collection means:
+
+```text
+review no decks
+```
+
+not:
+
+```text
+review all decks
+```
+
+Newly imported decks should automatically be added to the existing review selection while preserving decks the user deliberately disabled.
+
+---
+
+# 16. Tags
+
+Tag selection is persisted independently in each study configuration.
+
+All tag-selection config UIs should provide:
+
+```text
+X of Y selected
+Select All
+Deselect All
+```
+
+## Daily Review
+
+The main `ConfigView` only displays tags that are available from the currently enabled decks.
+
+`Select All` selects every tag currently available from those enabled decks.
+
+`Deselect All` clears the currently available selected tags.
+
+For the main Daily Review config:
+
+```text
+selectedTags.isEmpty
+```
+
+means:
+
+```text
+no tag filter
+```
+
+not:
+
+```text
+no cards
+```
+
+Therefore, pressing **Deselect All** in the Daily Review config means that cards from every tag in the enabled decks remain eligible.
+
+If enabled decks change, tags that are no longer available should be removed from `selectedTags`.
+
+## Quick Review
+
+When Quick Review uses:
+
+```text
+Selected Tags
+```
+
+the tag selector supports Select All / Deselect All.
+
+For this explicit source mode, an empty tag selection is invalid:
+
+```text
+selectedTags.isEmpty
+→ disable Start Quick Review
+```
+
+## Sentence Practice
+
+When Sentence Practice uses:
+
+```text
+Selected Tags
+```
+
+the tag selector also supports Select All / Deselect All and displays the selected count.
+
+An empty tag selection is invalid:
+
+```text
+selectedTags.isEmpty
+→ disable Start Practice
+```
+
+Tag selections in Daily Review, Quick Review, and Sentence Practice must remain independent from one another.
+
+---
+
+# 17. Main Review Config
+
+`PyokoConfig` persists settings for scheduled FSRS Review.
+
+Important settings include:
+
+```text
+dailyCardLimit
+minimumNewCards
+showRecognitionCards
+showRecallCards
+readingOnlyAnswer
+beforeAnswerDisplayMode
+afterAnswerDisplayMode
+readingHintEnabled
+selectedDecks
+selectedTags
+```
+
+The Config screen also contains the local appearance preference.
+
+Settings auto-save.
+
+---
+
+# 18. Daily Card Limit
+
+Default:
+
+```text
+20
+```
+
+The initial daily queue may contain no more than the configured limit.
+
+---
+
+# 19. Minimum New Cards
+
+Default:
+
+```text
+0
+```
+
+This is a minimum reservation, not a maximum.
+
+Example:
+
+```text
+daily limit = 20
+minimum new = 5
+100 review cards due
+100 new cards available
+
+→ 15 review cards
+→ 5 new cards
+```
+
+If fewer reserved new cards exist, reviews may fill the remaining space.
+
+`minimumNewCards` must never exceed `dailyCardLimit`.
+
+A new card means:
+
+```swift
+card.state == .new
+```
+
+---
+
+# 20. Review Selection Architecture
+
+Responsibilities must stay separated:
+
+```text
+CardRetrieval
+    ↓
+eligibility / filtering / selection
+
+CardManager
+    ↓
+session lifecycle / FSRS scheduling
+```
+
+`CardRetrieval` handles:
+
+- due-date filtering
 - selected decks
 - selected tags
 - Recognition / Recall settings
 - daily card limit
-- minimum-new-card setting
+- minimum-new reservation
+- due ordering
 
-The daily session should remain stable once created.
-
-Changing settings during the day should normally affect the next generated session, rather than silently changing the current one.
-
----
-
-## 5.5 Daily Card Limit
-
-The learner can configure the maximum number of cards in a daily session.
-
-The system must never exceed this limit.
+`ReviewView` should not reproduce card-selection logic.
 
 ---
 
-## 5.6 Minimum New Cards
+# 21. Daily Review Session Lifecycle
 
-The learner can reserve a minimum number of places in each daily session for new cards.
+`CardManager` owns the scheduled review queue.
 
-Requirements:
+Expected start behaviour:
 
-- default is zero
-- zero means no new cards are guaranteed
-- it is a minimum, not a maximum
-- reviews can fill unused capacity
-- new cards can fill unused review capacity
-- the daily card limit is never exceeded
+```text
+No queue
+    ↓
+Generate today's queue
+
+Previous-day queue
+    ↓
+Generate new queue
+
+Unfinished queue from today
+    ↓
+Keep it unchanged
+
+Completed queue from today
+    ↓
+Keep it complete
+```
+
+Configuration changes normally affect the next generated queue rather than silently rebuilding an existing same-day session.
 
 ---
 
-## 5.7 Spaced Repetition Scheduling
+# 22. Extending a Completed Daily Review
 
-Pyoko uses an FSRS-style spaced-repetition scheduler.
+When the learner completes the current daily queue, Pyoko checks whether more eligible cards are already due.
 
-Each reviewed card stores scheduling state such as:
+If more cards are due now:
 
-- next due date
-- difficulty
-- stability
-- review count
-- lapse count
-- previous review time
+```text
+Review Complete
 
-When the learner rates a card, the scheduler determines when that card should next be shown.
+53 more cards are due now.
 
-The user chooses between four outcomes:
+[ Review 20 More Cards ]
+[ Back to Home ]
+```
 
-- Again
-- Hard
-- Good
-- Easy
+The extension:
 
-The current review UI presents the resulting next-review interval rather than relying only on the labels.
+- appends another batch to the existing queue
+- does not delete completed queue records
+- uses up to the current daily card limit
+- may be repeated until there are no more cards due now
 
 Example:
 
 ```text
-Harder                         Easier
+Initial:
+20 / 20
 
-  1m        5m        10m        16d
+Extend:
+20 / 40
+
+Extend:
+40 / 60
 ```
 
-The visual mapping still corresponds internally to:
+If a card reviewed earlier becomes due again according to FSRS, it may legitimately re-enter a later extension.
+
+Cards scheduled later today are **not** pulled forward early.
+
+If nothing is due now but cards are scheduled later today, the completion state may show:
 
 ```text
-Again → Hard → Good → Easy
+Caught Up for Now
+
+No more cards are due right now.
+3 cards are scheduled later today.
+
+[ Check Again ]
+[ Back to Home ]
 ```
 
 ---
 
-## 5.8 Review Interval Preview
+# 23. FSRS Scheduling
 
-Before the learner selects a rating, the app previews when the card would next be due for each option.
+Only scheduled Daily Review changes FSRS state.
 
-Requirements:
+`CardManager.reviewCard(...)`:
 
-- previews use the real scheduler
-- previews must not alter the card
-- previews must be based on the same current time
-- intervals should be shown in compact human-readable form
+1. retrieves the real `PyokoCard`
+2. converts it to an FSRS `Card`
+3. calls the scheduler
+4. copies the returned FSRS state back
+5. marks the queue item reviewed
+6. saves SwiftData
 
-Examples:
+The four learner ratings are:
+
+```text
+Again
+Hard
+Good
+Easy
+```
+
+The FSRS package also exposes `.manual`; Pyoko does not expose Manual as a normal learner rating.
+
+---
+
+# 24. FSRS Interval Preview
+
+Before the learner rates a Daily Review card, Pyoko previews the next due interval for:
+
+```text
+Again
+Hard
+Good
+Easy
+```
+
+The preview:
+
+- must come from the real FSRS scheduler
+- must use the same `now` value for each rating
+- must not mutate the stored card
+- must not persist any state
+
+Example visual values:
 
 ```text
 1m
-15m
-4h
-2d
-3mo
-1y
+5m
+10m
+16d
+```
+
+The visual controls may show only intervals while accessibility labels retain the rating names.
+
+---
+
+# 25. Daily Review UI
+
+The Daily Review screen should remain card-focused.
+
+Top bar:
+
+```text
+[Back]   [Progress Bar]   15/20
+```
+
+Avoid a large redundant `Review` title.
+
+Question card:
+
+```text
+┌──────────────────────────────────┐
+│ Recognition             💡 Hint │
+│                                  │
+│             食べる               │
+│                                  │
+│       Tap card to reveal         │
+└──────────────────────────────────┘
+```
+
+After reveal, the card remains the same size.
+
+The action area below the card also keeps a fixed height so the card does not jump vertically.
+
+---
+
+# 26. Reading Hint
+
+Reading Hint:
+
+- is configurable
+- only appears when reading exists
+- is hidden after reveal
+- is hidden when the front already exposes the reading
+- is hidden for reading-only Recognition
+- may be used as a clue on Recall cards
+
+The hint should remain visually small and secondary.
+
+---
+
+# 27. Quick Review
+
+Quick Review is a temporary vocabulary practice mode.
+
+It never calls the FSRS scheduling path.
+
+Quick Review:
+
+- has its own persisted config
+- chooses vocabulary independently
+- may practise Recognition, Recall, or both
+- may use Writing mode
+- tracks Correct / Incorrect during the current session
+- may retry incorrect cards
+- may reset the session
+- does not change normal review scheduling
+
+---
+
+# 28. Quick Review Vocabulary Sources
+
+`QuickSource` supports:
+
+```text
+Random Vocabulary
+Selected Decks
+Selected Tags
+Today's Review
+```
+
+## Random Vocabulary
+
+Uses vocabulary from decks enabled in the normal `PyokoConfig`.
+
+## Selected Decks
+
+Uses Quick Review's own `selectedDecks`.
+
+## Selected Tags
+
+Uses Quick Review's own `selectedTags`.
+
+## Today's Review
+
+Uses vocabulary that actually appeared in today's completed scheduled-review history.
+
+Quick Review's deck/tag choices must never modify the normal review config.
+
+---
+
+# 29. Today's Review Provider
+
+Shared logic lives in:
+
+```text
+TodayReviewProvider
+```
+
+It is used by both:
+
+```text
+Quick Review
+Sentence Practice
+```
+
+Responsibilities:
+
+- find reviewed `PyokoReviewCard` records from the current day
+- map them back to vocabulary
+- deduplicate Recognition / Recall duplicates
+- expose vocabulary count
+- expose whether today's review vocabulary is available
+
+Example duplicate pair:
+
+```text
+Recognition
+食べる → to eat
+
+Recall
+to eat → 食べる
+```
+
+becomes one vocabulary item:
+
+```text
+source:  to eat
+target:  食べる
+reading: たべる
 ```
 
 ---
 
-## 5.9 Review Screen
+# 30. Today's Review Availability
 
-The review screen should be minimal and focused.
+Both Quick Review and Sentence Practice are intended to validate the `Today's Review` source before starting.
 
-### Top area
+When no vocabulary has been reviewed today:
 
-Contains:
-
-- back button
-- progress bar
-- current progress count
-
-A large redundant page title is not required.
+- the option should remain visible
+- the option should be disabled
+- the UI should explain why
+- Start should also be disabled if a persisted config still points to `Today's Review`
 
 Example:
 
 ```text
-[Back]   [──────── progress ────────]   14/20
+○ Today's Review
+  No reviewed vocabulary available today.
 ```
 
-### Review card
+## Current implementation note
 
-The card should:
+Quick Review has the availability-check architecture through `TodayReviewProvider`.
 
-- stay the same size before and after reveal
-- support tapping the whole card to reveal
-- show whether it is Recognition or Recall
-- place Hint in the top-right
-- make the primary vocabulary visually prominent
-- scale long text to fit
-
-### Show Answer
-
-Before reveal:
-
-- show only floating `Show Answer` text
-- use the app accent colour
-- do not use a pill or button background
-- make the entire area below the card tappable
-
-### After reveal
-
-The same reserved area becomes the review-rating area.
-
-The card must not jump or resize when this happens.
+The current `SentenceConfigView` still treats `.todaysReview` as startable once the model, direction, and sentence-type checks pass. The Sentence Config therefore still needs the same `TodayReviewProvider` availability guard before this requirement is fully complete.
 
 ---
 
-## 5.10 Reading Hint
+# 31. Quick Review Config
 
-If a vocabulary item includes a reading, the learner can request a hint.
+`PyokoQuickConfig` persists Quick Review preferences.
 
-Requirements:
-
-- configurable on/off
-- only shown when a reading exists
-- shown in the top-right of the card
-- uses a lightbulb icon
-- does not reveal the full answer
-- displays the reading as a clue
-- hidden after the full answer is revealed
-- hidden when the current front already shows the reading
-
-For Recall cards, the reading hint acts as a deliberate clue.
-
----
-
-## 5.11 Target Display Modes
-
-The learner can choose how target-language content appears.
-
-Supported modes:
-
-- Target
-- Reading
-- Target + Reading
-
-The learner chooses this independently for:
-
-- before the answer is revealed
-- after the answer is revealed
-
-If no reading exists, Reading falls back to Target.
-
-For Japanese, Target + Reading should normally be displayed as two stacked lines.
-
----
-
-## 5.12 Deck Filtering
-
-The learner can choose which decks contribute cards to review sessions.
-
-Important rule:
+Current settings include:
 
 ```text
-No selected decks = review no decks
+cardCount
+source
+writingEnabled
+includeRecognition
+includeRecall
+recognitionReadingOnlyEnabled
+beforeAnswerDisplayMode
+afterAnswerDisplayMode
+readingHintEnabled
+selectedDecks
+selectedTags
 ```
 
-Newly imported decks should automatically become selected in the current review config.
+At least one of Recognition / Recall must remain enabled.
 
-Previously deselected decks should remain deselected.
-
----
-
-## 5.13 Tag Filtering
-
-The learner can filter review cards by tag.
-
-Important rule:
+When the source is `Selected Tags`, Quick Review exposes bulk tag actions:
 
 ```text
-No selected tags = no tag filter
+Select All
+Deselect All
 ```
 
-This is different from deck selection.
+and the session cannot start with zero selected tags.
 
 ---
 
-## 5.14 Appearance
+# 32. Quick Review Without Writing
 
-The app supports:
-
-- System
-- Light
-- Dark
-
-The visual design should use semantic colours and adapt naturally to the selected appearance.
-
-The app version and build number should be visible at the bottom of Settings.
-
----
-
-# 6. Data Model
-
-The data model is designed around vocabulary, scheduling, and saved user preferences.
+Flow:
 
 ```text
-┌─────────────────────┐
-│        Deck         │
-│─────────────────────│
-│ identity            │
-│ name                │
-│ origin              │
-│ import metadata     │
-│ counts              │
-└──────────┬──────────┘
-           │ 1
-           │
-           │ many
-           ▼
-┌─────────────────────┐
-│        Card         │
-│─────────────────────│
-│ identity            │
-│ Recognition/Recall  │
-│ source text         │
-│ target text         │
-│ reading             │
-│ FSRS state          │
-└───────┬─────┬───────┘
-        │     │
-        │     │ many-to-many
-        │     ▼
-        │ ┌───────────────────┐
-        │ │       Tag         │
-        │ │───────────────────│
-        │ │ identity          │
-        │ │ name              │
-        │ └───────────────────┘
-        │
-        │ one-to-many
-        ▼
-┌─────────────────────┐
-│   Review Queue Item │
-│─────────────────────│
-│ review date         │
-│ reviewed flag       │
-│ card reference      │
-└─────────────────────┘
+Question
+   ↓
+Reveal Answer
+   ↓
+Correct / Incorrect
+   ↓
+Next Card
 ```
 
----
+There are no FSRS difficulty choices.
 
-# 7. Config Data
-
-Review preferences are stored separately from vocabulary.
+The learner self-assesses only:
 
 ```text
-┌────────────────────────────┐
-│    Review Config    │
-│────────────────────────────│
-│ daily card limit           │
-│ minimum new cards          │
-│ Recognition enabled        │
-│ Recall enabled             │
-│ reading hint enabled       │
-│ before-answer display      │
-│ after-answer display       │
-│ selected decks             │
-│ selected tags              │
-└────────────────────────────┘
+Incorrect
+Correct
 ```
-
-These preferences persist between app launches.
-
-Appearance is also persistent, but is conceptually a device/UI preference rather than study data.
 
 ---
 
-# 8. Data Lineage / DAG
+# 33. Quick Review Writing Mode
 
-The main vocabulary and review lineage is:
+Writing is an interaction option, not a direction.
+
+The learner may enable:
 
 ```text
-External Vocabulary Source
-        │
-        │
-        ├── Built-in deck
-        ├── File
-        ├── URL
-        └── Google Sheet
-        │
-        ▼
-Import / Validation
-        │
-        ▼
-Deck
-        │
-        ▼
-Vocabulary Records
-        │
-        ├───────────────┐
-        │               │
-        ▼               ▼
-Recognition Card    Recall Card
-        │               │
-        └───────┬───────┘
-                │
-                ▼
-          Tags + Deck
-             Filters
-                │
-                ▼
-         Eligible Due Cards
-                │
-                ▼
-        Daily Review Queue
-                │
-                ▼
-           User Rating
-                │
-                ▼
-           FSRS Scheduler
-                │
-                ▼
-        Updated Card State
-                │
-                └──────────────► future due review
+Writing + Recognition
+Writing + Recall
+Writing + Recognition + Recall
 ```
 
----
+## Writing + Recognition
 
-# 9. Import Data Lineage
+Normal Recognition:
 
 ```text
-Vocabulary Source
-      │
-      ▼
-Raw CSV-like Data
-      │
-      ▼
-Row Validation
-      │
-      ▼
-Normalised Vocabulary
-      │
-      ├── Source
-      ├── Target
-      ├── Reading
-      └── Tags
-      │
-      ▼
-Deck Creation
-      │
-      ├── Recognition cards
-      └── Recall cards
-      │
-      ▼
-Persisted Study Data
+食べる
+↓
+type "to eat"
 ```
 
-Import source metadata should remain attached to the deck so the user can understand where their data came from.
-
----
-
-# 10. Review Data Flow
+Reading-only Recognition:
 
 ```text
-Saved Review Config
-          │
-          ▼
-Eligible Card Selection
-          │
-          ├── due date
-          ├── deck filter
-          ├── tag filter
-          ├── Recognition/Recall filter
-          └── new-card reservation
-          │
-          ▼
-Daily Review Queue
-          │
-          ▼
-Review Card
-          │
-          ├── optional Hint
-          ├── reveal Answer
-          └── choose Difficulty
-          │
-          ▼
-FSRS Scheduling
-          │
-          ▼
-Updated Due Date + Scheduling State
+食べる
+↓
+type "たべる"
 ```
 
+## Writing + Recall
+
+```text
+to eat
+↓
+type "食べる"
+```
+
+After the learner submits:
+
+```text
+Correct answer
+Your answer
+```
+
+are both displayed.
+
+Pyoko does not automatically grade the typed answer.
+
+The learner then chooses:
+
+```text
+Incorrect
+Correct
+```
+
+This result exists only for the current Quick Review session.
+
 ---
 
-# 11. Sentence Practice
+# 34. Quick Review Result Tracking
 
-Sentence Practice is the next major product area.
+Quick Review always displays:
 
-The purpose is to move from isolated vocabulary recall into contextual language use.
+```text
+Correct: X
+Incorrect: Y
+```
 
-The learner opens Sentence Practice, configures the session, then practises generated bilingual sentences.
+Results are tracked by original Quick Review card.
 
-The chosen config should be saved and restored automatically the next time the learner opens the feature.
+At completion:
+
+```text
+Quick Review Complete
+
+17 Correct
+3 Incorrect
+
+[ Review 3 Incorrect Cards ]
+[ Reset Review ]
+[ Back to Quick Review ]
+```
+
+## Review Incorrect
+
+Only currently incorrect cards are placed into the retry round.
+
+If an incorrect card is later marked Correct, its original result is updated.
+
+Example:
+
+```text
+17 Correct / 3 Incorrect
+        ↓
+Review Incorrect
+        ↓
+19 Correct / 1 Incorrect
+```
+
+When all cards become correct:
+
+```text
+20 Correct / 0 Incorrect
+```
+
+`Review Incorrect` disappears.
+
+## Reset Review
+
+Restarts the original Quick Review set and clears temporary Correct / Incorrect results.
+
+No Quick Review result should mutate FSRS.
 
 ---
 
-# 12. Sentence Practice Use Cases
+# 35. Sentence Practice
 
-The learner can choose:
+Sentence Practice is separate from both scheduled Review and Quick Review.
+
+The current flow is:
+
+```text
+Persistent Sentence Config
+        ↓
+Select vocabulary
+        ↓
+Generate sentence exercise
+        ↓
+Learner reveals answer
+        ↓
+Self-evaluate / continue
+```
+
+Sentence practice does not change FSRS.
+
+---
+
+# 36. Sentence Practice Config
+
+`PyokoSentenceConfig` is persisted independently.
+
+Current configuration concepts include:
 
 ## Vocabulary source
 
-- Random Vocabulary
-- Selected Decks
-- Selected Tags
-- Today's Review
+```text
+Random Vocabulary
+Selected Decks
+Selected Tags
+Today's Review
+```
 
-## Vocabulary per sentence
+Random Vocabulary respects decks enabled in the main `PyokoConfig`.
 
-- Focused — 1 word
-- Normal — 2–3 words
-- Challenging — 4–5 words
+Selected Decks and Selected Tags use sentence-specific selections.
+
+Today's Review uses `TodayReviewProvider`.
+
+## Vocabulary density
+
+```text
+Focused       1
+Normal        2–3
+Challenging   4–5
+```
 
 ## Complexity
 
-- Simple
-- Beginner
-- Intermediate
-- Advanced
+```text
+Simple
+Beginner
+Intermediate
+Advanced
+```
 
 ## Sentence types
 
-The learner can enable multiple types:
+Multiple may be enabled:
 
-- Present
-- Past
-- Future
-- Connecting
-- Longer Sentences
+```text
+Present
+Past
+Future
+Connecting
+Longer sentences
+```
+
+## Direction
+
+```text
+Recognition
+Recall
+Both
+```
+
+At least one remains enabled.
 
 ## Japanese display
 
-- Kanji
-- Hiragana
-- Kanji + Hiragana
+```text
+Kanji
+Hiragana
+Kanji + Hiragana
+```
 
-## Practice direction
+Default:
 
-- Recognition
-- Recall
+```text
+Kanji + Hiragana
+```
+
+## Tag bulk selection
+
+When the vocabulary source is `Selected Tags`, `SentenceConfigView` shows:
+
+```text
+X of Y selected
+Select All
+Deselect All
+```
+
+`Select All` assigns all currently available `PyokoTag` records to the sentence config.
+
+`Deselect All` clears `selectedTags`.
+
+Because `.tags` is an explicit vocabulary source, Start Practice remains disabled until at least one tag is selected.
+
+---
+
+# 37. Sentence Generation
+
+Sentence generation uses Apple's Foundation Models where available.
+
+Keep Foundation Models isolated in:
+
+```text
+SentenceGenerator
+```
+
+The rest of the sentence-practice architecture should not depend directly on Apple's APIs.
+
+Use:
+
+```swift
+#if canImport(FoundationModels)
+```
+
+and availability guards for newer OS versions.
+
+The feature must fail gracefully when:
+
+- the OS is too old
+- the device is not Apple Intelligence-capable
+- Apple Intelligence is disabled
+- model assets are not ready
+- the model is otherwise unavailable
+
+---
+
+# 38. Structured Sentence Output
+
+Do not parse arbitrary free-form model text.
+
+Generate structured data containing at least:
+
+```text
+English
+Japanese
+Hiragana
+used vocabulary
+primary answer
+alternative answers
+```
+
+Always generate both:
+
+```text
+Japanese
+Hiragana
+```
+
+regardless of current display mode.
+
+Changing presentation should not require regenerating the sentence.
+
+---
+
+# 39. Sentence Answer Handling
+
+Current product direction:
+
+- Foundation Models generates the exercise
+- Pyoko does not rely on AI evaluation for learner grading
+- the learner reveals the primary answer
+- alternative valid answers may also be shown
+- the learner self-evaluates
+- sentence practice does not mutate FSRS
+
+Generated sentence session objects remain in memory for now.
+
+Do not persist sentence history until there is a clear product requirement.
+
+---
+
+# 40. Appearance
+
+Appearance is a local UI preference stored with:
+
+```swift
+@AppStorage("appearancePreference")
+```
+
+Choices:
+
+```text
+System
+Light
+Dark
+```
+
+The app root applies the matching:
+
+```swift
+.preferredColorScheme(...)
+```
+
+Use semantic SwiftUI colours and avoid hard-coded white/black UI backgrounds where possible.
+
+---
+
+# 41. Config Screen Layout
+
+The main `ConfigView` should use:
+
+```text
+ScrollView
+  → finite-width VStack
+  → GroupBox sections
+```
+
+This avoids the native macOS layout problems previously seen with `Form`.
+
+A practical maximum content width is approximately:
+
+```swift
+.frame(maxWidth: 700)
+```
+
+Current review config concepts include:
+
+1. Daily Review
+2. Card Types
+3. Recognition Answer / Reading Only
+4. Target Display
+5. Reading Hint
+6. Card Preview
+7. Appearance
+8. Decks
+9. Tags, including Select All / Deselect All
+10. Version footer
+
+The Daily Review tag list is limited to tags available in enabled decks.
+
+Settings auto-save.
+
+---
+
+# 42. App Version
+
+The Config screen should display version and build number from the bundle:
+
+```text
+CFBundleShortVersionString
+CFBundleVersion
+```
+
+Do not hardcode them.
+
+Example:
+
+```text
+Version 1.2 (14)
+```
+
+---
+
+# 43. App Icon
+
+The app icon asset lives in:
+
+```text
+Assets.xcassets
+└── AppIcon
+```
+
+Current visual direction:
+
+- very minimalist
+- black and white
+- hand-drawn / slightly wobbly
+- top-down lily-pad outline
+- simple asymmetrical notch
+- no unnecessary illustration detail
+
+The source icon should be a square 1024×1024 image for the main iOS AppIcon slot.
+
+Do not manually round the image corners; the platform applies the icon mask.
+
+---
+
+# 44. Home Screen
+
+Study navigation currently conceptually contains:
+
+```text
+Review
+Quick Review
+Practice Sentences
+```
+
+Manage contains:
+
+```text
+Decks
+Config
+```
+
+Home should call:
+
+```swift
+CardManager.startReviewIfNeeded()
+```
+
+before displaying daily review progress.
+
+If today's queue is complete but more cards are already due, Home should indicate the additional due count rather than incorrectly saying the day is complete.
+
+---
+
+# 45. SwiftData / CloudKit Rules
+
+Until CloudKit is enabled, preserve a sync-friendly schema.
+
+Avoid:
+
+- unique attributes
+- required relationships where avoidable
+- `.deny` delete rules
+
+Prefer:
+
+- UUID identifiers
+- optional relationships
+- explicit inverse relationships
+- `.cascade` where a true owned child should disappear
+- `.nullify` where shared data should survive
+
+---
+
+# 46. Schema Changes During Development
+
+The SwiftData schema is still evolving.
+
+Changes such as adding persisted config fields may require resetting the local development store.
+
+Important:
+
+- deleting DerivedData does not reset SwiftData
+- deleting the app from Simulator/device generally resets its local store
+- macOS sandbox data may require manual removal
+
+Before production use:
+
+```text
+VersionedSchema
+SchemaMigrationPlan
+```
+
+Do not rely on destructive resets after release.
+
+---
+
+# 47. Cross-Platform Requirements
+
+Pyoko should continue building for:
+
+- iOS
+- native macOS
+
+Wrap iOS-only modifiers:
+
+```swift
+#if os(iOS)
+// iOS-only SwiftUI modifier
+#endif
+```
+
+Avoid scattering platform checks throughout unrelated code.
+
+Keep platform-specific behaviour small and isolated.
+
+---
+
+# 48. UI / UX Direction
+
+Current interface principles:
+
+- minimal
+- card-focused
+- stable layout during reveal
+- large tap targets
+- semantic SwiftUI styling
+- dark-mode friendly
+- small secondary Hint action
+- avoid redundant titles
+- avoid duplicate actions
+- use accent colour for primary actions
+- do not rely on colour alone for meaning
+
+Daily Review, Quick Review, and Sentence Practice should feel visually related even though their behaviour differs.
+
+---
+
+# 49. Testing Priorities
+
+## Card Retrieval
+
+Test:
+
+- due-date eligibility
+- selected deck filtering
+- tag filtering
+- Recognition / Recall
+- daily limit
+- minimum-new reservation
+- due ordering
+
+## Scheduling
+
+Test:
+
+- FSRS state updates
+- Again / Hard / Good / Easy
+- `.manual` is not exposed as a normal learner control
+- interval previews do not mutate stored cards
+- extension queue behaviour
+- repeated cards only re-enter once genuinely due
+
+## Reading-Only Recognition
+
+Test both Daily and Quick Review:
+
+```text
+target → reading
+```
+
+including:
+
+- reading exists
+- reading is nil and falls back to target
+- reading hint is hidden
+- Recall remains unaffected
+
+## Quick Review
+
+Test:
+
+- configuration persistence
+- Random respects enabled main-review decks
+- Selected Decks
+- Selected Tags
+- Select All tags
+- Deselect All tags
+- selected-tag count
+- `.tags` source cannot start with zero selected tags
+- Today's Review
+- Today's Review unavailable state
+- Recognition only
+- Recall only
 - both
+- Writing Recognition
+- Writing Recall
+- Writing reading-only Recognition
+- Correct / Incorrect counts
+- Review Incorrect
+- resetting clears temporary results
+- no FSRS mutation
 
-## Session size
+## Sentence Practice
 
-The learner selects how many sentences to practise.
+Test:
 
----
+- configuration persistence
+- sentence deck/tag selection remains isolated from normal review
+- Select All tags
+- Deselect All tags
+- selected-tag count
+- `.tags` source cannot start with zero selected tags
+- Random respects enabled main-review decks
+- Today's Review validation
+- Recognition / Recall deduplication
+- density
+- Foundation Models availability
+- structured generation
+- Japanese display modes
+- primary + alternative answer reveal
+- no FSRS mutation
 
-# 13. Sentence Practice Flow
+## Import
 
-```text
-Saved Sentence Config
-           │
-           ▼
-Choose Vocabulary Source
-           │
-           ▼
-Select Eligible Vocabulary
-           │
-           ▼
-Remove Recognition/Recall Duplicates
-           │
-           ▼
-Group 1–5 Vocabulary Items
-           │
-           ▼
-Generate Sentence
-           │
-           ├── English
-           ├── Japanese
-           ├── Hiragana
-           └── alternative valid answers
-           │
-           ▼
-Recognition / Recall Practice
-           │
-           ▼
-Learner Answer
-           │
-           ▼
-Local Answer Matching
-           │
-       clear match?
-        │      │
-       yes     no
-        │      │
-        │      ▼
-        │   AI Evaluation
-        │      │
-        └──────┤
-               ▼
-          Learner Feedback
-```
+Test:
 
----
+- valid four-column CSV
+- missing reading
+- missing tags
+- default `No Tag`
+- malformed row
+- duplicate deck
+- Recognition only
+- Recall only
+- both directions
+- provenance
+- auto-selection of newly imported decks
 
-# 14. Sentence Generation Requirements
+## UI
 
-The generator should:
+Important flows:
 
-- use a small selected vocabulary set for each sentence
-- create natural sentences rather than forcing too many words together
-- respect the requested difficulty
-- respect enabled sentence styles
-- return both Japanese and Hiragana
-- return an English equivalent
-- return multiple acceptable answers where useful
-- avoid exposing raw model controls to the learner
-
-The generation layer should be replaceable.
-
-The current intended implementation uses the device's built-in language model where available.
+- import deck
+- download built-in deck
+- delete deck
+- enable / disable deck
+- change Config
+- Daily Review tag Select All / Deselect All
+- Quick Review tag Select All / Deselect All
+- Sentence Practice tag Select All / Deselect All
+- Daily Review
+- extend completed Daily Review
+- Reading Hint
+- reading-only Recognition
+- Quick Review
+- Quick Writing
+- retry incorrect cards
+- Sentence Practice unavailable/available states
+- light mode
+- dark mode
+- iOS
+- macOS
 
 ---
 
-# 15. Sentence Answer Evaluation
+# 50. Current Development Status
 
-Sentence translation is not one-to-one.
+## Implemented / actively integrated
 
-The system must not assume only one exact string is valid.
-
-Evaluation should therefore use two stages:
-
-## Local matching
-
-Handle obvious equivalence such as:
-
-- whitespace differences
-- punctuation differences
-- exact matches to known alternative answers
-
-## AI evaluation
-
-If a local match is not conclusive, the model can assess:
-
-- meaning
-- grammar
-- vocabulary usage
-
-Suggested feedback outcomes:
-
-- Correct
-- Mostly Correct
-- Incorrect
-
-AI grading should be presented as helpful feedback, not as an infallible exam result.
-
----
-
-# 16. Japanese Display and Grading
-
-Japanese Display controls presentation only.
-
-For example, if the learner chooses Kanji, the system may still accept a correct Hiragana or mixed Kanji/Kana answer.
-
-The learner should be judged on:
-
-- meaning
-- grammar
-- appropriate vocabulary
-
-not on matching one exact script representation.
-
----
-
-# 17. Persistence Requirements
-
-The app should persist:
-
-- decks
-- vocabulary cards
-- tags
-- FSRS scheduling state
-- daily review queue state
-- review config
-- sentence-practice config
-- appearance preference
-
-Generated sentence sessions do not need to be stored initially.
-
-They may become persistent later if features such as history, statistics, or favourites are added.
-
----
-
-# 18. Data Integrity Requirements
-
-The system should preserve these rules:
-
-- deck deletion removes its cards
-- deck deletion does not remove shared tags
-- deleting a review-queue item does not delete the vocabulary card
-- new imports do not reset unrelated user preferences
-- newly imported decks are selected automatically
-- a stable same-day review queue is not silently regenerated
-- scheduler previews never mutate card state
-- user review progress should be preserved whenever possible
-
----
-
-# 19. Non-Functional Requirements
-
-## Reliability
-
-Study progress and scheduling data must be treated as important user data.
-
-## Maintainability
-
-Major responsibilities should remain separated:
-
-```text
-Import
-Review Selection
-Review Scheduling
-UI
-Sentence Generation
-Sentence Evaluation
-Persistence
-```
-
-## Offline behaviour
-
-Flashcard review should not depend on an internet connection.
-
-Sentence generation should preferably run on-device where supported.
-
-## Accessibility
-
-The interface should not rely only on:
-
-- colour
-- iconography
-- visual position
-
-Interactive controls should remain understandable to accessibility tools.
-
-## Cross-platform architecture
-
-The product model should not depend on one UI framework.
-
-A future web, Android, or cross-platform implementation should be able to reproduce the same:
-
-- data model
-- review rules
-- scheduling flow
-- sentence-practice behaviour
-
----
-
-# 20. Current Product Scope
-
-The existing / near-complete product includes:
-
-- deck management
-- CSV-style vocabulary import
-- file import
+- SwiftData vocabulary model
+- FSRS scheduling
+- Recognition / Recall cards
+- deck terminology
+- CSV import
 - URL import
 - public Google Sheets import
-- built-in deck support
+- generic File Provider import
 - deck provenance
-- Recognition and Recall cards
-- tags
-- deck and tag filters
-- daily review limit
-- minimum-new-card setting
-- persistent review config
+- built-in deck architecture
+- tag relationships
+- deck enable / disable through `PyokoConfig.selectedDecks`
+- daily card limit
+- Minimum New Cards
+- persistent `PyokoConfig`
+- target / reading / target+reading display
 - reading hints
-- configurable Target / Reading display
+- reading-only Recognition
+- review card preview
+- dark / light / system appearance
 - stable daily review queue
-- FSRS scheduling
-- FSRS next-review previews
-- redesigned card-focused review UI
-- dark/light/system appearance
-- app version display
+- FSRS interval preview
+- extend completed review session
+- Quick Review architecture
+- persistent `PyokoQuickConfig`
+- Quick Review source selection
+- Quick Writing
+- Correct / Incorrect tracking
+- retry incorrect Quick cards
+- persistent `PyokoSentenceConfig`
+- sentence vocabulary selection architecture
+- Foundation Models sentence generation architecture
+- shared `TodayReviewProvider`
+- Select All / Deselect All tag controls across config pages
+- selected-tag counts in tag selectors
+- minimal lily-pad app-icon direction
 
----
+## Still needing significant work / polish
 
-# 21. Future Development
-
-## Priority 1 — Stabilise the Existing Review Experience
-
-- finish review-screen visual polish
-- verify behaviour on different screen sizes
-- improve accessibility
-- verify dark/light appearance
-- add automated tests for card selection and scheduling
-
-## Priority 2 — Built-In Content
-
-- complete JLPT N5 dataset
-- complete JLPT N4 dataset
-- add idioms deck
-- create a reliable content-release/update process
-
-## Priority 3 — Safe Deck Updates
-
-Create a proper update/upsert system that can:
-
-- identify existing vocabulary
-- detect changed rows
-- add new vocabulary
-- handle removed vocabulary
-- preserve review progress for unchanged cards
-
-Avoid delete-and-reimport where it would erase scheduling history.
-
-## Priority 4 — Sentence Practice
-
-Implement:
-
-- persistent sentence config
-- vocabulary selection
-- vocabulary density
-- sentence generation
-- Recognition and Recall sentence practice
-- Kanji / Hiragana / Both display
-- multiple valid answers
-- local answer matching
-- AI feedback
-
-## Priority 5 — Testing
-
-Add:
-
-- unit tests for review-card retrieval
-- unit tests for scheduling
-- importer validation tests
-- config tests
-- sentence-generation tests
-- sentence-evaluation tests
-- end-to-end UI tests
-
-## Priority 6 — Sync and Migration
-
-Before production-scale syncing:
-
-- introduce explicit database schema versions
-- create migration plans
-- test data upgrades
-- enable cloud sync only after local data stability is proven
-
-## Priority 7 — Additional Integrations
-
-Possible later additions:
-
+- production N5 deck data
+- production N4 deck data
+- idioms deck
+- robust deck update/upsert
+- comprehensive unit tests
+- UI tests
+- final accessibility audit
+- final dark-mode polish
+- production SwiftData migration plan
+- CloudKit sync
 - private Google Sheets
-- native Google Drive browsing
-- direct cloud-source updates
-- multi-device sync
-- sentence history
-- study statistics
-- weak-vocabulary / weak-grammar targeting
+- optional native Google Drive integration
+- Sentence Config `Today's Review` availability guard
+- broad sentence-generation reliability testing across supported Apple Intelligence devices
 
 ---
 
-# 22. Product Principles for Future Development
+# 51. Future Deck Update / Upsert
 
-When adding features, preserve the following principles:
+Imported decks will eventually need safe updates.
 
-1. Keep daily study simple.
-2. Avoid exposing technical complexity to learners.
-3. Protect review progress.
-4. Prefer stable, understandable behaviour over hidden automation.
-5. Keep vocabulary storage independent from presentation.
-6. Keep review scheduling independent from UI.
-7. Keep sentence generation replaceable.
-8. Let the learner control what they study.
-9. Reuse imported vocabulary rather than duplicating it.
-10. Build features that can work beyond Japanese when practical.
+Desired behaviour:
+
+- stable source/deck identifier
+- content hashing
+- detect changed vocabulary
+- update changed rows
+- insert new rows
+- handle removed rows
+- preserve FSRS state for logically unchanged vocabulary
+
+Do not implement naive delete-and-reimport if review progress must survive.
 
 ---
 
-# 23. Handoff Summary
+# 52. Future Native Google Drive Integration
 
-A new maintainer should think of Pyoko as three connected systems:
+Current Google Drive access is already possible through the system File Provider picker.
+
+A native Drive browser should only be added if Pyoko needs:
+
+- browsing Drive inside the app
+- automatically refreshing a known Drive file
+- stable provider-specific file identity
+- authenticated/private Drive access
+
+That would require a Google Cloud project, OAuth, appropriate Drive scopes, and provider-specific integration code.
+
+---
+
+# 53. Important Invariants
+
+Preserve these unless the product requirement explicitly changes.
+
+## Deck selection
 
 ```text
-1. Vocabulary Library
-   Decks + Vocabulary + Tags
-
-2. Spaced Repetition
-   Config + Daily Queue + FSRS Scheduling
-
-3. Contextual Practice
-   Vocabulary Selection + Sentence Generation + Answer Evaluation
+selectedDecks.isEmpty
 ```
 
-These systems share data but should remain architecturally separate.
-
-The product should be reproducible from this document even if the implementation technology changes.
-
-The essential behaviour to preserve is:
+means:
 
 ```text
-Vocabulary enters the system
-        ↓
-is organised into decks and tags
-        ↓
-becomes Recognition and Recall cards
-        ↓
-is selected into daily review sessions
-        ↓
-is scheduled by spaced repetition
-        ↓
-is reused in contextual sentence practice
+no decks selected
 ```
 
-That is the core of Pyoko.
+## Tags
+
+Tag-empty semantics depend on the configuration.
+
+### Daily Review
+
+```text
+selectedTags.isEmpty
+```
+
+means:
+
+```text
+no tag filter
+```
+
+Therefore Daily Review `Deselect All` does not mean "review no cards".
+
+### Quick Review / Sentence Practice
+
+When the explicit vocabulary source is:
+
+```text
+Selected Tags
+```
+
+an empty `selectedTags` collection means the configuration is incomplete and Start must be disabled.
+
+Bulk tag selection must not change tag selections in any of the other study configs.
+
+## Direction
+
+```text
+Recognition = Target → Source
+Recall      = Source → Target
+```
+
+except when reading-only Recognition is enabled:
+
+```text
+Recognition = Target → Reading
+```
+
+## Reading fallback
+
+```text
+targetReading == nil
+```
+
+means:
+
+```text
+use targetText
+```
+
+for reading presentation.
+
+## Minimum New Cards
+
+It is a minimum reservation, not a maximum.
+
+## Same-day queue
+
+Do not silently regenerate an existing same-day Daily Review queue.
+
+## Review extensions
+
+Do not pull future cards forward merely because the current batch ended.
+
+## FSRS
+
+Only scheduled Daily Review should mutate FSRS.
+
+Quick Review and Sentence Practice must not.
+
+## Quick Review scores
+
+Correct / Incorrect results exist only inside the current in-memory Quick Review session.
+
+## Today's Review
+
+Quick Review and Sentence Practice must not start with `Today's Review` when today's reviewed vocabulary set is empty.
+
+## Sentence generation
+
+Generation and display are separate.
+
+Changing Japanese display mode should not require regenerating a sentence.
+
+---
+
+# 54. Code Style / Maintenance Expectations
+
+Prefer:
+
+- small focused types
+- clear names
+- direct Swift
+- readable formatting
+- minimal indirection
+- full replacement files for major changes during active development
+- production code separate from previews/tests
+- comments that explain architectural intent
+- current compiler-visible source as the final authority
+
+Avoid:
+
+- duplicated filtering logic
+- scheduling logic inside views
+- direct database manipulation scattered across UI
+- giant views where a focused child type is clearer
+- speculative abstractions without a real use case
+- broad renames that are not confirmed by the compiler-visible project
+
+---
+
+# 55. Handoff Notes
+
+The project changes quickly during active development.
+
+If this README conflicts with current compiler-visible Swift source:
+
+1. trust the current source
+2. preserve existing public APIs where practical
+3. adapt new functionality rather than causing unrelated churn
+4. verify both sides of SwiftData inverse relationships after model renames
+5. remember that schema changes may require a development-store reset
+
+Current terminology:
+
+```text
+Deck
+Config
+Quick Review
+Sentence Practice
+```
+
+Do not regress to older names such as:
+
+```text
+DataSource
+PyokoConfiguration
+ConfigurationView
+```
+
+when the refactor has already been completed.
+
+---
+
+# 56. Recommended Next Work
+
+A sensible current order is:
+
+1. finish compiling and stabilising reading-only Recognition
+2. test Daily Review extension behaviour
+3. test Quick Review Correct / Incorrect retry flow
+4. apply Today's Review availability validation to Sentence Config
+5. improve unit coverage for `CardRetrieval` and `CardManager`
+6. add Quick Review unit tests
+7. add Sentence Practice selection/generation tests
+8. validate Foundation Models failures on supported and unsupported devices
+9. finalise N5 / N4 / Idioms data
+10. implement safe deck update/upsert
+11. perform accessibility and dark-mode audit
+12. add VersionedSchema / SchemaMigrationPlan before production
+13. consider CloudKit only after local schema stabilises
+
+---
+
+# 57.1 Recent Config UI Update
+
+The tag-selection UI now supports bulk selection across the three configuration surfaces:
+
+```text
+Daily Review Config
+Quick Review Config
+Sentence Practice Config
+```
+
+Each tag selector should show a selected count and provide:
+
+```text
+Select All
+Deselect All
+```
+
+The actions persist immediately using the existing SwiftData relationships.
+
+No new SwiftData model or schema field is required for this UI change.
+
+Daily Review keeps its special empty-selection behaviour (`no tag filter`), while Quick Review and Sentence Practice require at least one selected tag when `Selected Tags` is the active vocabulary source.
+
+---
+
+# 57. Product Summary
+
+Pyoko now consists of three complementary study loops:
+
+```text
+Scheduled Review
+    ↓
+FSRS decides when vocabulary returns
+
+Quick Review
+    ↓
+Learner practises any chosen vocabulary
+without changing scheduling
+
+Sentence Practice
+    ↓
+Learner practises vocabulary in generated context
+without changing scheduling
+```
+
+The product should remain simple on the surface while keeping these behaviours clearly separated internally.
+
+The highest priorities remain:
+
+- reliable FSRS scheduling
+- understandable review behaviour
+- readable Japanese
+- flexible vocabulary selection
+- persistent but simple configuration
+- safe review progress
+- useful offline/on-device study
+- maintainable architecture

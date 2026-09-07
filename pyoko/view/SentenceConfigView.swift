@@ -758,12 +758,78 @@ struct SentenceConfigView: View {
             spacing: 10
         ) {
 
-            Text(
-                "Tags"
-            )
-            .font(
-                .headline
-            )
+            HStack(
+                spacing: 12
+            ) {
+
+                VStack(
+                    alignment: .leading,
+                    spacing: 2
+                ) {
+
+                    Text(
+                        "Tags"
+                    )
+                    .font(
+                        .headline
+                    )
+
+                    if !tags.isEmpty {
+
+                        Text(
+                            tagSelectionText(
+                                config
+                            )
+                        )
+                        .font(
+                            .caption
+                        )
+                        .foregroundStyle(
+                            .secondary
+                        )
+                    }
+                }
+
+                Spacer()
+
+                if !tags.isEmpty {
+
+                    Button(
+                        "Select All"
+                    ) {
+
+                        selectAllTags(
+                            config
+                        )
+                    }
+                    .buttonStyle(
+                        .borderless
+                    )
+                    .disabled(
+                        areAllTagsSelected(
+                            config
+                        )
+                    )
+
+                    Button(
+                        "Deselect All"
+                    ) {
+
+                        deselectAllTags(
+                            config
+                        )
+                    }
+                    .buttonStyle(
+                        .borderless
+                    )
+                    .disabled(
+                        selectedTagCount(
+                            config
+                        )
+                        == 0
+                    )
+                }
+            }
 
             if tags.isEmpty {
 
@@ -775,6 +841,8 @@ struct SentenceConfigView: View {
                 )
 
             } else {
+
+                Divider()
 
                 ForEach(
                     tags
@@ -788,6 +856,24 @@ struct SentenceConfigView: View {
                                 config:
                                     config
                             )
+                    )
+                }
+
+                if (config.selectedTags ?? [])
+                    .isEmpty {
+
+                    Text(
+                        "Select at least one tag to practise sentences using Selected Tags."
+                    )
+                    .font(
+                        .caption
+                    )
+                    .foregroundStyle(
+                        .secondary
+                    )
+                    .fixedSize(
+                        horizontal: false,
+                        vertical: true
                     )
                 }
             }
@@ -829,12 +915,14 @@ struct SentenceConfigView: View {
             config.hasDirection,
             config.hasSentenceType
         else {
+
             return false
         }
 
         switch config.source {
 
         case .decks:
+
             return !(
                 config
                     .selectedDecks
@@ -843,6 +931,7 @@ struct SentenceConfigView: View {
             .isEmpty
 
         case .tags:
+
             return !(
                 config
                     .selectedTags
@@ -852,6 +941,7 @@ struct SentenceConfigView: View {
 
         case .random,
              .todaysReview:
+
             return true
         }
     }
@@ -861,32 +951,40 @@ struct SentenceConfigView: View {
             PyokoSentenceConfig
     ) -> String? {
 
-        guard modelAvailability.isAvailable else {
-            return modelAvailability.message
+        guard modelAvailability
+            .isAvailable
+        else {
+
+            return modelAvailability
+                .message
         }
 
         if !config.hasDirection {
-            return "Enable Recognition or Recall."
+
+            return
+                "Enable Recognition or Recall."
         }
 
         if !config.hasSentenceType {
-            return "Select at least one sentence type."
+
+            return
+                "Select at least one sentence type."
         }
 
-        if
-            config.source == .decks,
-            (config.selectedDecks ?? [])
-                .isEmpty {
+        if config.source == .decks,
+           (config.selectedDecks ?? [])
+            .isEmpty {
 
-            return "Select at least one deck."
+            return
+                "Select at least one deck."
         }
 
-        if
-            config.source == .tags,
-            (config.selectedTags ?? [])
-                .isEmpty {
+        if config.source == .tags,
+           (config.selectedTags ?? [])
+            .isEmpty {
 
-            return "Select at least one tag."
+            return
+                "Select at least one tag."
         }
 
         return nil
@@ -901,9 +999,11 @@ struct SentenceConfigView: View {
 
         Binding(
             get: {
+
                 config.source
             },
             set: {
+
                 config.source =
                     $0
 
@@ -919,9 +1019,11 @@ struct SentenceConfigView: View {
 
         Binding(
             get: {
+
                 config.density
             },
             set: {
+
                 config.density =
                     $0
 
@@ -937,9 +1039,11 @@ struct SentenceConfigView: View {
 
         Binding(
             get: {
+
                 config.level
             },
             set: {
+
                 config.level =
                     $0
 
@@ -955,9 +1059,11 @@ struct SentenceConfigView: View {
 
         Binding(
             get: {
+
                 config.display
             },
             set: {
+
                 config.display =
                     $0
 
@@ -973,6 +1079,7 @@ struct SentenceConfigView: View {
 
         Binding(
             get: {
+
                 config.sentenceCount
             },
             set: {
@@ -998,6 +1105,7 @@ struct SentenceConfigView: View {
 
         Binding(
             get: {
+
                 config
                     .includeRecognition
             },
@@ -1008,12 +1116,13 @@ struct SentenceConfigView: View {
                     || config
                         .includeRecall
                 else {
+
                     return
                 }
 
                 config
                     .includeRecognition =
-                    enabled
+                        enabled
 
                 save()
             }
@@ -1027,6 +1136,7 @@ struct SentenceConfigView: View {
 
         Binding(
             get: {
+
                 config
                     .includeRecall
             },
@@ -1037,12 +1147,13 @@ struct SentenceConfigView: View {
                     || config
                         .includeRecognition
                 else {
+
                     return
                 }
 
                 config
                     .includeRecall =
-                    enabled
+                        enabled
 
                 save()
             }
@@ -1074,6 +1185,7 @@ struct SentenceConfigView: View {
                             .selectedSentenceTypes
                             .count > 1
                     else {
+
                         return
                     }
                 }
@@ -1107,6 +1219,7 @@ struct SentenceConfigView: View {
                     ?? []
                 )
                 .contains {
+
                     $0.id ==
                         deck.id
                 }
@@ -1122,6 +1235,7 @@ struct SentenceConfigView: View {
 
                     if !selected.contains(
                         where: {
+
                             $0.id ==
                                 deck.id
                         }
@@ -1135,6 +1249,7 @@ struct SentenceConfigView: View {
                 } else {
 
                     selected.removeAll {
+
                         $0.id ==
                             deck.id
                     }
@@ -1142,7 +1257,7 @@ struct SentenceConfigView: View {
 
                 config
                     .selectedDecks =
-                    selected
+                        selected
 
                 save()
             }
@@ -1165,6 +1280,7 @@ struct SentenceConfigView: View {
                     ?? []
                 )
                 .contains {
+
                     $0.id ==
                         tag.id
                 }
@@ -1180,6 +1296,7 @@ struct SentenceConfigView: View {
 
                     if !selected.contains(
                         where: {
+
                             $0.id ==
                                 tag.id
                         }
@@ -1193,6 +1310,7 @@ struct SentenceConfigView: View {
                 } else {
 
                     selected.removeAll {
+
                         $0.id ==
                             tag.id
                     }
@@ -1200,11 +1318,84 @@ struct SentenceConfigView: View {
 
                 config
                     .selectedTags =
-                    selected
+                        selected
 
                 save()
             }
         )
+    }
+
+    // MARK: - Tag Bulk Selection
+
+    private func selectedTagCount(
+        _ config:
+            PyokoSentenceConfig
+    ) -> Int {
+
+        let selectedIDs =
+            Set(
+                (config.selectedTags ?? [])
+                    .map(
+                        \.id
+                    )
+            )
+
+        return tags
+            .filter {
+
+                selectedIDs
+                    .contains(
+                        $0.id
+                    )
+            }
+            .count
+    }
+
+    private func areAllTagsSelected(
+        _ config:
+            PyokoSentenceConfig
+    ) -> Bool {
+
+        guard !tags.isEmpty
+        else {
+
+            return false
+        }
+
+        return selectedTagCount(
+            config
+        )
+        == tags.count
+    }
+
+    private func tagSelectionText(
+        _ config:
+            PyokoSentenceConfig
+    ) -> String {
+
+        "\(selectedTagCount(config)) of \(tags.count) selected"
+    }
+
+    private func selectAllTags(
+        _ config:
+            PyokoSentenceConfig
+    ) {
+
+        config.selectedTags =
+            tags
+
+        save()
+    }
+
+    private func deselectAllTags(
+        _ config:
+            PyokoSentenceConfig
+    ) {
+
+        config.selectedTags =
+            []
+
+        save()
     }
 
     // MARK: - Sentence Types
@@ -1219,22 +1410,27 @@ struct SentenceConfigView: View {
         switch type {
 
         case .present:
+
             return config
                 .includePresent
 
         case .past:
+
             return config
                 .includePast
 
         case .future:
+
             return config
                 .includeFuture
 
         case .connecting:
+
             return config
                 .includeConnecting
 
         case .longer:
+
             return config
                 .includeLonger
         }
@@ -1252,29 +1448,34 @@ struct SentenceConfigView: View {
         switch type {
 
         case .present:
+
             config
                 .includePresent =
-                enabled
+                    enabled
 
         case .past:
+
             config
                 .includePast =
-                enabled
+                    enabled
 
         case .future:
+
             config
                 .includeFuture =
-                enabled
+                    enabled
 
         case .connecting:
+
             config
                 .includeConnecting =
-                enabled
+                    enabled
 
         case .longer:
+
             config
                 .includeLonger =
-                enabled
+                    enabled
         }
     }
 
