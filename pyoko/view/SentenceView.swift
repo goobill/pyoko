@@ -16,8 +16,8 @@ struct SentenceView: View {
     @Environment(\.dismiss)
     private var dismiss
 
-    let configuration:
-        PyokoSentenceConfiguration
+    let config:
+        PyokoSentenceConfig
 
     @State
     private var manager:
@@ -117,7 +117,7 @@ struct SentenceView: View {
                                     manager
                                         .currentDirection,
                                 display:
-                                    configuration
+                                    config
                                         .display,
                                 isRevealed:
                                     isRevealed,
@@ -560,8 +560,8 @@ struct SentenceView: View {
             newManager
 
         await newManager.start(
-            configuration:
-                configuration
+            config:
+                config
         )
     }
 }

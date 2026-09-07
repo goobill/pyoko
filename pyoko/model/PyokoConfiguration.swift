@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class PyokoConfiguration {
+final class PyokoConfig {
 
     var id: UUID = UUID()
 
@@ -29,13 +29,13 @@ final class PyokoConfiguration {
 
     @Relationship(
         deleteRule: .nullify,
-        inverse: \PyokoDeck.configurations
+        inverse: \PyokoDeck.configs
     )
     var selectedDecks: [PyokoDeck]? = []
 
     @Relationship(
         deleteRule: .nullify,
-        inverse: \PyokoTag.configurations
+        inverse: \PyokoTag.configs
     )
     var selectedTags: [PyokoTag]? = []
 

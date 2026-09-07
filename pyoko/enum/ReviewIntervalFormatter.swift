@@ -1,98 +1,65 @@
-//
-//  ReviewIntervalFormatter.swift
-//  pyoko
-//
-//  Created by Bill on 07/09/2026.
-//
-
 import Foundation
 
 enum ReviewIntervalFormatter {
 
     static func string(
-        from referenceDate: Date,
-        to dueDate: Date
+        from now: Date,
+        to due: Date
     ) -> String {
 
         let seconds =
             max(
-                dueDate.timeIntervalSince(
-                    referenceDate
+                due.timeIntervalSince(
+                    now
                 ),
                 0
             )
 
         if seconds < 60 {
+
             return "<1m"
         }
 
         let minutes =
-            max(
-                Int(
-                    round(
-                        seconds / 60
-                    )
-                ),
-                1
-            )
+            seconds / 60
 
         if minutes < 60 {
-            return "\(minutes)m"
+
+            return
+                "\(max(Int(minutes.rounded()), 1))m"
         }
 
         let hours =
-            max(
-                Int(
-                    round(
-                        seconds / 3_600
-                    )
-                ),
-                1
-            )
+            minutes / 60
 
         if hours < 24 {
-            return "\(hours)h"
+
+            return
+                "\(max(Int(hours.rounded()), 1))h"
         }
 
         let days =
-            max(
-                Int(
-                    round(
-                        seconds / 86_400
-                    )
-                ),
-                1
-            )
+            hours / 24
 
         if days < 30 {
-            return "\(days)d"
+
+            return
+                "\(max(Int(days.rounded()), 1))d"
         }
 
-        if days < 365 {
+        let months =
+            days / 30
 
-            let months =
-                max(
-                    Int(
-                        round(
-                            Double(days) / 30.44
-                        )
-                    ),
-                    1
-                )
+        if months < 12 {
 
-            return "\(months)mo"
+            return
+                "\(max(Int(months.rounded()), 1))mo"
         }
 
         let years =
-            max(
-                Int(
-                    round(
-                        Double(days) / 365.25
-                    )
-                ),
-                1
-            )
+            days / 365
 
-        return "\(years)y"
+        return
+            "\(max(Int(years.rounded()), 1))y"
     }
 }

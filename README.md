@@ -26,7 +26,7 @@ The current reference implementation is native Apple, but this document describe
 Pyoko should be:
 
 - simple to use
-- focused on daily study rather than configuration overhead
+- focused on daily study rather than config overhead
 - flexible enough for different vocabulary sources
 - useful for both recognition and recall
 - transparent about review scheduling
@@ -406,7 +406,7 @@ Important rule:
 No selected decks = review no decks
 ```
 
-Newly imported decks should automatically become selected in the current review configuration.
+Newly imported decks should automatically become selected in the current review config.
 
 Previously deselected decks should remain deselected.
 
@@ -491,13 +491,13 @@ The data model is designed around vocabulary, scheduling, and saved user prefere
 
 ---
 
-# 7. Configuration Data
+# 7. Config Data
 
 Review preferences are stored separately from vocabulary.
 
 ```text
 ┌────────────────────────────┐
-│    Review Configuration    │
+│    Review Config    │
 │────────────────────────────│
 │ daily card limit           │
 │ minimum new cards          │
@@ -606,7 +606,7 @@ Import source metadata should remain attached to the deck so the user can unders
 # 10. Review Data Flow
 
 ```text
-Saved Review Configuration
+Saved Review Config
           │
           ▼
 Eligible Card Selection
@@ -644,7 +644,7 @@ The purpose is to move from isolated vocabulary recall into contextual language 
 
 The learner opens Sentence Practice, configures the session, then practises generated bilingual sentences.
 
-The chosen configuration should be saved and restored automatically the next time the learner opens the feature.
+The chosen config should be saved and restored automatically the next time the learner opens the feature.
 
 ---
 
@@ -703,7 +703,7 @@ The learner selects how many sentences to practise.
 # 13. Sentence Practice Flow
 
 ```text
-Saved Sentence Configuration
+Saved Sentence Config
            │
            ▼
 Choose Vocabulary Source
@@ -826,8 +826,8 @@ The app should persist:
 - tags
 - FSRS scheduling state
 - daily review queue state
-- review configuration
-- sentence-practice configuration
+- review config
+- sentence-practice config
 - appearance preference
 
 Generated sentence sessions do not need to be stored initially.
@@ -916,7 +916,7 @@ The existing / near-complete product includes:
 - deck and tag filters
 - daily review limit
 - minimum-new-card setting
-- persistent review configuration
+- persistent review config
 - reading hints
 - configurable Target / Reading display
 - stable daily review queue
@@ -961,7 +961,7 @@ Avoid delete-and-reimport where it would erase scheduling history.
 
 Implement:
 
-- persistent sentence configuration
+- persistent sentence config
 - vocabulary selection
 - vocabulary density
 - sentence generation
@@ -978,7 +978,7 @@ Add:
 - unit tests for review-card retrieval
 - unit tests for scheduling
 - importer validation tests
-- configuration tests
+- config tests
 - sentence-generation tests
 - sentence-evaluation tests
 - end-to-end UI tests
@@ -1032,7 +1032,7 @@ A new maintainer should think of Pyoko as three connected systems:
    Decks + Vocabulary + Tags
 
 2. Spaced Repetition
-   Configuration + Daily Queue + FSRS Scheduling
+   Config + Daily Queue + FSRS Scheduling
 
 3. Contextual Practice
    Vocabulary Selection + Sentence Generation + Answer Evaluation

@@ -394,10 +394,10 @@ final class DataLoader {
         /*
          Automatically enable the newly
          imported deck in the user's existing
-         review configuration.
+         review config.
 
          This is especially important when the
-         configuration was created while there
+         config was created while there
          were no decks installed.
 
          We only add the NEW deck.
@@ -406,7 +406,7 @@ final class DataLoader {
          deselected.
         */
 
-        try selectNewDeckInConfiguration(
+        try selectNewDeckInConfig(
             deck
         )
 
@@ -415,25 +415,25 @@ final class DataLoader {
 
     // MARK: - Automatically Select Imported Deck
 
-    private func selectNewDeckInConfiguration(
+    private func selectNewDeckInConfig(
         _ deck: PyokoDeck
     ) throws {
 
         let descriptor =
-            FetchDescriptor<PyokoConfiguration>()
+            FetchDescriptor<PyokoConfig>()
 
         /*
-         If no configuration exists yet,
+         If no config exists yet,
          there is nothing to update.
 
-         When ConfigurationView eventually
-         creates its first configuration, it
+         When ConfigView eventually
+         creates its first config, it
          already defaults to selecting all
          installed decks.
         */
 
         guard
-            let configuration =
+            let config =
                 try modelContext
                     .fetch(
                         descriptor
@@ -444,7 +444,7 @@ final class DataLoader {
         }
 
         var selectedDecks =
-            configuration
+            config
                 .selectedDecks ??
             []
 
@@ -471,7 +471,7 @@ final class DataLoader {
             deck
         )
 
-        configuration.selectedDecks =
+        config.selectedDecks =
             selectedDecks
     }
 

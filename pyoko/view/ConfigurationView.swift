@@ -1,14 +1,14 @@
 import SwiftUI
 import SwiftData
 
-struct ConfigurationView: View {
+struct ConfigView: View {
 
     @Environment(\.modelContext)
     private var modelContext
 
     @Query
-    private var configurations:
-        [PyokoConfiguration]
+    private var configs:
+        [PyokoConfig]
 
     @Query(
         sort: \PyokoDeck.name
@@ -41,36 +41,36 @@ struct ConfigurationView: View {
                 spacing: 20
             ) {
 
-                if let configuration {
+                if let config {
 
                     dailyReviewSection(
-                        configuration
+                        config
                     )
 
                     cardTypesSection(
-                        configuration
+                        config
                     )
 
                     targetDisplaySection(
-                        configuration
+                        config
                     )
 
                     readingHintSection(
-                        configuration
+                        config
                     )
 
                     cardPreviewSection(
-                        configuration
+                        config
                     )
 
                     appearanceSection
 
                     decksSection(
-                        configuration
+                        config
                     )
 
                     tagsSection(
-                        configuration
+                        config
                     )
 
                     appVersionFooter
@@ -99,14 +99,14 @@ struct ConfigurationView: View {
             )
         }
         .navigationTitle(
-            "Configuration"
+            "Config"
         )
         .onAppear {
 
-            createConfigurationIfNeeded()
+            createConfigIfNeeded()
         }
         .alert(
-            "Configuration Error",
+            "Config Error",
             isPresented:
                 $showingError
         ) {
@@ -134,20 +134,20 @@ struct ConfigurationView: View {
         )
     }
 
-    // MARK: - Configuration
+    // MARK: - Config
 
-    private var configuration:
-        PyokoConfiguration? {
+    private var config:
+        PyokoConfig? {
 
-        configurations.first
+        configs.first
     }
 
-    private func createConfigurationIfNeeded() {
+    private func createConfigIfNeeded() {
 
         do {
 
             _ = try deckManager
-                .ensureReviewConfigurationExists()
+                .ensureReviewConfigExists()
 
         } catch {
 
@@ -160,8 +160,8 @@ struct ConfigurationView: View {
     // MARK: - Daily Review
 
     private func dailyReviewSection(
-        _ configuration:
-            PyokoConfiguration
+        _ config:
+            PyokoConfig
     ) -> some View {
 
         GroupBox(
@@ -200,14 +200,14 @@ struct ConfigurationView: View {
                     Stepper(
                         value:
                             dailyCardLimitBinding(
-                                configuration
+                                config
                             ),
                         in:
                             1...100
                     ) {
 
                         Text(
-                            "\(configuration.dailyCardLimit)"
+                            "\(config.dailyCardLimit)"
                         )
                         .monospacedDigit()
                     }
@@ -227,7 +227,7 @@ struct ConfigurationView: View {
                             "Minimum New Cards"
                         )
 
-                        if configuration
+                        if config
                             .minimumNewCards == 0 {
 
                             Text(
@@ -243,7 +243,7 @@ struct ConfigurationView: View {
                         } else {
 
                             Text(
-                                "Reserve at least \(configuration.minimumNewCards) places for new cards."
+                                "Reserve at least \(config.minimumNewCards) places for new cards."
                             )
                             .font(
                                 .caption
@@ -259,14 +259,14 @@ struct ConfigurationView: View {
                     Stepper(
                         value:
                             minimumNewCardsBinding(
-                                configuration
+                                config
                             ),
                         in:
-                            0...configuration.dailyCardLimit
+                            0...config.dailyCardLimit
                     ) {
 
                         Text(
-                            "\(configuration.minimumNewCards)"
+                            "\(config.minimumNewCards)"
                         )
                         .monospacedDigit()
                     }
@@ -293,8 +293,8 @@ struct ConfigurationView: View {
     // MARK: - Card Types
 
     private func cardTypesSection(
-        _ configuration:
-            PyokoConfiguration
+        _ config:
+            PyokoConfig
     ) -> some View {
 
         GroupBox(
@@ -310,7 +310,7 @@ struct ConfigurationView: View {
                     "Recognition",
                     isOn:
                         recognitionBinding(
-                            configuration
+                            config
                         )
                 )
 
@@ -330,7 +330,7 @@ struct ConfigurationView: View {
                     "Recall",
                     isOn:
                         recallBinding(
-                            configuration
+                            config
                         )
                 )
 
@@ -364,8 +364,8 @@ struct ConfigurationView: View {
     // MARK: - Target Display
 
     private func targetDisplaySection(
-        _ configuration:
-            PyokoConfiguration
+        _ config:
+            PyokoConfig
     ) -> some View {
 
         GroupBox(
@@ -381,7 +381,7 @@ struct ConfigurationView: View {
                     "Before Answer",
                     selection:
                         beforeAnswerDisplayBinding(
-                            configuration
+                            config
                         )
                 ) {
 
@@ -403,7 +403,7 @@ struct ConfigurationView: View {
                     "After Answer",
                     selection:
                         afterAnswerDisplayBinding(
-                            configuration
+                            config
                         )
                 ) {
 
@@ -441,8 +441,8 @@ struct ConfigurationView: View {
     // MARK: - Reading Hint
 
     private func readingHintSection(
-        _ configuration:
-            PyokoConfiguration
+        _ config:
+            PyokoConfig
     ) -> some View {
 
         GroupBox(
@@ -458,7 +458,7 @@ struct ConfigurationView: View {
                     "Enable Reading Hint",
                     isOn:
                         readingHintBinding(
-                            configuration
+                            config
                         )
                 )
 
@@ -482,8 +482,8 @@ struct ConfigurationView: View {
     // MARK: - Card Preview
 
     private func cardPreviewSection(
-        _ configuration:
-            PyokoConfiguration
+        _ config:
+            PyokoConfig
     ) -> some View {
 
         GroupBox(
@@ -507,13 +507,13 @@ struct ConfigurationView: View {
 
                 ExampleCardView(
                     beforeAnswerDisplayMode:
-                        configuration
+                        config
                             .beforeAnswerDisplayMode,
                     afterAnswerDisplayMode:
-                        configuration
+                        config
                             .afterAnswerDisplayMode,
                     readingHintEnabled:
-                        configuration
+                        config
                             .readingHintEnabled
                 )
             }
@@ -581,8 +581,8 @@ struct ConfigurationView: View {
     // MARK: - Decks
 
     private func decksSection(
-        _ configuration:
-            PyokoConfiguration
+        _ config:
+            PyokoConfig
     ) -> some View {
 
         GroupBox(
@@ -613,8 +613,8 @@ struct ConfigurationView: View {
                             isOn:
                                 deckBinding(
                                     deck,
-                                    configuration:
-                                        configuration
+                                    config:
+                                        config
                                 )
                         ) {
 
@@ -661,8 +661,8 @@ struct ConfigurationView: View {
     // MARK: - Tags
 
     private func tagsSection(
-        _ configuration:
-            PyokoConfiguration
+        _ config:
+            PyokoConfig
     ) -> some View {
 
         GroupBox(
@@ -694,8 +694,8 @@ struct ConfigurationView: View {
                             isOn:
                                 tagBinding(
                                     tag,
-                                    configuration:
-                                        configuration
+                                    config:
+                                        config
                                 )
                         )
                     }
@@ -724,7 +724,7 @@ struct ConfigurationView: View {
         [PyokoTag] {
 
         guard
-            let configuration
+            let config
         else {
             return []
         }
@@ -733,7 +733,7 @@ struct ConfigurationView: View {
             [UUID: PyokoTag] = [:]
 
         for deck in
-            configuration.selectedDecks ??
+            config.selectedDecks ??
             [] {
 
             for card in
@@ -767,8 +767,8 @@ struct ConfigurationView: View {
 
     private func deckBinding(
         _ deck: PyokoDeck,
-        configuration:
-            PyokoConfiguration
+        config:
+            PyokoConfig
     ) -> Binding<Bool> {
 
         Binding(
@@ -777,8 +777,8 @@ struct ConfigurationView: View {
                 deckManager
                     .isEnabledForReview(
                         deck,
-                        configuration:
-                            configuration
+                        config:
+                            config
                     )
             },
             set: { enabled in
@@ -790,8 +790,8 @@ struct ConfigurationView: View {
                             deck,
                             enabled:
                                 enabled,
-                            configuration:
-                                configuration
+                            config:
+                                config
                         )
 
                 } catch {
@@ -808,15 +808,15 @@ struct ConfigurationView: View {
 
     private func tagBinding(
         _ tag: PyokoTag,
-        configuration:
-            PyokoConfiguration
+        config:
+            PyokoConfig
     ) -> Binding<Bool> {
 
         Binding(
             get: {
 
                 (
-                    configuration
+                    config
                         .selectedTags ??
                     []
                 )
@@ -829,7 +829,7 @@ struct ConfigurationView: View {
             set: { enabled in
 
                 var selectedTags =
-                    configuration
+                    config
                         .selectedTags ??
                     []
 
@@ -859,7 +859,7 @@ struct ConfigurationView: View {
                     }
                 }
 
-                configuration.selectedTags =
+                config.selectedTags =
                     selectedTags
 
                 save()
@@ -870,14 +870,14 @@ struct ConfigurationView: View {
     // MARK: - Daily Card Limit Binding
 
     private func dailyCardLimitBinding(
-        _ configuration:
-            PyokoConfiguration
+        _ config:
+            PyokoConfig
     ) -> Binding<Int> {
 
         Binding(
             get: {
 
-                configuration
+                config
                     .dailyCardLimit
             },
             set: { newValue in
@@ -891,12 +891,12 @@ struct ConfigurationView: View {
                         100
                     )
 
-                configuration.dailyCardLimit =
+                config.dailyCardLimit =
                     value
 
-                configuration.minimumNewCards =
+                config.minimumNewCards =
                     min(
-                        configuration
+                        config
                             .minimumNewCards,
                         value
                     )
@@ -909,25 +909,25 @@ struct ConfigurationView: View {
     // MARK: - Minimum New Cards Binding
 
     private func minimumNewCardsBinding(
-        _ configuration:
-            PyokoConfiguration
+        _ config:
+            PyokoConfig
     ) -> Binding<Int> {
 
         Binding(
             get: {
 
-                configuration
+                config
                     .minimumNewCards
             },
             set: { newValue in
 
-                configuration.minimumNewCards =
+                config.minimumNewCards =
                     min(
                         max(
                             newValue,
                             0
                         ),
-                        configuration
+                        config
                             .dailyCardLimit
                     )
 
@@ -939,14 +939,14 @@ struct ConfigurationView: View {
     // MARK: - Recognition Binding
 
     private func recognitionBinding(
-        _ configuration:
-            PyokoConfiguration
+        _ config:
+            PyokoConfig
     ) -> Binding<Bool> {
 
         Binding(
             get: {
 
-                configuration
+                config
                     .showRecognitionCards
             },
             set: { enabled in
@@ -958,13 +958,13 @@ struct ConfigurationView: View {
 
                 guard
                     enabled ||
-                    configuration
+                    config
                         .showRecallCards
                 else {
                     return
                 }
 
-                configuration.showRecognitionCards =
+                config.showRecognitionCards =
                     enabled
 
                 save()
@@ -975,27 +975,27 @@ struct ConfigurationView: View {
     // MARK: - Recall Binding
 
     private func recallBinding(
-        _ configuration:
-            PyokoConfiguration
+        _ config:
+            PyokoConfig
     ) -> Binding<Bool> {
 
         Binding(
             get: {
 
-                configuration
+                config
                     .showRecallCards
             },
             set: { enabled in
 
                 guard
                     enabled ||
-                    configuration
+                    config
                         .showRecognitionCards
                 else {
                     return
                 }
 
-                configuration.showRecallCards =
+                config.showRecallCards =
                     enabled
 
                 save()
@@ -1006,19 +1006,19 @@ struct ConfigurationView: View {
     // MARK: - Before Answer Binding
 
     private func beforeAnswerDisplayBinding(
-        _ configuration:
-            PyokoConfiguration
+        _ config:
+            PyokoConfig
     ) -> Binding<TargetDisplayMode> {
 
         Binding(
             get: {
 
-                configuration
+                config
                     .beforeAnswerDisplayMode
             },
             set: { value in
 
-                configuration.beforeAnswerDisplayMode =
+                config.beforeAnswerDisplayMode =
                     value
 
                 save()
@@ -1029,19 +1029,19 @@ struct ConfigurationView: View {
     // MARK: - After Answer Binding
 
     private func afterAnswerDisplayBinding(
-        _ configuration:
-            PyokoConfiguration
+        _ config:
+            PyokoConfig
     ) -> Binding<TargetDisplayMode> {
 
         Binding(
             get: {
 
-                configuration
+                config
                     .afterAnswerDisplayMode
             },
             set: { value in
 
-                configuration.afterAnswerDisplayMode =
+                config.afterAnswerDisplayMode =
                     value
 
                 save()
@@ -1052,19 +1052,19 @@ struct ConfigurationView: View {
     // MARK: - Reading Hint Binding
 
     private func readingHintBinding(
-        _ configuration:
-            PyokoConfiguration
+        _ config:
+            PyokoConfig
     ) -> Binding<Bool> {
 
         Binding(
             get: {
 
-                configuration
+                config
                     .readingHintEnabled
             },
             set: { enabled in
 
-                configuration.readingHintEnabled =
+                config.readingHintEnabled =
                     enabled
 
                 save()

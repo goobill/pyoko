@@ -35,11 +35,11 @@ final class PyokoDeck {
     var cards:
         [PyokoCard]? = []
 
-    var configurations:
-        [PyokoConfiguration]? = []
+    var configs:
+        [PyokoConfig]? = []
 
-    var sentenceConfigurations:
-        [PyokoSentenceConfiguration]? = []
+    var sentenceConfigs:
+        [PyokoSentenceConfig]? = []
 
     // MARK: - Initializer
 

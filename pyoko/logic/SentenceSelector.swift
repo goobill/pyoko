@@ -20,24 +20,24 @@ final class SentenceSelector {
     }
 
     func vocabulary(
-        for configuration: PyokoSentenceConfiguration
+        for config: PyokoSentenceConfig
     ) throws -> [SentenceVocabulary] {
 
         let cards: [PyokoCard]
 
-        switch configuration.source {
+        switch config.source {
 
         case .random:
             cards = try randomCards()
 
         case .decks:
             cards = try cardsFromSelectedDecks(
-                configuration
+                config
             )
 
         case .tags:
             cards = try cardsFromSelectedTags(
-                configuration
+                config
             )
 
         case .todaysReview:
@@ -54,9 +54,9 @@ final class SentenceSelector {
 
     private func randomCards() throws -> [PyokoCard] {
 
-        let reviewConfigurations =
+        let reviewConfigs =
             try modelContext.fetch(
-                FetchDescriptor<PyokoConfiguration>()
+                FetchDescriptor<PyokoConfig>()
             )
 
         let allCards =
@@ -64,15 +64,15 @@ final class SentenceSelector {
                 FetchDescriptor<PyokoCard>()
             )
 
-        guard let reviewConfiguration =
-            reviewConfigurations.first
+        guard let reviewConfig =
+            reviewConfigs.first
         else {
             return allCards
         }
 
         let enabledDeckIDs =
             Set(
-                (reviewConfiguration.selectedDecks ?? [])
+                (reviewConfig.selectedDecks ?? [])
                     .map(\.id)
             )
 
@@ -97,12 +97,12 @@ final class SentenceSelector {
     // MARK: - Decks
 
     private func cardsFromSelectedDecks(
-        _ configuration: PyokoSentenceConfiguration
+        _ config: PyokoSentenceConfig
     ) throws -> [PyokoCard] {
 
         let selectedDeckIDs =
             Set(
-                (configuration.selectedDecks ?? [])
+                (config.selectedDecks ?? [])
                     .map(\.id)
             )
 
@@ -132,12 +132,12 @@ final class SentenceSelector {
     // MARK: - Tags
 
     private func cardsFromSelectedTags(
-        _ configuration: PyokoSentenceConfiguration
+        _ config: PyokoSentenceConfig
     ) throws -> [PyokoCard] {
 
         let selectedTagIDs =
             Set(
-                (configuration.selectedTags ?? [])
+                (config.selectedTags ?? [])
                     .map(\.id)
             )
 

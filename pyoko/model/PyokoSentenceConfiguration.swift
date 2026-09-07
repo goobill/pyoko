@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class PyokoSentenceConfiguration {
+final class PyokoSentenceConfig {
 
     var id: UUID = UUID()
 
@@ -37,7 +37,7 @@ final class PyokoSentenceConfiguration {
     @Relationship(
         deleteRule: .nullify,
         inverse:
-            \PyokoDeck.sentenceConfigurations
+            \PyokoDeck.sentenceConfigs
     )
     var selectedDecks:
         [PyokoDeck]? = []
@@ -45,7 +45,7 @@ final class PyokoSentenceConfiguration {
     @Relationship(
         deleteRule: .nullify,
         inverse:
-            \PyokoTag.sentenceConfigurations
+            \PyokoTag.sentenceConfigs
     )
     var selectedTags:
         [PyokoTag]? = []

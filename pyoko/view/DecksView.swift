@@ -14,8 +14,8 @@ struct DecksView: View {
         [PyokoDeck]
 
     @Query
-    private var configurations:
-        [PyokoConfiguration]
+    private var configs:
+        [PyokoConfig]
 
     @State
     private var downloadingDeckKeys:
@@ -71,7 +71,7 @@ struct DecksView: View {
         }
         .onAppear {
 
-            ensureConfigurationExists()
+            ensureConfigExists()
         }
         .alert(
             "Delete Deck?",
@@ -137,21 +137,21 @@ struct DecksView: View {
         )
     }
 
-    // MARK: - Configuration
+    // MARK: - Config
 
-    private var configuration:
-        PyokoConfiguration? {
+    private var config:
+        PyokoConfig? {
 
-        configurations.first
+        configs.first
     }
 
-    private func ensureConfigurationExists() {
+    private func ensureConfigExists() {
 
         do {
 
             _ =
                 try deckManager
-                    .ensureReviewConfigurationExists()
+                    .ensureReviewConfigExists()
 
         } catch {
 
@@ -626,8 +626,8 @@ struct DecksView: View {
         deckManager
             .isEnabledForReview(
                 deck,
-                configuration:
-                    configuration
+                config:
+                    config
             )
     }
 
@@ -643,8 +643,8 @@ struct DecksView: View {
                     deck,
                     enabled:
                         enabled,
-                    configuration:
-                        configuration
+                    config:
+                        config
                 )
 
         } catch {

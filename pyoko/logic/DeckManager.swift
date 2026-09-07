@@ -65,7 +65,7 @@ final class DeckManager {
 
         /*
          Remove the deck explicitly from
-         the review configuration before
+         the review config before
          deleting it.
 
          SwiftData should nullify the
@@ -74,12 +74,12 @@ final class DeckManager {
          clean up unavailable tag filters.
          */
 
-        if let configuration =
-            try fetchReviewConfiguration() {
+        if let config =
+            try fetchReviewConfig() {
 
-            configuration.selectedDecks =
+            config.selectedDecks =
                 (
-                    configuration
+                    config
                         .selectedDecks ??
                     []
                 )
@@ -89,7 +89,7 @@ final class DeckManager {
 
             removeUnavailableSelectedTags(
                 from:
-                    configuration
+                    config
             )
         }
 
@@ -100,16 +100,16 @@ final class DeckManager {
         try modelContext.save()
     }
 
-    // MARK: - Review Configuration
+    // MARK: - Review Config
 
     @discardableResult
-    func ensureReviewConfigurationExists()
-        throws -> PyokoConfiguration {
+    func ensureReviewConfigExists()
+        throws -> PyokoConfig {
 
-        if let configuration =
-            try fetchReviewConfiguration() {
+        if let config =
+            try fetchReviewConfig() {
 
-            return configuration
+            return config
         }
 
         let deckDescriptor =
@@ -120,8 +120,8 @@ final class DeckManager {
                 deckDescriptor
             )
 
-        let configuration =
-            PyokoConfiguration()
+        let config =
+            PyokoConfig()
 
         /*
          First-time behaviour:
@@ -129,47 +129,47 @@ final class DeckManager {
          start enabled.
          */
 
-        configuration.selectedDecks =
+        config.selectedDecks =
             installedDecks
 
-        configuration.selectedTags =
+        config.selectedTags =
             []
 
         modelContext.insert(
-            configuration
+            config
         )
 
         try modelContext.save()
 
-        return configuration
+        return config
     }
 
     // MARK: - Enabled State
 
     func isEnabledForReview(
         _ deck: PyokoDeck,
-        configuration:
-            PyokoConfiguration?
+        config:
+            PyokoConfig?
     ) -> Bool {
 
         /*
-         Before the first configuration
+         Before the first config
          has been created, the default
          behaviour is that installed decks
          are enabled.
 
-         ensureReviewConfigurationExists()
+         ensureReviewConfigExists()
          will persist that state.
          */
 
         guard
-            let configuration
+            let config
         else {
             return true
         }
 
         return (
-            configuration
+            config
                 .selectedDecks ??
             []
         )
@@ -181,16 +181,16 @@ final class DeckManager {
     func setEnabledForReview(
         _ deck: PyokoDeck,
         enabled: Bool,
-        configuration:
-            PyokoConfiguration? = nil
+        config:
+            PyokoConfig? = nil
     ) throws {
 
-        let configuration =
-            try configuration ??
-            ensureReviewConfigurationExists()
+        let config =
+            try config ??
+            ensureReviewConfigExists()
 
         var selectedDecks =
-            configuration
+            config
                 .selectedDecks ??
             []
 
@@ -215,7 +215,7 @@ final class DeckManager {
             }
         }
 
-        configuration.selectedDecks =
+        config.selectedDecks =
             selectedDecks
 
         /*
@@ -226,7 +226,7 @@ final class DeckManager {
 
         removeUnavailableSelectedTags(
             from:
-                configuration
+                config
         )
 
         try modelContext.save()
@@ -243,24 +243,24 @@ final class DeckManager {
          established:
 
          If the user already has a review
-         configuration, the newly imported
+         config, the newly imported
          deck becomes enabled.
 
-         If no configuration exists yet,
+         If no config exists yet,
          do nothing. When the first
-         configuration is later created,
+         config is later created,
          all installed decks are selected.
          */
 
         guard
-            let configuration =
-                try fetchReviewConfiguration()
+            let config =
+                try fetchReviewConfig()
         else {
             return
         }
 
         var selectedDecks =
-            configuration
+            config
                 .selectedDecks ??
             []
 
@@ -278,18 +278,18 @@ final class DeckManager {
             deck
         )
 
-        configuration.selectedDecks =
+        config.selectedDecks =
             selectedDecks
     }
 
-    // MARK: - Configuration Fetch
+    // MARK: - Config Fetch
 
-    private func fetchReviewConfiguration()
-        throws -> PyokoConfiguration? {
+    private func fetchReviewConfig()
+        throws -> PyokoConfig? {
 
         let descriptor =
             FetchDescriptor<
-                PyokoConfiguration
+                PyokoConfig
             >()
 
         return try modelContext
@@ -302,12 +302,12 @@ final class DeckManager {
     // MARK: - Tag Cleanup
 
     private func removeUnavailableSelectedTags(
-        from configuration:
-            PyokoConfiguration
+        from config:
+            PyokoConfig
     ) {
 
         let selectedDecks =
-            configuration
+            config
                 .selectedDecks ??
             []
 
@@ -325,9 +325,9 @@ final class DeckManager {
                     )
             )
 
-        configuration.selectedTags =
+        config.selectedTags =
             (
-                configuration
+                config
                     .selectedTags ??
                 []
             )

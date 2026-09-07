@@ -22,8 +22,8 @@ final class SentenceManager {
     private let generator:
         SentenceGenerator
 
-    private var configuration:
-        PyokoSentenceConfiguration?
+    private var config:
+        PyokoSentenceConfig?
 
     private var vocabularyGroups:
         [[SentenceVocabulary]] = []
@@ -72,47 +72,47 @@ final class SentenceManager {
             SentenceGenerator()
     }
 
-    // MARK: - Configuration
+    // MARK: - Config
 
     @discardableResult
-    func ensureConfigurationExists()
+    func ensureConfigExists()
         throws
-        -> PyokoSentenceConfiguration {
+        -> PyokoSentenceConfig {
 
         let existing =
             try modelContext.fetch(
                 FetchDescriptor<
-                    PyokoSentenceConfiguration
+                    PyokoSentenceConfig
                 >()
             )
 
-        if let configuration =
+        if let config =
             existing.first {
 
-            return configuration
+            return config
         }
 
-        let configuration =
-            PyokoSentenceConfiguration()
+        let config =
+            PyokoSentenceConfig()
 
-        let reviewConfigurations =
+        let reviewConfigs =
             try modelContext.fetch(
                 FetchDescriptor<
-                    PyokoConfiguration
+                    PyokoConfig
                 >()
             )
 
-        if let reviewConfiguration =
-            reviewConfigurations.first {
+        if let reviewConfig =
+            reviewConfigs.first {
 
-            configuration.selectedDecks =
-                reviewConfiguration
+            config.selectedDecks =
+                reviewConfig
                     .selectedDecks
                 ?? []
 
         } else {
 
-            configuration.selectedDecks =
+            config.selectedDecks =
                 try modelContext.fetch(
                     FetchDescriptor<
                         PyokoDeck
@@ -121,27 +121,27 @@ final class SentenceManager {
         }
 
         modelContext.insert(
-            configuration
+            config
         )
 
         try modelContext.save()
 
-        return configuration
+        return config
     }
 
     // MARK: - Session
 
     func start(
-        configuration:
-            PyokoSentenceConfiguration
+        config:
+            PyokoSentenceConfig
     ) async {
 
         guard !isLoading else {
             return
         }
 
-        self.configuration =
-            configuration
+        self.config =
+            config
 
         currentSentence =
             nil
@@ -165,7 +165,7 @@ final class SentenceManager {
 
             let vocabulary =
                 try selector.vocabulary(
-                    for: configuration
+                    for: config
                 )
 
             guard !vocabulary.isEmpty else {
@@ -179,10 +179,10 @@ final class SentenceManager {
                     vocabulary:
                         vocabulary,
                     count:
-                        configuration
+                        config
                             .sentenceCount,
                     density:
-                        configuration
+                        config
                             .density
                 )
 
@@ -191,10 +191,10 @@ final class SentenceManager {
                     count:
                         vocabularyGroups.count,
                     recognition:
-                        configuration
+                        config
                             .includeRecognition,
                     recall:
-                        configuration
+                        config
                             .includeRecall
                 )
 
@@ -283,7 +283,7 @@ final class SentenceManager {
         async {
 
         guard
-            let configuration,
+            let config,
             currentIndex <
                 vocabularyGroups.count,
             currentIndex <
@@ -316,9 +316,9 @@ final class SentenceManager {
                                 currentIndex
                             ],
                         level:
-                            configuration.level,
+                            config.level,
                         types:
-                            configuration
+                            config
                                 .selectedSentenceTypes
                     )
 

@@ -1,5 +1,5 @@
 //
-//  SentenceConfigurationView.swift
+//  SentenceConfigView.swift
 //  pyoko
 //
 //  Created by Bill on 07/09/2026.
@@ -14,8 +14,8 @@ struct SentenceConfigView: View {
     private var modelContext
 
     @Query
-    private var configurations:
-        [PyokoSentenceConfiguration]
+    private var configs:
+        [PyokoSentenceConfig]
 
     @Query(
         sort: \PyokoDeck.name
@@ -46,40 +46,40 @@ struct SentenceConfigView: View {
                 spacing: 20
             ) {
 
-                if let configuration {
+                if let config {
 
                     sourceSection(
-                        configuration
+                        config
                     )
 
                     densitySection(
-                        configuration
+                        config
                     )
 
                     levelSection(
-                        configuration
+                        config
                     )
 
                     sentenceTypesSection(
-                        configuration
+                        config
                     )
 
                     directionSection(
-                        configuration
+                        config
                     )
 
                     displaySection(
-                        configuration
+                        config
                     )
 
                     countSection(
-                        configuration
+                        config
                     )
 
                     modelSection
 
                     startSection(
-                        configuration
+                        config
                     )
 
                 } else {
@@ -112,7 +112,7 @@ struct SentenceConfigView: View {
         )
         .onAppear {
 
-            createConfigurationIfNeeded()
+            createConfigIfNeeded()
         }
         .alert(
             "Sentence Practice Error",
@@ -132,10 +132,10 @@ struct SentenceConfigView: View {
         }
     }
 
-    private var configuration:
-        PyokoSentenceConfiguration? {
+    private var config:
+        PyokoSentenceConfig? {
 
-        configurations.first
+        configs.first
     }
 
     private var generator:
@@ -153,8 +153,8 @@ struct SentenceConfigView: View {
     // MARK: - Vocabulary Source
 
     private func sourceSection(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> some View {
 
         GroupBox(
@@ -170,7 +170,7 @@ struct SentenceConfigView: View {
                     "Source",
                     selection:
                         sourceBinding(
-                            configuration
+                            config
                         )
                 ) {
 
@@ -188,7 +188,7 @@ struct SentenceConfigView: View {
                 }
 
                 Text(
-                    configuration
+                    config
                         .source
                         .description
                 )
@@ -199,23 +199,23 @@ struct SentenceConfigView: View {
                     .secondary
                 )
 
-                if configuration.source ==
+                if config.source ==
                     .decks {
 
                     Divider()
 
                     deckSelection(
-                        configuration
+                        config
                     )
                 }
 
-                if configuration.source ==
+                if config.source ==
                     .tags {
 
                     Divider()
 
                     tagSelection(
-                        configuration
+                        config
                     )
                 }
             }
@@ -229,8 +229,8 @@ struct SentenceConfigView: View {
     // MARK: - Density
 
     private func densitySection(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> some View {
 
         GroupBox(
@@ -246,7 +246,7 @@ struct SentenceConfigView: View {
                     "Density",
                     selection:
                         densityBinding(
-                            configuration
+                            config
                         )
                 ) {
 
@@ -267,7 +267,7 @@ struct SentenceConfigView: View {
                 )
 
                 Text(
-                    configuration
+                    config
                         .density
                         .description
                 )
@@ -288,8 +288,8 @@ struct SentenceConfigView: View {
     // MARK: - Level
 
     private func levelSection(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> some View {
 
         GroupBox(
@@ -300,7 +300,7 @@ struct SentenceConfigView: View {
                 "Level",
                 selection:
                     levelBinding(
-                        configuration
+                        config
                     )
             ) {
 
@@ -326,8 +326,8 @@ struct SentenceConfigView: View {
     // MARK: - Sentence Types
 
     private func sentenceTypesSection(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> some View {
 
         GroupBox(
@@ -348,8 +348,8 @@ struct SentenceConfigView: View {
                         isOn:
                             sentenceTypeBinding(
                                 type,
-                                configuration:
-                                    configuration
+                                config:
+                                    config
                             )
                     )
                 }
@@ -374,8 +374,8 @@ struct SentenceConfigView: View {
     // MARK: - Direction
 
     private func directionSection(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> some View {
 
         GroupBox(
@@ -391,7 +391,7 @@ struct SentenceConfigView: View {
                     "Recognition",
                     isOn:
                         recognitionBinding(
-                            configuration
+                            config
                         )
                 )
 
@@ -411,7 +411,7 @@ struct SentenceConfigView: View {
                     "Recall",
                     isOn:
                         recallBinding(
-                            configuration
+                            config
                         )
                 )
 
@@ -445,8 +445,8 @@ struct SentenceConfigView: View {
     // MARK: - Display
 
     private func displaySection(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> some View {
 
         GroupBox(
@@ -462,7 +462,7 @@ struct SentenceConfigView: View {
                     "Display",
                     selection:
                         displayBinding(
-                            configuration
+                            config
                         )
                 ) {
 
@@ -502,8 +502,8 @@ struct SentenceConfigView: View {
     // MARK: - Count
 
     private func countSection(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> some View {
 
         GroupBox(
@@ -537,14 +537,14 @@ struct SentenceConfigView: View {
                 Stepper(
                     value:
                         countBinding(
-                            configuration
+                            config
                         ),
                     in:
                         1...30
                 ) {
 
                     Text(
-                        "\(configuration.sentenceCount)"
+                        "\(config.sentenceCount)"
                     )
                     .monospacedDigit()
                 }
@@ -606,19 +606,19 @@ struct SentenceConfigView: View {
 
     @ViewBuilder
     private func startSection(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> some View {
 
         if canStart(
-            configuration
+            config
         ) {
 
             NavigationLink {
 
                 SentenceView(
-                    configuration:
-                        configuration
+                    config:
+                        config
                 )
 
             } label: {
@@ -662,7 +662,7 @@ struct SentenceConfigView: View {
 
             if let validationMessage =
                 validationMessage(
-                    configuration
+                    config
                 ) {
 
                 Text(
@@ -681,8 +681,8 @@ struct SentenceConfigView: View {
     // MARK: - Decks
 
     private func deckSelection(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> some View {
 
         VStack(
@@ -716,8 +716,8 @@ struct SentenceConfigView: View {
                         isOn:
                             deckBinding(
                                 deck,
-                                configuration:
-                                    configuration
+                                config:
+                                    config
                             )
                     ) {
 
@@ -749,8 +749,8 @@ struct SentenceConfigView: View {
     // MARK: - Tags
 
     private func tagSelection(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> some View {
 
         VStack(
@@ -785,8 +785,8 @@ struct SentenceConfigView: View {
                         isOn:
                             tagBinding(
                                 tag,
-                                configuration:
-                                    configuration
+                                config:
+                                    config
                             )
                     )
                 }
@@ -796,7 +796,7 @@ struct SentenceConfigView: View {
 
     // MARK: - Creation
 
-    private func createConfigurationIfNeeded() {
+    private func createConfigIfNeeded() {
 
         do {
 
@@ -807,7 +807,7 @@ struct SentenceConfigView: View {
                 )
 
             _ = try manager
-                .ensureConfigurationExists()
+                .ensureConfigExists()
 
         } catch {
 
@@ -820,23 +820,23 @@ struct SentenceConfigView: View {
     // MARK: - Validation
 
     private func canStart(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> Bool {
 
         guard
             modelAvailability.isAvailable,
-            configuration.hasDirection,
-            configuration.hasSentenceType
+            config.hasDirection,
+            config.hasSentenceType
         else {
             return false
         }
 
-        switch configuration.source {
+        switch config.source {
 
         case .decks:
             return !(
-                configuration
+                config
                     .selectedDecks
                 ?? []
             )
@@ -844,7 +844,7 @@ struct SentenceConfigView: View {
 
         case .tags:
             return !(
-                configuration
+                config
                     .selectedTags
                 ?? []
             )
@@ -857,33 +857,33 @@ struct SentenceConfigView: View {
     }
 
     private func validationMessage(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> String? {
 
         guard modelAvailability.isAvailable else {
             return modelAvailability.message
         }
 
-        if !configuration.hasDirection {
+        if !config.hasDirection {
             return "Enable Recognition or Recall."
         }
 
-        if !configuration.hasSentenceType {
+        if !config.hasSentenceType {
             return "Select at least one sentence type."
         }
 
         if
-            configuration.source == .decks,
-            (configuration.selectedDecks ?? [])
+            config.source == .decks,
+            (config.selectedDecks ?? [])
                 .isEmpty {
 
             return "Select at least one deck."
         }
 
         if
-            configuration.source == .tags,
-            (configuration.selectedTags ?? [])
+            config.source == .tags,
+            (config.selectedTags ?? [])
                 .isEmpty {
 
             return "Select at least one tag."
@@ -895,16 +895,16 @@ struct SentenceConfigView: View {
     // MARK: - Bindings
 
     private func sourceBinding(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> Binding<SentenceSource> {
 
         Binding(
             get: {
-                configuration.source
+                config.source
             },
             set: {
-                configuration.source =
+                config.source =
                     $0
 
                 save()
@@ -913,16 +913,16 @@ struct SentenceConfigView: View {
     }
 
     private func densityBinding(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> Binding<SentenceDensity> {
 
         Binding(
             get: {
-                configuration.density
+                config.density
             },
             set: {
-                configuration.density =
+                config.density =
                     $0
 
                 save()
@@ -931,16 +931,16 @@ struct SentenceConfigView: View {
     }
 
     private func levelBinding(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> Binding<SentenceLevel> {
 
         Binding(
             get: {
-                configuration.level
+                config.level
             },
             set: {
-                configuration.level =
+                config.level =
                     $0
 
                 save()
@@ -949,16 +949,16 @@ struct SentenceConfigView: View {
     }
 
     private func displayBinding(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> Binding<SentenceDisplay> {
 
         Binding(
             get: {
-                configuration.display
+                config.display
             },
             set: {
-                configuration.display =
+                config.display =
                     $0
 
                 save()
@@ -967,17 +967,17 @@ struct SentenceConfigView: View {
     }
 
     private func countBinding(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> Binding<Int> {
 
         Binding(
             get: {
-                configuration.sentenceCount
+                config.sentenceCount
             },
             set: {
 
-                configuration.sentenceCount =
+                config.sentenceCount =
                     min(
                         max(
                             $0,
@@ -992,26 +992,26 @@ struct SentenceConfigView: View {
     }
 
     private func recognitionBinding(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> Binding<Bool> {
 
         Binding(
             get: {
-                configuration
+                config
                     .includeRecognition
             },
             set: { enabled in
 
                 guard
                     enabled
-                    || configuration
+                    || config
                         .includeRecall
                 else {
                     return
                 }
 
-                configuration
+                config
                     .includeRecognition =
                     enabled
 
@@ -1021,26 +1021,26 @@ struct SentenceConfigView: View {
     }
 
     private func recallBinding(
-        _ configuration:
-            PyokoSentenceConfiguration
+        _ config:
+            PyokoSentenceConfig
     ) -> Binding<Bool> {
 
         Binding(
             get: {
-                configuration
+                config
                     .includeRecall
             },
             set: { enabled in
 
                 guard
                     enabled
-                    || configuration
+                    || config
                         .includeRecognition
                 else {
                     return
                 }
 
-                configuration
+                config
                     .includeRecall =
                     enabled
 
@@ -1052,8 +1052,8 @@ struct SentenceConfigView: View {
     private func sentenceTypeBinding(
         _ type:
             SentenceType,
-        configuration:
-            PyokoSentenceConfiguration
+        config:
+            PyokoSentenceConfig
     ) -> Binding<Bool> {
 
         Binding(
@@ -1061,8 +1061,8 @@ struct SentenceConfigView: View {
 
                 isSentenceTypeEnabled(
                     type,
-                    configuration:
-                        configuration
+                    config:
+                        config
                 )
             },
             set: { enabled in
@@ -1070,7 +1070,7 @@ struct SentenceConfigView: View {
                 if !enabled {
 
                     guard
-                        configuration
+                        config
                             .selectedSentenceTypes
                             .count > 1
                     else {
@@ -1082,8 +1082,8 @@ struct SentenceConfigView: View {
                     type,
                     enabled:
                         enabled,
-                    configuration:
-                        configuration
+                    config:
+                        config
                 )
 
                 save()
@@ -1094,15 +1094,15 @@ struct SentenceConfigView: View {
     private func deckBinding(
         _ deck:
             PyokoDeck,
-        configuration:
-            PyokoSentenceConfiguration
+        config:
+            PyokoSentenceConfig
     ) -> Binding<Bool> {
 
         Binding(
             get: {
 
                 (
-                    configuration
+                    config
                         .selectedDecks
                     ?? []
                 )
@@ -1114,7 +1114,7 @@ struct SentenceConfigView: View {
             set: { enabled in
 
                 var selected =
-                    configuration
+                    config
                         .selectedDecks
                     ?? []
 
@@ -1140,7 +1140,7 @@ struct SentenceConfigView: View {
                     }
                 }
 
-                configuration
+                config
                     .selectedDecks =
                     selected
 
@@ -1152,15 +1152,15 @@ struct SentenceConfigView: View {
     private func tagBinding(
         _ tag:
             PyokoTag,
-        configuration:
-            PyokoSentenceConfiguration
+        config:
+            PyokoSentenceConfig
     ) -> Binding<Bool> {
 
         Binding(
             get: {
 
                 (
-                    configuration
+                    config
                         .selectedTags
                     ?? []
                 )
@@ -1172,7 +1172,7 @@ struct SentenceConfigView: View {
             set: { enabled in
 
                 var selected =
-                    configuration
+                    config
                         .selectedTags
                     ?? []
 
@@ -1198,7 +1198,7 @@ struct SentenceConfigView: View {
                     }
                 }
 
-                configuration
+                config
                     .selectedTags =
                     selected
 
@@ -1212,30 +1212,30 @@ struct SentenceConfigView: View {
     private func isSentenceTypeEnabled(
         _ type:
             SentenceType,
-        configuration:
-            PyokoSentenceConfiguration
+        config:
+            PyokoSentenceConfig
     ) -> Bool {
 
         switch type {
 
         case .present:
-            return configuration
+            return config
                 .includePresent
 
         case .past:
-            return configuration
+            return config
                 .includePast
 
         case .future:
-            return configuration
+            return config
                 .includeFuture
 
         case .connecting:
-            return configuration
+            return config
                 .includeConnecting
 
         case .longer:
-            return configuration
+            return config
                 .includeLonger
         }
     }
@@ -1245,34 +1245,34 @@ struct SentenceConfigView: View {
             SentenceType,
         enabled:
             Bool,
-        configuration:
-            PyokoSentenceConfiguration
+        config:
+            PyokoSentenceConfig
     ) {
 
         switch type {
 
         case .present:
-            configuration
+            config
                 .includePresent =
                 enabled
 
         case .past:
-            configuration
+            config
                 .includePast =
                 enabled
 
         case .future:
-            configuration
+            config
                 .includeFuture =
                 enabled
 
         case .connecting:
-            configuration
+            config
                 .includeConnecting =
                 enabled
 
         case .longer:
-            configuration
+            config
                 .includeLonger =
                 enabled
         }

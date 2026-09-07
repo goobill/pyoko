@@ -7,10 +7,16 @@ struct HomeView: View {
     private var modelContext
 
     @State
-    private var reviewRemaining = 0
+    private var reviewRemaining =
+        0
 
     @State
-    private var reviewTotal = 0
+    private var reviewTotal =
+        0
+
+    @State
+    private var additionalDue =
+        0
 
     var body: some View {
 
@@ -22,7 +28,9 @@ struct HomeView: View {
 
                 manageSection
             }
-            .navigationTitle("Pyoko")
+            .navigationTitle(
+                "Pyoko"
+            )
             .onAppear {
 
                 refreshReviewProgress()
@@ -32,9 +40,12 @@ struct HomeView: View {
 
     // MARK: - Study
 
-    private var studySection: some View {
+    private var studySection:
+        some View {
 
-        Section("Study") {
+        Section(
+            "Study"
+        ) {
 
             NavigationLink {
 
@@ -43,9 +54,12 @@ struct HomeView: View {
             } label: {
 
                 menuRow(
-                    title: "Review",
-                    subtitle: reviewSubtitle,
-                    systemImage: "rectangle.stack"
+                    title:
+                        "Review",
+                    subtitle:
+                        reviewSubtitle,
+                    systemImage:
+                        "rectangle.stack"
                 )
             }
 
@@ -56,9 +70,12 @@ struct HomeView: View {
             } label: {
 
                 menuRow(
-                    title: "Practice Sentences",
-                    subtitle: "Practise your vocabulary in generated sentences.",
-                    systemImage: "text.bubble"
+                    title:
+                        "Practice Sentences",
+                    subtitle:
+                        "Practise your vocabulary in generated sentences.",
+                    systemImage:
+                        "text.bubble"
                 )
             }
         }
@@ -66,9 +83,12 @@ struct HomeView: View {
 
     // MARK: - Manage
 
-    private var manageSection: some View {
+    private var manageSection:
+        some View {
 
-        Section("Manage") {
+        Section(
+            "Manage"
+        ) {
 
             NavigationLink {
 
@@ -77,28 +97,34 @@ struct HomeView: View {
             } label: {
 
                 menuRow(
-                    title: "Decks",
-                    subtitle: "Import, install, enable and manage decks.",
-                    systemImage: "rectangle.stack.badge.plus"
+                    title:
+                        "Decks",
+                    subtitle:
+                        "Import, install, enable and manage decks.",
+                    systemImage:
+                        "rectangle.stack.badge.plus"
                 )
             }
 
             NavigationLink {
 
-                ConfigurationView()
+                ConfigView()
 
             } label: {
 
                 menuRow(
-                    title: "Configuration",
-                    subtitle: "Change your review and display settings.",
-                    systemImage: "gearshape"
+                    title:
+                        "Config",
+                    subtitle:
+                        "Change your review and display settings.",
+                    systemImage:
+                        "gearshape"
                 )
             }
         }
     }
 
-    // MARK: - Menu Row
+    // MARK: - Row
 
     private func menuRow(
         title: String,
@@ -111,7 +137,8 @@ struct HomeView: View {
         ) {
 
             Image(
-                systemName: systemImage
+                systemName:
+                    systemImage
             )
             .font(
                 .title2
@@ -152,31 +179,49 @@ struct HomeView: View {
         )
     }
 
-    // MARK: - Review Progress
+    // MARK: - Review
 
-    private var reviewSubtitle: String {
+    private var reviewSubtitle:
+        String {
+
+        if reviewRemaining > 0 {
+
+            return
+                "\(reviewRemaining) of \(reviewTotal) cards remaining."
+        }
+
+        if additionalDue > 0 {
+
+            if additionalDue == 1 {
+
+                return
+                    "1 more card is due."
+            }
+
+            return
+                "\(additionalDue) more cards are due."
+        }
 
         if reviewTotal == 0 {
 
-            return "No cards to review."
+            return
+                "No cards to review."
         }
 
-        if reviewRemaining == 0 {
-
-            return "Today's review is complete."
-        }
-
-        return "\(reviewRemaining) of \(reviewTotal) cards remaining."
+        return
+            "Today's review is complete."
     }
 
     private func refreshReviewProgress() {
 
         let manager =
             CardManager(
-                modelContext: modelContext
+                modelContext:
+                    modelContext
             )
 
-        manager.startReviewIfNeeded()
+        manager
+            .startReviewIfNeeded()
 
         let progress =
             manager.getProgress()
@@ -186,5 +231,28 @@ struct HomeView: View {
 
         reviewTotal =
             progress.total
+
+        additionalDue =
+            0
+
+        guard progress.remaining == 0
+        else {
+            return
+        }
+
+        do {
+
+            let status =
+                try manager
+                    .getReviewExtensionStatus()
+
+            additionalDue =
+                status.dueNow
+
+        } catch {
+
+            additionalDue =
+                0
+        }
     }
 }

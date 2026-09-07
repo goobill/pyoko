@@ -7,28 +7,40 @@ import FSRS
 enum CardManagerError: LocalizedError {
 
     case cardNotFound
+
     case reviewCardNotFound
 
-    var errorDescription: String? {
+    case reviewSessionNotComplete
+
+    var errorDescription:
+        String? {
 
         switch self {
 
         case .cardNotFound:
 
-            return "The card could not be found."
+            return
+                "The card could not be found."
 
         case .reviewCardNotFound:
 
-            return "The review card could not be found."
+            return
+                "The review card could not be found."
+
+        case .reviewSessionNotComplete:
+
+            return
+                "The current review session is not complete."
         }
     }
 }
 
-// MARK: - Review Progress
+// MARK: - Progress
 
 struct ReviewProgress {
 
     let completed: Int
+
     let total: Int
 
     var remaining: Int {
@@ -40,56 +52,92 @@ struct ReviewProgress {
     }
 }
 
-// MARK: - Rating Previews
-
-struct RatingPreviews {
-
-    let generatedAt: Date
-
-    let againDue: Date
-    let hardDue: Date
-    let goodDue: Date
-    let easyDue: Date
-
-    func dueDate(
-        for rating: Rating
-    ) -> Date {
-
-        switch rating {
-
-        case .again:
-
-            return againDue
-
-        case .hard:
-
-            return hardDue
-
-        case .good:
-
-            return goodDue
-
-        case .easy:
-
-            return easyDue
-
-        default:
-
-            return goodDue
-        }
-    }
-}
-
 // MARK: - Card Manager
 
 @MainActor
 final class CardManager {
+
+    // MARK: Extension Status
+
+    struct ExtensionStatus {
+
+        let dueNow: Int
+
+        let nextBatchCount: Int
+
+        let laterToday: Int
+
+        let nextDueToday: Date?
+
+        var canExtend: Bool {
+
+            dueNow > 0
+        }
+
+        static let empty =
+            ExtensionStatus(
+                dueNow: 0,
+                nextBatchCount: 0,
+                laterToday: 0,
+                nextDueToday: nil
+            )
+    }
+
+    // MARK: - Interval Preview
+
+    struct IntervalPreview {
+
+        let generatedAt: Date
+
+        let again: Date
+
+        let hard: Date
+
+        let good: Date
+
+        let easy: Date
+
+        func dueDate(
+            for rating: Rating
+        ) -> Date {
+
+            switch rating {
+
+            case .again:
+                return again
+
+            case .hard:
+                return hard
+
+            case .good:
+                return good
+
+            case .easy:
+                return easy
+
+            case .manual:
+
+                assertionFailure(
+                    "Manual FSRS ratings are not supported by Pyoko."
+                )
+
+                return good
+            }
+        }
+    }
+
+    // MARK: Properties
 
     private let modelContext:
         ModelContext
 
     private let scheduler:
         FSRS
+
+    private let retrieval:
+        CardRetrieval
+
+    // MARK: Initializer
 
     init(
         modelContext: ModelContext
@@ -102,6 +150,12 @@ final class CardManager {
             FSRS(
                 parameters: .init()
             )
+
+        self.retrieval =
+            CardRetrieval(
+                modelContext:
+                    modelContext
+            )
     }
 
     // MARK: - Start Review
@@ -113,7 +167,6 @@ final class CardManager {
             let reviewCards =
                 try fetchReviewCards()
 
-            // No existing session.
             if reviewCards.isEmpty {
 
                 try generateReviewCards()
@@ -121,7 +174,6 @@ final class CardManager {
                 return
             }
 
-            // New day gets a new queue.
             if isNewDay(
                 reviewCards
             ) {
@@ -131,8 +183,8 @@ final class CardManager {
                 return
             }
 
-            // Otherwise today's existing
-            // session remains unchanged.
+            // Today's existing queue is
+            // deliberately left unchanged.
 
         } catch {
 
@@ -149,38 +201,12 @@ final class CardManager {
 
         do {
 
-            let descriptor =
-                FetchDescriptor<
-                    PyokoReviewCard
-                >(
-                    predicate:
-                        #Predicate<
-                            PyokoReviewCard
-                        > {
-                            reviewCard in
-
-                            !reviewCard.reviewed
-                        },
-                    sortBy: [
-                        SortDescriptor(
-                            \PyokoReviewCard
-                                .reviewDate,
-                            order:
-                                .forward
-                        )
-                    ]
-                )
-
-            let reviewCards =
-                try modelContext.fetch(
-                    descriptor
-                )
-
-            return reviewCards
-                .compactMap {
-                    $0.card
-                }
-                .first
+            return try fetchReviewCards()
+                .first {
+                    !$0.reviewed
+                    && $0.card != nil
+                }?
+                .card
 
         } catch {
 
@@ -202,22 +228,20 @@ final class CardManager {
             let reviewCards =
                 try fetchReviewCards()
 
-            let validReviewCards =
+            let validCards =
                 reviewCards.filter {
                     $0.card != nil
                 }
 
             let completed =
-                validReviewCards.filter {
+                validCards.filter {
                     $0.reviewed
                 }
                 .count
 
             return ReviewProgress(
-                completed:
-                    completed,
-                total:
-                    validReviewCards.count
+                completed: completed,
+                total: validCards.count
             )
 
         } catch {
@@ -233,11 +257,68 @@ final class CardManager {
         }
     }
 
-    // MARK: - Rating Previews
+    // MARK: - Review Card
 
-    func getRatingPreviews(
-        for card: PyokoCard
-    ) throws -> RatingPreviews {
+    func reviewCard(
+        id: UUID,
+        rating: Rating
+    ) throws {
+
+        guard let card =
+            getCard(
+                id: id
+            )
+        else {
+            throw CardManagerError
+                .cardNotFound
+        }
+
+        guard let reviewCard =
+            try getReviewCard(
+                cardID: id
+            )
+        else {
+            throw CardManagerError
+                .reviewCardNotFound
+        }
+
+        let fsrsCard =
+            makeFSRSCard(
+                from: card
+            )
+
+        let result =
+            try scheduler.next(
+                card: fsrsCard,
+                now: .now,
+                grade: rating
+            )
+
+        update(
+            card: card,
+            with: result.card
+        )
+
+        reviewCard.reviewed =
+            true
+
+        try modelContext.save()
+    }
+
+    // MARK: - Interval Preview
+
+    func getIntervalPreview(
+        id: UUID
+    ) throws -> IntervalPreview {
+
+        guard let card =
+            getCard(
+                id: id
+            )
+        else {
+            throw CardManagerError
+                .cardNotFound
+        }
 
         let now =
             Date.now
@@ -251,97 +332,150 @@ final class CardManager {
             try scheduler.next(
                 card: fsrsCard,
                 now: now,
-                grade: Rating.again
+                grade: .again
             )
+            .card
+            .due
 
         let hard =
             try scheduler.next(
                 card: fsrsCard,
                 now: now,
-                grade: Rating.hard
+                grade: .hard
             )
+            .card
+            .due
 
         let good =
             try scheduler.next(
                 card: fsrsCard,
                 now: now,
-                grade: Rating.good
+                grade: .good
             )
+            .card
+            .due
 
         let easy =
             try scheduler.next(
                 card: fsrsCard,
                 now: now,
-                grade: Rating.easy
+                grade: .easy
             )
+            .card
+            .due
 
-        return RatingPreviews(
-            generatedAt:
-                now,
-            againDue:
-                again.card.due,
-            hardDue:
-                hard.card.due,
-            goodDue:
-                good.card.due,
-            easyDue:
-                easy.card.due
+        return IntervalPreview(
+            generatedAt: now,
+            again: again,
+            hard: hard,
+            good: good,
+            easy: easy
         )
     }
 
-    // MARK: - Review Card
+    // MARK: - Extension
 
-    func reviewCard(
-        id: UUID,
-        rating: Rating
-    ) throws {
+    func getReviewExtensionStatus()
+        throws -> ExtensionStatus {
 
-        guard
-            let card =
-                getCard(
-                    id: id
-                )
-        else {
+        let reviewCards =
+            try fetchReviewCards()
 
-            throw CardManagerError
-                .cardNotFound
-        }
-
-        guard
-            let reviewCard =
-                try getReviewCard(
-                    cardID: id
-                )
-        else {
-
-            throw CardManagerError
-                .reviewCardNotFound
-        }
-
-        let fsrsCard =
-            makeFSRSCard(
-                from: card
+        let unreviewedIDs =
+            Set(
+                reviewCards
+                    .filter {
+                        !$0.reviewed
+                    }
+                    .compactMap {
+                        $0.card?.id
+                    }
             )
 
-        let result =
-            try scheduler.next(
-                card:
-                    fsrsCard,
-                now:
-                    Date.now,
-                grade:
-                    rating
-            )
+        let dueNow =
+            try retrieval
+                .getDueCardCount(
+                    excludingCardIDs:
+                        unreviewedIDs
+                )
 
-        update(
-            card: card,
-            with: result.card
+        let limit =
+            try retrieval
+                .getDailyLimit()
+
+        let laterToday =
+            try retrieval
+                .getLaterTodayCardCount(
+                    excludingCardIDs:
+                        unreviewedIDs
+                )
+
+        let nextDueToday =
+            try retrieval
+                .getNextDueDateToday(
+                    excludingCardIDs:
+                        unreviewedIDs
+                )
+
+        return ExtensionStatus(
+            dueNow: dueNow,
+            nextBatchCount:
+                min(
+                    dueNow,
+                    limit
+                ),
+            laterToday:
+                laterToday,
+            nextDueToday:
+                nextDueToday
+        )
+    }
+
+    /// Adds another batch onto today's existing
+    /// queue without removing completed records.
+    ///
+    /// Returns the number of cards appended.
+    @discardableResult
+    func extendReviewSession()
+        throws -> Int {
+
+        let reviewCards =
+            try fetchReviewCards()
+
+        let hasRemainingCards =
+            reviewCards.contains {
+
+                !$0.reviewed
+                && $0.card != nil
+            }
+
+        guard !hasRemainingCards
+        else {
+            throw CardManagerError
+                .reviewSessionNotComplete
+        }
+
+        let batchSize =
+            try retrieval
+                .getDailyLimit()
+
+        let cards =
+            try retrieval
+                .getCardsForExtension(
+                    limit:
+                        batchSize
+                )
+
+        guard !cards.isEmpty
+        else {
+            return 0
+        }
+
+        try appendReviewCards(
+            cards
         )
 
-        reviewCard.reviewed =
-            true
-
-        try modelContext.save()
+        return cards.count
     }
 
     // MARK: - Reset
@@ -381,17 +515,12 @@ final class CardManager {
             id
 
         let descriptor =
-            FetchDescriptor<
-                PyokoCard
-            >(
+            FetchDescriptor<PyokoCard>(
                 predicate:
-                    #Predicate<
-                        PyokoCard
-                    > {
+                    #Predicate<PyokoCard> {
                         card in
 
-                        card.id ==
-                            cardID
+                        card.id == cardID
                     }
             )
 
@@ -413,22 +542,17 @@ final class CardManager {
         }
     }
 
-    // MARK: - Review Records
+    // MARK: - Review Queue
 
     private func fetchReviewCards()
-        throws
-        -> [PyokoReviewCard] {
+        throws -> [PyokoReviewCard] {
 
         let descriptor =
-            FetchDescriptor<
-                PyokoReviewCard
-            >(
+            FetchDescriptor<PyokoReviewCard>(
                 sortBy: [
                     SortDescriptor(
-                        \PyokoReviewCard
-                            .reviewDate,
-                        order:
-                            .forward
+                        \PyokoReviewCard.reviewDate,
+                        order: .forward
                     )
                 ]
             )
@@ -442,18 +566,15 @@ final class CardManager {
         cardID: UUID
     ) throws -> PyokoReviewCard? {
 
-        let reviewCards =
-            try fetchReviewCards()
+        try fetchReviewCards()
+            .first {
 
-        return reviewCards.first {
-
-            $0.card?.id ==
-                cardID &&
-            !$0.reviewed
-        }
+                $0.card?.id == cardID
+                && !$0.reviewed
+            }
     }
 
-    // MARK: - Generate Session
+    // MARK: - Generate Initial Session
 
     private func generateReviewCards()
         throws {
@@ -469,20 +590,46 @@ final class CardManager {
             )
         }
 
-        let retrieval =
-            CardRetrieval(
-                modelContext:
-                    modelContext
-            )
-
         let cards =
             try retrieval
                 .getCardsForReview()
 
-        let reviewDate =
+        try appendReviewCards(
+            cards
+        )
+    }
+
+    // MARK: - Append Queue
+
+    private func appendReviewCards(
+        _ cards: [PyokoCard]
+    ) throws {
+
+        guard !cards.isEmpty
+        else {
+
+            try modelContext.save()
+
+            return
+        }
+
+        let baseDate =
             Date.now
 
-        for card in cards {
+        for (
+            index,
+            card
+        ) in cards.enumerated() {
+
+            // Tiny offsets provide deterministic
+            // queue ordering without requiring
+            // another persisted model property.
+
+            let reviewDate =
+                baseDate.addingTimeInterval(
+                    Double(index)
+                    / 1_000
+                )
 
             let reviewCard =
                 PyokoReviewCard(
@@ -502,20 +649,18 @@ final class CardManager {
         try modelContext.save()
     }
 
-    // MARK: - Date
+    // MARK: - Day
 
     private func isNewDay(
         _ reviewCards:
             [PyokoReviewCard]
     ) -> Bool {
 
-        guard
-            let reviewDate =
-                reviewCards
-                    .first?
-                    .reviewDate
+        guard let reviewDate =
+            reviewCards
+                .first?
+                .reviewDate
         else {
-
             return true
         }
 

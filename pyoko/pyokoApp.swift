@@ -21,15 +21,15 @@ struct pyokoApp: App {
             Schema(
                 [
                     PyokoCard.self,
-                    PyokoConfiguration.self,
+                    PyokoConfig.self,
                     PyokoDeck.self,
                     PyokoReviewCard.self,
                     PyokoTag.self,
-                    PyokoSentenceConfiguration.self
+                    PyokoSentenceConfig.self
                 ]
             )
 
-        let modelConfiguration =
+        let modelConfig =
             ModelConfiguration(
                 "Pyoko",
                 schema:
@@ -48,7 +48,7 @@ struct pyokoApp: App {
                         schema,
                     configurations:
                         [
-                            modelConfiguration
+                            modelConfig
                         ]
                 )
 
