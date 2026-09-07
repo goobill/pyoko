@@ -1,10 +1,3 @@
-//
-//  QuickManager.swift
-//  pyoko
-//
-//  Created by Bill on 07/09/2026.
-//
-
 import Foundation
 import SwiftData
 
@@ -46,7 +39,7 @@ final class QuickManager {
             0
     }
 
-    // MARK: - Current Card
+    // MARK: - Current
 
     func currentCard()
         -> PyokoQuickCard? {
@@ -62,28 +55,14 @@ final class QuickManager {
         ]
     }
 
-    // MARK: - Rating
+    // MARK: - Next
 
-    func rateCurrent(
-        _ rating: QuickRating
-    ) {
+    func next() {
 
         guard currentIndex
             < cards.count
         else {
             return
-        }
-
-        let card =
-            cards[
-                currentIndex
-            ]
-
-        if rating.repeatsCard {
-
-            cards.append(
-                card.repeatedCopy()
-            )
         }
 
         currentIndex += 1
@@ -107,6 +86,7 @@ final class QuickManager {
 
     var isComplete: Bool {
 
-        currentIndex >= cards.count
+        currentIndex
+        >= cards.count
     }
 }

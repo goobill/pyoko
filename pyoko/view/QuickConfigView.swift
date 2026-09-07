@@ -1,10 +1,3 @@
-//
-//  QuickConfigView.swift
-//  pyoko
-//
-//  Created by Bill on 07/09/2026.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -207,6 +200,51 @@ struct QuickConfigView: View {
                 }
 
                 GroupBox(
+                    "Practice Mode"
+                ) {
+
+                    VStack(
+                        alignment: .leading,
+                        spacing: 8
+                    ) {
+
+                        Toggle(
+                            "Writing",
+                            isOn:
+                                Binding(
+                                    get: {
+                                        config
+                                            .writingEnabled
+                                    },
+                                    set: {
+                                        config
+                                            .writingEnabled =
+                                                $0
+
+                                        save()
+                                    }
+                                )
+                        )
+
+                        Text(
+                            writingDescription(
+                                config
+                            )
+                        )
+                        .font(
+                            .caption
+                        )
+                        .foregroundStyle(
+                            .secondary
+                        )
+                        .fixedSize(
+                            horizontal: false,
+                            vertical: true
+                        )
+                    }
+                }
+
+                GroupBox(
                     "Direction"
                 ) {
 
@@ -229,6 +267,27 @@ struct QuickConfigView: View {
                                     config
                                 )
                         )
+
+                        if config.writingEnabled {
+
+                            Text(
+                                directionDescription(
+                                    config
+                                )
+                            )
+                            .font(
+                                .caption
+                            )
+                            .foregroundStyle(
+                                .secondary
+                            )
+                            .frame(
+                                maxWidth:
+                                    .infinity,
+                                alignment:
+                                    .leading
+                            )
+                        }
                     }
                 }
 
@@ -334,7 +393,7 @@ struct QuickConfigView: View {
 
                         Text(
                             """
-                            Quick Review does not change your FSRS scheduling or review scores.
+                            Quick Review is separate from your scheduled reviews. Nothing you do here changes FSRS scheduling.
                             """
                         )
                         .font(
@@ -409,6 +468,55 @@ struct QuickConfigView: View {
         }
     }
 
+    // MARK: - Writing Description
+
+    private func writingDescription(
+        _ config:
+            PyokoQuickConfig
+    ) -> String {
+
+        if config.writingEnabled {
+
+            return
+                """
+                Type your answer before revealing the correct answer. In Recognition you write the source meaning; in Recall you write the target word. Your response is shown beside the correct answer so you can compare them yourself. It is not graded and does not affect FSRS.
+                """
+        }
+
+        return
+            """
+            Leave Writing off for a faster review: think of the answer, reveal the card, then move straight to the next word.
+            """
+    }
+
+    private func directionDescription(
+        _ config:
+            PyokoQuickConfig
+    ) -> String {
+
+        if config.includeRecognition
+            && config.includeRecall {
+
+            return
+                """
+                Writing will mix Recognition and Recall cards during the session.
+                """
+        }
+
+        if config.includeRecognition {
+
+            return
+                """
+                Recognition: see the target word and write its source meaning.
+                """
+        }
+
+        return
+            """
+            Recall: see the source meaning and write the target word.
+            """
+    }
+
     // MARK: - Source
 
     private func sourceButton(
@@ -433,21 +541,27 @@ struct QuickConfigView: View {
                 spacing: 12
             ) {
 
-                Image(
-                    systemName:
-                        config.source == source
-                        ? "checkmark.circle.fill"
-                        : "circle"
-                )
-                .foregroundStyle(
-                    config.source == source
-                    ? AnyShapeStyle(
+                if config.source
+                    == source {
+
+                    Image(
+                        systemName:
+                            "checkmark.circle.fill"
+                    )
+                    .foregroundStyle(
                         .tint
                     )
-                    : AnyShapeStyle(
+
+                } else {
+
+                    Image(
+                        systemName:
+                            "circle"
+                    )
+                    .foregroundStyle(
                         .secondary
                     )
-                )
+                }
 
                 VStack(
                     alignment: .leading,
@@ -750,18 +864,22 @@ struct QuickConfigView: View {
 
         Binding(
             get: {
-                config.includeRecognition
+
+                config
+                    .includeRecognition
             },
             set: { enabled in
 
                 if !enabled
-                    && !config.includeRecall {
+                    && !config
+                        .includeRecall {
 
                     return
                 }
 
-                config.includeRecognition =
-                    enabled
+                config
+                    .includeRecognition =
+                        enabled
 
                 save()
             }
@@ -775,18 +893,22 @@ struct QuickConfigView: View {
 
         Binding(
             get: {
-                config.includeRecall
+
+                config
+                    .includeRecall
             },
             set: { enabled in
 
                 if !enabled
-                    && !config.includeRecognition {
+                    && !config
+                        .includeRecognition {
 
                     return
                 }
 
-                config.includeRecall =
-                    enabled
+                config
+                    .includeRecall =
+                        enabled
 
                 save()
             }

@@ -1,10 +1,3 @@
-//
-//  QuickSelector.swift
-//  pyoko
-//
-//  Created by Bill on 07/09/2026.
-//
-
 import Foundation
 import SwiftData
 

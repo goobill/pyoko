@@ -1,10 +1,3 @@
-//
-//  QuickCardView.swift
-//  pyoko
-//
-//  Created by Bill on 07/09/2026.
-//
-
 import SwiftUI
 
 struct QuickCardView: View {
@@ -20,6 +13,12 @@ struct QuickCardView: View {
 
     let readingHintEnabled:
         Bool
+
+    let writingEnabled:
+        Bool
+
+    let submittedAnswer:
+        String
 
     let answerRevealed:
         Bool
@@ -54,14 +53,21 @@ struct QuickCardView: View {
 
                 Spacer()
 
-                content
+                if answerRevealed {
+
+                    answerContent
+
+                } else {
+
+                    questionContent
+                }
 
                 Spacer()
 
                 if !answerRevealed {
 
                     Text(
-                        "Tap card to reveal"
+                        footerText
                     )
                     .font(
                         .caption
@@ -86,6 +92,11 @@ struct QuickCardView: View {
         )
         .onTapGesture {
 
+            guard !writingEnabled
+            else {
+                return
+            }
+
             guard !answerRevealed
             else {
                 return
@@ -103,13 +114,9 @@ struct QuickCardView: View {
         HStack {
 
             Label(
-                card.type == .recognition
-                ? "Recognition"
-                : "Recall",
+                headerTitle,
                 systemImage:
-                    card.type == .recognition
-                    ? "eye"
-                    : "arrow.uturn.backward"
+                    headerImage
             )
             .font(
                 .caption
@@ -147,21 +154,35 @@ struct QuickCardView: View {
         }
     }
 
-    // MARK: - Content
+    private var headerTitle:
+        String {
 
-    @ViewBuilder
-    private var content:
-        some View {
+        let direction =
+            card.type == .recognition
+            ? "Recognition"
+            : "Recall"
 
-        if answerRevealed {
+        if writingEnabled {
 
-            answerContent
-
-        } else {
-
-            questionContent
+            return "\(direction) · Writing"
         }
+
+        return direction
     }
+
+    private var headerImage:
+        String {
+
+        if writingEnabled {
+            return "pencil"
+        }
+
+        return card.type == .recognition
+            ? "eye"
+            : "arrow.uturn.backward"
+    }
+
+    // MARK: - Question
 
     @ViewBuilder
     private var questionContent:
@@ -226,8 +247,24 @@ struct QuickCardView: View {
         }
     }
 
+    // MARK: - Answer
+
     @ViewBuilder
     private var answerContent:
+        some View {
+
+        if writingEnabled {
+
+            writingAnswerContent
+
+        } else {
+
+            normalAnswerContent
+        }
+    }
+
+    @ViewBuilder
+    private var normalAnswerContent:
         some View {
 
         switch card.type {
@@ -286,6 +323,139 @@ struct QuickCardView: View {
         }
     }
 
+    @ViewBuilder
+    private var writingAnswerContent:
+        some View {
+
+        switch card.type {
+
+        case .recognition:
+
+            VStack(
+                spacing: 14
+            ) {
+
+                targetContent(
+                    mode:
+                        afterAnswerDisplayMode,
+                    primary:
+                        false
+                )
+
+                Divider()
+
+                answerSection(
+                    title:
+                        "Correct answer",
+                    text:
+                        card.sourceText
+                )
+
+                Divider()
+
+                answerSection(
+                    title:
+                        "Your answer",
+                    text:
+                        submittedAnswer
+                )
+            }
+
+        case .recall:
+
+            VStack(
+                spacing: 14
+            ) {
+
+                Text(
+                    card.sourceText
+                )
+                .font(
+                    .title3
+                )
+                .foregroundStyle(
+                    .secondary
+                )
+                .multilineTextAlignment(
+                    .center
+                )
+
+                Divider()
+
+                VStack(
+                    spacing: 5
+                ) {
+
+                    Text(
+                        "Correct answer"
+                    )
+                    .font(
+                        .caption
+                    )
+                    .foregroundStyle(
+                        .secondary
+                    )
+
+                    targetContent(
+                        mode:
+                            afterAnswerDisplayMode,
+                        primary:
+                            false
+                    )
+                }
+
+                Divider()
+
+                answerSection(
+                    title:
+                        "Your answer",
+                    text:
+                        submittedAnswer
+                )
+            }
+        }
+    }
+
+    private func answerSection(
+        title: String,
+        text: String
+    ) -> some View {
+
+        VStack(
+            spacing: 5
+        ) {
+
+            Text(
+                title
+            )
+            .font(
+                .caption
+            )
+            .foregroundStyle(
+                .secondary
+            )
+
+            Text(
+                text
+            )
+            .font(
+                .title3
+            )
+            .fontWeight(
+                .medium
+            )
+            .multilineTextAlignment(
+                .center
+            )
+            .minimumScaleFactor(
+                0.7
+            )
+            .lineLimit(
+                3
+            )
+        }
+    }
+
     // MARK: - Target
 
     @ViewBuilder
@@ -298,16 +468,37 @@ struct QuickCardView: View {
 
         case .target:
 
-            primaryText(
-                card.targetText
-            )
+            if primary {
+
+                primaryText(
+                    card.targetText
+                )
+
+            } else {
+
+                secondaryAnswerText(
+                    card.targetText
+                )
+            }
 
         case .reading:
 
-            primaryText(
+            let text =
                 card.targetReading
                 ?? card.targetText
-            )
+
+            if primary {
+
+                primaryText(
+                    text
+                )
+
+            } else {
+
+                secondaryAnswerText(
+                    text
+                )
+            }
 
         case .targetAndReading:
 
@@ -315,18 +506,25 @@ struct QuickCardView: View {
                 spacing: 6
             ) {
 
-                primaryText(
-                    card.targetText
-                )
+                if primary {
+
+                    primaryText(
+                        card.targetText
+                    )
+
+                } else {
+
+                    secondaryAnswerText(
+                        card.targetText
+                    )
+                }
 
                 Text(
                     card.targetReading
                     ?? card.targetText
                 )
                 .font(
-                    primary
-                    ? .title3
-                    : .body
+                    .title3
                 )
                 .foregroundStyle(
                     .secondary
@@ -363,6 +561,57 @@ struct QuickCardView: View {
         .frame(
             maxWidth: .infinity
         )
+    }
+
+    private func secondaryAnswerText(
+        _ text: String
+    ) -> some View {
+
+        Text(
+            text
+        )
+        .font(
+            .title2
+        )
+        .fontWeight(
+            .medium
+        )
+        .minimumScaleFactor(
+            0.6
+        )
+        .lineLimit(
+            3
+        )
+        .multilineTextAlignment(
+            .center
+        )
+        .frame(
+            maxWidth: .infinity
+        )
+    }
+
+    // MARK: - Footer
+
+    private var footerText:
+        String {
+
+        guard writingEnabled
+        else {
+            return "Tap card to reveal"
+        }
+
+        switch card.type {
+
+        case .recognition:
+
+            return
+                "Write the source meaning below"
+
+        case .recall:
+
+            return
+                "Write the target word below"
+        }
     }
 
     // MARK: - Hint

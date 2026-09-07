@@ -1,10 +1,3 @@
-//
-//  PyokoQuickConfig.swift
-//  pyoko
-//
-//  Created by Bill on 07/09/2026.
-//
-
 import Foundation
 import SwiftData
 
@@ -17,6 +10,8 @@ final class PyokoQuickConfig {
 
     var source: QuickSource =
         QuickSource.random
+
+    var writingEnabled: Bool = false
 
     var includeRecognition: Bool = true
 
@@ -50,6 +45,7 @@ final class PyokoQuickConfig {
         id: UUID = UUID(),
         cardCount: Int = 20,
         source: QuickSource = .random,
+        writingEnabled: Bool = false,
         includeRecognition: Bool = true,
         includeRecall: Bool = true,
         beforeAnswerDisplayMode:
@@ -61,13 +57,17 @@ final class PyokoQuickConfig {
         selectedTags: [PyokoTag]? = []
     ) {
 
-        self.id = id
+        self.id =
+            id
 
         self.cardCount =
             cardCount
 
         self.source =
             source
+
+        self.writingEnabled =
+            writingEnabled
 
         self.includeRecognition =
             includeRecognition

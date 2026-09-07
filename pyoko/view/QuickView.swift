@@ -1,10 +1,3 @@
-//
-//  QuickView.swift
-//  pyoko
-//
-//  Created by Bill on 07/09/2026.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -41,6 +34,14 @@ struct QuickView: View {
     @State
     private var hintRevealed =
         false
+
+    @State
+    private var writingText =
+        ""
+
+    @State
+    private var submittedWritingText =
+        ""
 
     @State
     private var isLoading =
@@ -136,6 +137,11 @@ struct QuickView: View {
                 readingHintEnabled:
                     config
                         .readingHintEnabled,
+                writingEnabled:
+                    config
+                        .writingEnabled,
+                submittedAnswer:
+                    submittedWritingText,
                 answerRevealed:
                     answerRevealed,
                 hintRevealed:
@@ -167,7 +173,7 @@ struct QuickView: View {
         }
     }
 
-    // MARK: - Top
+    // MARK: - Top Bar
 
     private var topBar:
         some View {
@@ -240,7 +246,7 @@ struct QuickView: View {
         )
     }
 
-    // MARK: - Actions
+    // MARK: - Action Area
 
     @ViewBuilder
     private var actionArea:
@@ -248,13 +254,20 @@ struct QuickView: View {
 
         if answerRevealed {
 
-            ratingArea
+            nextArea
+
+        } else if config
+            .writingEnabled {
+
+            writingArea
 
         } else {
 
             showAnswerArea
         }
     }
+
+    // MARK: - Show Answer
 
     private var showAnswerArea:
         some View {
@@ -285,118 +298,105 @@ struct QuickView: View {
         }
     }
 
-    private var ratingArea:
+    // MARK: - Writing
+
+    private var writingArea:
         some View {
 
         VStack(
-            spacing: 10
+            spacing: 12
         ) {
 
-            Text(
-                "How did you do?"
+            TextField(
+                writingPlaceholder,
+                text:
+                    $writingText
             )
-            .font(
-                .subheadline
+            .textFieldStyle(
+                .roundedBorder
+            )
+            .submitLabel(
+                .done
+            )
+            .onSubmit {
+
+                submitWriting()
+            }
+
+            Button {
+
+                submitWriting()
+
+            } label: {
+
+                Text(
+                    "Check Answer"
+                )
+                .frame(
+                    maxWidth:
+                        .infinity
+                )
+            }
+            .buttonStyle(
+                .borderedProminent
+            )
+            .disabled(
+                writingAnswerIsEmpty
+            )
+        }
+    }
+
+    private var writingPlaceholder:
+        String {
+
+        guard let currentCard
+        else {
+            return "Write your answer"
+        }
+
+        switch currentCard.type {
+
+        case .recognition:
+
+            return
+                "Write the source meaning"
+
+        case .recall:
+
+            return
+                "Write the target word"
+        }
+    }
+
+    // MARK: - Next
+
+    private var nextArea:
+        some View {
+
+        ZStack {
+
+            Rectangle()
+                .fill(
+                    .clear
+                )
+
+            Text(
+                "Next Card"
             )
             .fontWeight(
                 .medium
             )
-
-            HStack {
-
-                Text(
-                    "Harder"
-                )
-
-                Spacer()
-
-                Text(
-                    "Easier"
-                )
-            }
-            .font(
-                .caption
-            )
             .foregroundStyle(
-                .secondary
+                .tint
             )
-
-            HStack(
-                spacing: 8
-            ) {
-
-                ratingButton(
-                    .again,
-                    opacity: 0.95
-                )
-
-                ratingButton(
-                    .hard,
-                    opacity: 0.78
-                )
-
-                ratingButton(
-                    .good,
-                    opacity: 0.60
-                )
-
-                ratingButton(
-                    .easy,
-                    opacity: 0.42
-                )
-            }
         }
-    }
+        .contentShape(
+            Rectangle()
+        )
+        .onTapGesture {
 
-    private func ratingButton(
-        _ rating: QuickRating,
-        opacity: Double
-    ) -> some View {
-
-        Button {
-
-            submit(
-                rating
-            )
-
-        } label: {
-
-            Text(
-                rating.title
-            )
-            .font(
-                .caption
-            )
-            .fontWeight(
-                .semibold
-            )
-            .frame(
-                maxWidth:
-                    .infinity
-            )
-            .frame(
-                height: 48
-            )
-            .background {
-
-                RoundedRectangle(
-                    cornerRadius: 12,
-                    style: .continuous
-                )
-                .fill(
-                    Color.accentColor
-                        .opacity(
-                            opacity
-                        )
-                )
-            }
+            nextCard()
         }
-        .buttonStyle(
-            .plain
-        )
-        .accessibilityLabel(
-            rating.title
-        )
     }
 
     // MARK: - Complete
@@ -493,7 +493,7 @@ struct QuickView: View {
 
         return
             """
-            You completed \(progress.completed) cards.
+            You reviewed \(progress.completed) cards.
 
             Your FSRS scheduling was not changed.
             """
@@ -557,39 +557,94 @@ struct QuickView: View {
 
         hintRevealed =
             false
+
+        writingText =
+            ""
+
+        submittedWritingText =
+            ""
     }
 
     // MARK: - Reveal
 
     private func revealAnswer() {
 
+        guard !config
+            .writingEnabled
+        else {
+            return
+        }
+
         guard !answerRevealed
         else {
             return
         }
 
+        hintRevealed =
+            false
+
         answerRevealed =
             true
+    }
+
+    // MARK: - Writing
+
+    private var writingAnswerIsEmpty:
+        Bool {
+
+        writingText
+            .trimmingCharacters(
+                in:
+                    .whitespacesAndNewlines
+            )
+            .isEmpty
+    }
+
+    private func submitWriting() {
+
+        guard config
+            .writingEnabled
+        else {
+            return
+        }
+
+        let trimmed =
+            writingText
+                .trimmingCharacters(
+                    in:
+                        .whitespacesAndNewlines
+                )
+
+        guard !trimmed.isEmpty
+        else {
+            return
+        }
+
+        submittedWritingText =
+            trimmed
 
         hintRevealed =
             false
+
+        answerRevealed =
+            true
     }
 
-    // MARK: - Rating
+    // MARK: - Next
 
-    private func submit(
-        _ rating:
-            QuickRating
-    ) {
+    private func nextCard() {
+
+        guard answerRevealed
+        else {
+            return
+        }
 
         guard let manager
         else {
             return
         }
 
-        manager.rateCurrent(
-            rating
-        )
+        manager.next()
 
         refresh()
     }
