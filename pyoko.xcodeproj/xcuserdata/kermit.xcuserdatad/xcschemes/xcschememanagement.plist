@@ -4,10 +4,38 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
+		<key>PyokoWidgetsExtension.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
 		<key>pyoko.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>6E3BFD53304EEF2B00EC0CD4</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>6E436A3C30416569007A1D5E</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>6E436A4B3041656A007A1D5E</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>6E436A553041656A007A1D5E</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>

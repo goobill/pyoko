@@ -9,9 +9,19 @@
 /* Begin PBXBuildFile section */
 		6E1DFAFF3042E383009E2294 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 6E1DFAFE3042E383009E2294 /* README.md */; };
 		6E1DFB2A304690E6009E2294 /* FSRS in Frameworks */ = {isa = PBXBuildFile; productRef = 6E1DFB29304690E6009E2294 /* FSRS */; };
+		6E3BFD57304EEF2B00EC0CD4 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6E3BFD56304EEF2B00EC0CD4 /* WidgetKit.framework */; };
+		6E3BFD59304EEF2B00EC0CD4 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6E3BFD58304EEF2B00EC0CD4 /* SwiftUI.framework */; };
+		6E3BFD66304EEF2C00EC0CD4 /* PyokoWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6E3BFD54304EEF2B00EC0CD4 /* PyokoWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		6E3BFD64304EEF2C00EC0CD4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6E436A3530416569007A1D5E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6E3BFD53304EEF2B00EC0CD4;
+			remoteInfo = PyokoWidgetsExtension;
+		};
 		6E436A4D3041656A007A1D5E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 6E436A3530416569007A1D5E /* Project object */;
@@ -28,16 +38,72 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		6E3BFD6B304EEF2C00EC0CD4 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				6E3BFD66304EEF2C00EC0CD4 /* PyokoWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		6E1DFAFE3042E383009E2294 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		6E3BFD54304EEF2B00EC0CD4 /* PyokoWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PyokoWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		6E3BFD56304EEF2B00EC0CD4 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		6E3BFD58304EEF2B00EC0CD4 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		6E3BFD6D304EEFBA00EC0CD4 /* PyokoWidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PyokoWidgetsExtension.entitlements; sourceTree = "<group>"; };
 		6E436A3D30416569007A1D5E /* pyoko.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = pyoko.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6E436A4C3041656A007A1D5E /* pyokoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = pyokoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6E436A563041656A007A1D5E /* pyokoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = pyokoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		6E3BFD67304EEF2C00EC0CD4 /* Exceptions for "PyokoWidgets" folder in "PyokoWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 6E3BFD53304EEF2B00EC0CD4 /* PyokoWidgetsExtension */;
+		};
+		6E68C756304F01E7006C8B46 /* Exceptions for "PyokoWidgets" folder in "pyoko" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				QuickWordIntents.swift,
+			);
+			target = 6E436A3C30416569007A1D5E /* pyoko */;
+		};
+		6E68C758304F01FE006C8B46 /* Exceptions for "pyoko" folder in "PyokoWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				widget/PyokoWidgetConstants.swift,
+				widget/PyokoWidgetData.swift,
+				widget/PyokoWidgetStore.swift,
+			);
+			target = 6E3BFD53304EEF2B00EC0CD4 /* PyokoWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		6E3BFD5A304EEF2B00EC0CD4 /* PyokoWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				6E68C756304F01E7006C8B46 /* Exceptions for "PyokoWidgets" folder in "pyoko" target */,
+				6E3BFD67304EEF2C00EC0CD4 /* Exceptions for "PyokoWidgets" folder in "PyokoWidgetsExtension" target */,
+			);
+			path = PyokoWidgets;
+			sourceTree = "<group>";
+		};
 		6E436A3F30416569007A1D5E /* pyoko */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				6E68C758304F01FE006C8B46 /* Exceptions for "pyoko" folder in "PyokoWidgetsExtension" target */,
+			);
 			path = pyoko;
 			sourceTree = "<group>";
 		};
@@ -54,6 +120,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		6E3BFD51304EEF2B00EC0CD4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6E3BFD59304EEF2B00EC0CD4 /* SwiftUI.framework in Frameworks */,
+				6E3BFD57304EEF2B00EC0CD4 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6E436A3A30416569007A1D5E /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -79,13 +154,25 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		6E3BFD55304EEF2B00EC0CD4 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				6E3BFD56304EEF2B00EC0CD4 /* WidgetKit.framework */,
+				6E3BFD58304EEF2B00EC0CD4 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		6E436A3430416569007A1D5E = {
 			isa = PBXGroup;
 			children = (
+				6E3BFD6D304EEFBA00EC0CD4 /* PyokoWidgetsExtension.entitlements */,
 				6E1DFAFE3042E383009E2294 /* README.md */,
 				6E436A3F30416569007A1D5E /* pyoko */,
 				6E436A4F3041656A007A1D5E /* pyokoTests */,
 				6E436A593041656A007A1D5E /* pyokoUITests */,
+				6E3BFD5A304EEF2B00EC0CD4 /* PyokoWidgets */,
+				6E3BFD55304EEF2B00EC0CD4 /* Frameworks */,
 				6E436A3E30416569007A1D5E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -96,6 +183,7 @@
 				6E436A3D30416569007A1D5E /* pyoko.app */,
 				6E436A4C3041656A007A1D5E /* pyokoTests.xctest */,
 				6E436A563041656A007A1D5E /* pyokoUITests.xctest */,
+				6E3BFD54304EEF2B00EC0CD4 /* PyokoWidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -103,6 +191,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		6E3BFD53304EEF2B00EC0CD4 /* PyokoWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6E3BFD68304EEF2C00EC0CD4 /* Build configuration list for PBXNativeTarget "PyokoWidgetsExtension" */;
+			buildPhases = (
+				6E3BFD50304EEF2B00EC0CD4 /* Sources */,
+				6E3BFD51304EEF2B00EC0CD4 /* Frameworks */,
+				6E3BFD52304EEF2B00EC0CD4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				6E3BFD5A304EEF2B00EC0CD4 /* PyokoWidgets */,
+			);
+			name = PyokoWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = PyokoWidgetsExtension;
+			productReference = 6E3BFD54304EEF2B00EC0CD4 /* PyokoWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		6E436A3C30416569007A1D5E /* pyoko */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 6E436A603041656A007A1D5E /* Build configuration list for PBXNativeTarget "pyoko" */;
@@ -110,10 +220,12 @@
 				6E436A3930416569007A1D5E /* Sources */,
 				6E436A3A30416569007A1D5E /* Frameworks */,
 				6E436A3B30416569007A1D5E /* Resources */,
+				6E3BFD6B304EEF2C00EC0CD4 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				6E3BFD65304EEF2C00EC0CD4 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				6E436A3F30416569007A1D5E /* pyoko */,
@@ -182,6 +294,9 @@
 				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
+					6E3BFD53304EEF2B00EC0CD4 = {
+						CreatedOnToolsVersion = 26.6;
+					};
 					6E436A3C30416569007A1D5E = {
 						CreatedOnToolsVersion = 26.6;
 					};
@@ -215,11 +330,19 @@
 				6E436A3C30416569007A1D5E /* pyoko */,
 				6E436A4B3041656A007A1D5E /* pyokoTests */,
 				6E436A553041656A007A1D5E /* pyokoUITests */,
+				6E3BFD53304EEF2B00EC0CD4 /* PyokoWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		6E3BFD52304EEF2B00EC0CD4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6E436A3B30416569007A1D5E /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -245,6 +368,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		6E3BFD50304EEF2B00EC0CD4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6E436A3930416569007A1D5E /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -269,6 +399,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		6E3BFD65304EEF2C00EC0CD4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6E3BFD53304EEF2B00EC0CD4 /* PyokoWidgetsExtension */;
+			targetProxy = 6E3BFD64304EEF2C00EC0CD4 /* PBXContainerItemProxy */;
+		};
 		6E436A4E3041656A007A1D5E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 6E436A3C30416569007A1D5E /* pyoko */;
@@ -282,6 +417,73 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		6E3BFD69304EEF2C00EC0CD4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = PyokoWidgetsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KSKQ8QC58G;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PyokoWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PyokoWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.goobill.pyoko.PyokoWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		6E3BFD6A304EEF2C00EC0CD4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = PyokoWidgetsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KSKQ8QC58G;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PyokoWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PyokoWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.goobill.pyoko.PyokoWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		6E436A5E3041656A007A1D5E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -402,6 +604,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_ENTITLEMENTS = pyoko/pyoko.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = KSKQ8QC58G;
@@ -449,6 +652,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_ENTITLEMENTS = pyoko/pyoko.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = KSKQ8QC58G;
@@ -591,6 +795,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		6E3BFD68304EEF2C00EC0CD4 /* Build configuration list for PBXNativeTarget "PyokoWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6E3BFD69304EEF2C00EC0CD4 /* Debug */,
+				6E3BFD6A304EEF2C00EC0CD4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		6E436A3830416569007A1D5E /* Build configuration list for PBXProject "pyoko" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

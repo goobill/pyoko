@@ -68,6 +68,7 @@ struct pyokoApp: App {
                 .preferredColorScheme(
                     preferredColorScheme
                 )
+                .pyokoWidgetSync()
         }
         .modelContainer(
             modelContainer
