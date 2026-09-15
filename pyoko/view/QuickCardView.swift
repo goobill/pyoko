@@ -34,79 +34,32 @@ struct QuickCardView: View {
         () -> Void
 
     var body: some View {
-
         ZStack {
-
-            RoundedRectangle(
-                cornerRadius: 24,
-                style: .continuous
-            )
-            .fill(
-                Color.primary
-                    .opacity(
-                        0.06
-                    )
-            )
-
-            VStack(
-                spacing: 16
-            ) {
-
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.primary.opacity(0.06))
+            VStack(spacing: 16) {
                 header
-
-                Spacer()
-
-                if answerRevealed {
-
-                    answerContent
-
-                } else {
-
-                    questionContent
+                // The hint button sits outside the answer-reveal tap region.
+                VStack(spacing: 16) {
+                    Spacer()
+                    if answerRevealed { answerContent } else { questionContent }
+                    Spacer()
+                    if !answerRevealed {
+                        Text(footerText)
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
-
-                Spacer()
-
-                if !answerRevealed {
-
-                    Text(
-                        footerText
-                    )
-                    .font(
-                        .caption
-                    )
-                    .foregroundStyle(
-                        .secondary
-                    )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    guard !answerRevealed, !writingEnabled else { return }
+                    onReveal()
                 }
             }
-            .padding(
-                24
-            )
+            .padding(24)
         }
-        .frame(
-            maxWidth: .infinity
-        )
-        .frame(
-            height: 360
-        )
-        .contentShape(
-            Rectangle()
-        )
-        .onTapGesture {
-
-            guard !writingEnabled
-            else {
-                return
-            }
-
-            guard !answerRevealed
-            else {
-                return
-            }
-
-            onReveal()
-        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 360)
     }
 
     // MARK: - Header
@@ -147,6 +100,8 @@ struct QuickCardView: View {
                         .caption
                     )
                 }
+                .accessibilityIdentifier("card.hint")
+                .accessibilityLabel(hintRevealed ? "Hide Hiragana hint" : "Show Hiragana hint")
                 .buttonStyle(
                     .plain
                 )
@@ -189,26 +144,22 @@ struct QuickCardView: View {
 
     // MARK: - Question
 
-    @ViewBuilder
-    private var questionContent:
-        some View {
-
-        switch card.type {
-
-        case .recognition:
-
-            // Even in reading-only mode we want
-            // to SHOW the actual target/kanji.
-
-            primaryText(
-                card.targetText
-            )
-
-        case .recall:
-
-            primaryText(
-                card.sourceText
-            )
+    private var questionContent: some View {
+        VStack(spacing: 10) {
+            if card.type == .recognition {
+                if recognitionReadingOnlyEnabled {
+                    primaryText(card.targetText)
+                } else {
+                    targetContent(mode: beforeAnswerDisplayMode, primary: true)
+                }
+            } else {
+                primaryText(card.sourceText)
+            }
+            if canShowHint && hintRevealed, let reading = card.targetReading {
+                Text(reading.trimmingCharacters(in: .whitespacesAndNewlines))
+                    .font(.title3).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("card.hint.text")
+            }
         }
     }
 
@@ -650,56 +601,29 @@ struct QuickCardView: View {
             if recognitionReadingOnlyEnabled {
 
                 return
-                    "Write the reading below"
+                    "Write the Hiragana below"
             }
 
             return
-                "Write the source meaning below"
+                "Write the English meaning below"
 
         case .recall:
 
             return
-                "Write the target word below"
+                "Write the Kanji below"
         }
     }
 
     // MARK: - Hint
 
-    private var canShowHint:
-        Bool {
-
-        guard !answerRevealed
-        else {
-            return false
+    private var canShowHint: Bool {
+        guard !answerRevealed, readingHintEnabled,
+              let reading = card.targetReading?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !reading.isEmpty else { return false }
+        if card.type == .recognition {
+            // Never reveal the answer through a hint, or repeat an already visible reading.
+            if recognitionReadingOnlyEnabled || beforeAnswerDisplayMode.includesReading { return false }
         }
-
-        guard readingHintEnabled
-        else {
-            return false
-        }
-
-        guard card.targetReading
-            != nil
-        else {
-            return false
-        }
-
-        // A reading hint would literally reveal
-        // the answer in this mode.
-
-        if card.type == .recognition,
-           recognitionReadingOnlyEnabled {
-
-            return false
-        }
-
-        if card.type == .recognition,
-           beforeAnswerDisplayMode
-            .includesReading {
-
-            return false
-        }
-
         return true
     }
 }

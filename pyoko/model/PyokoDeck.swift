@@ -38,9 +38,6 @@ final class PyokoDeck {
     var configs:
         [PyokoConfig]? = []
 
-    var sentenceConfigs:
-        [PyokoSentenceConfig]? = []
-
     var quickConfigs:
         [PyokoQuickConfig]? = []
 

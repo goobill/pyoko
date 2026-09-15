@@ -40,7 +40,8 @@ enum GoogleSheetsCSVURL {
             let host =
                 components.host?
                     .lowercased(),
-            host == "docs.google.com"
+            host == "docs.google.com",
+            components.scheme == "https" || components.scheme == "http"
         else {
             
             throw DataLoaderError
@@ -142,7 +143,8 @@ enum GoogleSheetsCSVURL {
             pathParts[2]
         
         guard
-            !spreadsheetID.isEmpty
+            !spreadsheetID.isEmpty,
+            spreadsheetID != "e"
         else {
             
             throw DataLoaderError

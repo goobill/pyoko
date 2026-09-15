@@ -125,6 +125,7 @@ struct TagSelectionView: View {
                 tags.isEmpty
                 || allSelected
             )
+            .accessibilityIdentifier("tags.all")
 
             Button(
                 "Deselect All"
@@ -138,6 +139,7 @@ struct TagSelectionView: View {
             .disabled(
                 selectedTags.isEmpty
             )
+            .accessibilityIdentifier("tags.none")
         }
     }
 
@@ -174,6 +176,7 @@ struct TagSelectionView: View {
                             }
                         )
                 )
+                .accessibilityIdentifier("tag.\(tag.name)")
             }
         }
     }

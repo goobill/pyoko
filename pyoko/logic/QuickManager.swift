@@ -44,6 +44,7 @@ final class QuickManager {
 
     // MARK: - Start
 
+    /// Creates a fresh practice round and clears prior answers without changing persisted cards.
     func start(
         config: PyokoQuickConfig
     ) throws {
@@ -85,6 +86,7 @@ final class QuickManager {
 
     // MARK: - Result
 
+    /// Records the latest self-evaluation and advances; repeated calls after completion do nothing.
     func markCurrent(
         _ result:
             QuickAnswerResult
@@ -103,8 +105,15 @@ final class QuickManager {
         currentIndex += 1
     }
 
+    /// Advances without scoring or modifying FSRS. Skipping a retry retains its previous result.
+    func skipCurrent() {
+        guard currentCard() != nil else { return }
+        currentIndex += 1
+    }
+
     // MARK: - Review Incorrect
 
+    /// Starts a retry round containing only mistakes while retaining the original session totals.
     func reviewIncorrect() {
 
         let incorrectCards =

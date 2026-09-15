@@ -5,7 +5,7 @@ struct DefaultDeck: Identifiable, Hashable {
     let key: String
     let name: String
     let description: String
-    let urlString: String
+    let resourceName: String
     
     var id: String {
         key
@@ -20,14 +20,14 @@ enum DefaultDecks {
         key: "jlpt-n5",
         name: "JLPT N5",
         description: "Beginner Japanese vocabulary for JLPT N5.",
-        urlString: "https://example.com/n5.csv"
+        resourceName: "jlpt_n5"
     )
     
     static let n4 = DefaultDeck(
         key: "jlpt-n4",
         name: "JLPT N4",
         description: "Elementary Japanese vocabulary for JLPT N4.",
-        urlString: "https://example.com/n4.csv"
+        resourceName: "jlpt_n4"
     )
     
     static let all: [DefaultDeck] = [

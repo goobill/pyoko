@@ -14,9 +14,7 @@ enum WidgetSync {
 
             let configs =
                 try modelContext.fetch(
-                    FetchDescriptor<
-                        PyokoConfig
-                    >()
+                    FetchDescriptor<PyokoConfig>(sortBy: [SortDescriptor(\PyokoConfig.createdAt)])
                 )
 
             guard
@@ -38,15 +36,10 @@ enum WidgetSync {
                     >()
                 )
 
-            let snapshot =
-                makeSnapshot(
-                    config:
-                        config,
-                    cards:
-                        cards,
-                    now:
-                        .now
-                )
+            let preferences = PyokoWidgetConfig.decode(UserDefaults.standard.data(forKey: PyokoWidgetConfig.preferenceKey) ?? Data())
+            let reviews = try modelContext.fetch(FetchDescriptor<PyokoReviewCard>())
+            let snapshot = makeSnapshot(config: config, cards: cards, now: .now,
+                                        preferences: preferences, reviews: reviews)
 
             publish(
                 snapshot
@@ -62,116 +55,47 @@ enum WidgetSync {
 
     // MARK: - Snapshot
 
-    private static func makeSnapshot(
+    static func makeSnapshot(
         config:
             PyokoConfig,
         cards:
             [PyokoCard],
-        now:
-            Date
+        now: Date,
+        preferences suppliedPreferences: PyokoWidgetConfig? = nil,
+        reviews: [PyokoReviewCard] = [],
+        calendar: Calendar = .current
     ) -> PyokoWidgetSnapshot {
-
-        let selectedDeckIDs =
-            Set(
-                (config.selectedDecks ?? [])
-                    .map(
-                        \.id
-                    )
-            )
-
-        let selectedTagIDs =
-            Set(
-                (config.selectedTags ?? [])
-                    .map(
-                        \.id
-                    )
-            )
-
-        let eligibleCards =
-            cards.filter { card in
-
-                guard
-                    let deckID =
-                        card.deck?
-                            .id,
-                    selectedDeckIDs
-                        .contains(
-                            deckID
-                        )
-                else {
-
-                    return false
-                }
-
-                switch card.type {
-
-                case .recognition:
-
-                    guard
-                        config
-                            .showRecognitionCards
-                    else {
-
-                        return false
-                    }
-
-                case .recall:
-
-                    guard
-                        config
-                            .showRecallCards
-                    else {
-
-                        return false
-                    }
-                }
-
-                // Empty selectedTags means:
-                // no tag filtering.
-
-                guard
-                    !selectedTagIDs
-                        .isEmpty
-                else {
-
-                    return true
-                }
-
-                let cardTagIDs =
-                    Set(
-                        (card.tags ?? [])
-                            .map(
-                                \.id
-                            )
-                    )
-
-                return !cardTagIDs
-                    .isDisjoint(
-                        with:
-                            selectedTagIDs
-                    )
+        // Default arguments are evaluated at the call site. Constructing this here keeps
+        // it within WidgetSync's main-actor isolation under Swift 6.
+        let preferences = suppliedPreferences ?? PyokoWidgetConfig()
+        let enabled = Set((config.selectedDecks ?? []).map(\.id))
+        let start = calendar.startOfDay(for: now)
+        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? now
+        let reviewedIDs = Set(reviews.filter {
+            $0.reviewed && $0.reviewDate >= start && $0.reviewDate < end
+        }.compactMap { $0.card?.id })
+        let eligible = cards.filter { card in
+            guard let id = card.deck?.id, enabled.contains(id) else { return false }
+            if preferences.source == .decks { return (preferences.deckIDs ?? []).contains(id) }
+            if preferences.source == .tags {
+                return !(Set((card.tags ?? []).map(\.id)).isDisjoint(with: preferences.tagIDs))
             }
-
-        let words =
-            makeWords(
-                from:
-                    eligibleCards
-            )
-
+            if preferences.source == .today { return reviewedIDs.contains(card.id) }
+            if preferences.source == .filtered && !preferences.tagIDs.isEmpty {
+                return !(Set((card.tags ?? []).map(\.id)).isDisjoint(with: preferences.tagIDs))
+            }
+            return true
+        }
+        var words = makeWords(from: eligible)
+        if preferences.source == .filtered && preferences.chooseCards {
+            words = words.filter { preferences.wordIDs.contains($0.id) }
+        }
         return PyokoWidgetSnapshot(
-            publishedAt:
-                now,
-            words:
-                words,
-            includeRecognition:
-                config
-                    .showRecognitionCards,
-            includeRecall:
-                config
-                    .showRecallCards,
-            readingOnlyAnswer:
-                config
-                    .readingOnlyAnswer
+            publishedAt: now, words: words,
+            includeRecognition: preferences.recognition || !preferences.recall,
+            includeRecall: preferences.recall, readingOnlyAnswer: preferences.readingOnly,
+            theme: preferences.theme, expiresAt: preferences.source == .today ? end : nil,
+            before: preferences.before, after: preferences.after
         )
     }
 
@@ -247,6 +171,7 @@ enum WidgetSync {
 
             let key =
                 VocabularyKey(
+                    deckID: card.deck?.id,
                     source:
                         source,
                     target:
@@ -268,14 +193,14 @@ enum WidgetSync {
             words.append(
                 PyokoWidgetWord(
                     id:
-                        card.id
-                            .uuidString,
+                        [card.deck?.id.uuidString ?? "", source, target, normalizedReading ?? ""].joined(separator: "\u{001F}"),
                     source:
                         source,
                     target:
                         target,
                     reading:
-                        normalizedReading
+                        normalizedReading,
+                    deckName: card.deck?.name
                 )
             )
         }
@@ -318,6 +243,8 @@ enum WidgetSync {
 
 private struct VocabularyKey:
     Hashable {
+
+    let deckID: UUID?
 
     let source:
         String

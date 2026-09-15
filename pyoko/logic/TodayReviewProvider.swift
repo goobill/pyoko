@@ -29,23 +29,28 @@ final class TodayReviewProvider {
     private let modelContext:
         ModelContext
 
+    private let clock: () -> Date
+
     init(
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        clock: @escaping () -> Date = { .now }
     ) {
 
+        self.clock = clock
         self.modelContext =
             modelContext
     }
 
     // MARK: - Vocabulary
 
+    /// Returns distinct vocabulary actually completed today; pending and previous-day cards are excluded.
     func getVocabulary()
         throws -> [ReviewVocabulary] {
 
         let startOfToday =
             Calendar.current
                 .startOfDay(
-                    for: .now
+                    for: clock()
                 )
 
         guard let startOfTomorrow =

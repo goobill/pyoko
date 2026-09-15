@@ -6,7 +6,7 @@ struct ConfigView: View {
     @Environment(\.modelContext)
     private var modelContext
 
-    @Query
+    @Query(sort: \PyokoConfig.createdAt)
     private var configs:
         [PyokoConfig]
 
@@ -21,12 +21,6 @@ struct ConfigView: View {
     )
     private var tags:
         [PyokoTag]
-
-    @AppStorage(
-        "appearancePreference"
-    )
-    private var appearancePreference =
-        "system"
 
     @State
     private var errorMessage:
@@ -52,15 +46,16 @@ struct ConfigView: View {
                     }
             }
         }
+        .pyokoSurface()
         .navigationTitle(
-            "Config"
+            "Review Config"
         )
         .task {
 
             createConfigIfNeeded()
         }
         .alert(
-            "Config",
+            "Review Config",
             isPresented:
                 Binding(
                     get: {
@@ -112,7 +107,7 @@ struct ConfigView: View {
                 // MARK: Daily Review
 
                 GroupBox(
-                    "Daily Review"
+                    "Session"
                 ) {
 
                     VStack(
@@ -212,236 +207,19 @@ struct ConfigView: View {
                     }
                 }
 
-                // MARK: Card Types
-
-                GroupBox(
-                    "Card Types"
-                ) {
-
-                    VStack(
-                        spacing: 12
-                    ) {
-
-                        Toggle(
-                            "Recognition",
-                            isOn:
-                                recognitionBinding(
-                                    config
-                                )
-                        )
-
-                        Toggle(
-                            "Recall",
-                            isOn:
-                                recallBinding(
-                                    config
-                                )
-                        )
-                    }
-                }
-
-                // MARK: Target Display
-
-                GroupBox(
-                    "Target Display"
-                ) {
-
-                    VStack(
-                        alignment: .leading,
-                        spacing: 14
-                    ) {
-
-                        Picker(
-                            "Before Answer",
-                            selection:
-                                Binding(
-                                    get: {
-
-                                        config
-                                            .beforeAnswerDisplayMode
-                                    },
-                                    set: {
-
-                                        config
-                                            .beforeAnswerDisplayMode =
-                                                $0
-
-                                        save()
-                                    }
-                                )
-                        ) {
-
-                            displayOptions
-                        }
-
-                        Picker(
-                            "After Answer",
-                            selection:
-                                Binding(
-                                    get: {
-
-                                        config
-                                            .afterAnswerDisplayMode
-                                    },
-                                    set: {
-
-                                        config
-                                            .afterAnswerDisplayMode =
-                                                $0
-
-                                        save()
-                                    }
-                                )
-                        ) {
-
-                            displayOptions
-                        }
-
-                        Divider()
-
-                        Toggle(
-                            "Reading-only Recognition Answer",
-                            isOn:
-                                Binding(
-                                    get: {
-
-                                        config
-                                            .readingOnlyAnswer
-                                    },
-                                    set: {
-
-                                        config
-                                            .readingOnlyAnswer =
-                                                $0
-
-                                        save()
-                                    }
-                                )
-                        )
-
-                        Text(
-                            """
-                            Recognition cards with a reading become Target → Reading. For example, 食べる → たべる. The source meaning is not shown. Recall cards are unchanged.
-                            """
-                        )
-                        .font(
-                            .caption
-                        )
-                        .foregroundStyle(
-                            .secondary
-                        )
-                        .fixedSize(
-                            horizontal: false,
-                            vertical: true
-                        )
-                    }
-                }
-
-                // MARK: Reading Hint
-
-                GroupBox(
-                    "Reading Hint"
-                ) {
-
-                    VStack(
-                        alignment: .leading,
-                        spacing: 8
-                    ) {
-
-                        Toggle(
-                            "Show Reading Hint",
-                            isOn:
-                                Binding(
-                                    get: {
-
-                                        config
-                                            .readingHintEnabled
-                                    },
-                                    set: {
-
-                                        config
-                                            .readingHintEnabled =
-                                                $0
-
-                                        save()
-                                    }
-                                )
-                        )
-
-                        if config
-                            .readingOnlyAnswer {
-
-                            Text(
-                                """
-                                The Hint button is hidden on Reading-only Recognition cards because the reading is the answer.
-                                """
-                            )
-                            .font(
-                                .caption
-                            )
-                            .foregroundStyle(
-                                .secondary
-                            )
-                        }
-                    }
-                }
-
-                // MARK: Card Preview
-
-                GroupBox(
-                    "Card Preview"
-                ) {
-
-                    ExampleCardView(
-                        beforeAnswerDisplayMode:
-                            config
-                                .beforeAnswerDisplayMode,
-                        afterAnswerDisplayMode:
-                            config
-                                .afterAnswerDisplayMode,
-                        readingHintEnabled:
-                            config
-                                .readingHintEnabled,
-                        readingOnlyAnswer:
-                            config
-                                .readingOnlyAnswer
-                    )
-                }
-
-                // MARK: Appearance
-
-                GroupBox(
-                    "Appearance"
-                ) {
-
-                    Picker(
-                        "Appearance",
-                        selection:
-                            $appearancePreference
-                    ) {
-
-                        Text(
-                            "System"
-                        )
-                        .tag(
-                            "system"
-                        )
-
-                        Text(
-                            "Light"
-                        )
-                        .tag(
-                            "light"
-                        )
-
-                        Text(
-                            "Dark"
-                        )
-                        .tag(
-                            "dark"
-                        )
-                    }
-                }
+                CardConfigView(
+                    recognition: recognitionBinding(config),
+                    recall: recallBinding(config),
+                    before: Binding(get: { config.beforeAnswerDisplayMode }, set: { config.beforeAnswerDisplayMode = $0; save() }),
+                    after: Binding(get: { config.afterAnswerDisplayMode }, set: { config.afterAnswerDisplayMode = $0; save() }),
+                    hiraganaOnly: Binding(get: { config.readingOnlyAnswer }, set: { config.readingOnlyAnswer = $0; save() }),
+                    hint: Binding(get: { config.readingHintEnabled }, set: { config.readingHintEnabled = $0; save() })
+                )
+                CardPreviewView(
+                    quick: false, recognition: config.showRecognitionCards, recall: config.showRecallCards,
+                    before: config.beforeAnswerDisplayMode, after: config.afterAnswerDisplayMode,
+                    hiraganaOnly: config.readingOnlyAnswer, hint: config.readingHintEnabled
+                )
 
                 // MARK: Decks
 
@@ -658,28 +436,7 @@ struct ConfigView: View {
                 maxWidth:
                     .infinity
             )
-        }
-    }
-
-    // MARK: - Display
-
-    @ViewBuilder
-    private var displayOptions:
-        some View {
-
-        ForEach(
-            TargetDisplayMode
-                .allCases,
-            id: \.rawValue
-        ) { mode in
-
-            Text(
-                mode.title
-            )
-            .tag(
-                mode
-            )
-        }
+        }.accessibilityIdentifier("config.scroll")
     }
 
     // MARK: - Direction

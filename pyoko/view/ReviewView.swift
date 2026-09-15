@@ -10,7 +10,7 @@ struct ReviewView: View {
     @Environment(\.dismiss)
     private var dismiss
 
-    @Query
+    @Query(sort: \PyokoConfig.createdAt)
     private var configs:
         [PyokoConfig]
 
@@ -75,9 +75,10 @@ struct ReviewView: View {
                 )
             }
         }
-        .navigationBarBackButtonHidden(
-            true
-        )
+        .pyokoHideBackButton()
+        .frame(maxWidth: 820)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .pyokoSurface()
         .task {
 
             loadSession()
@@ -200,6 +201,8 @@ struct ReviewView: View {
                 .plain
             )
 
+            .accessibilityIdentifier("review.exit")
+
             ProgressView(
                 value:
                     Double(
@@ -260,31 +263,18 @@ struct ReviewView: View {
 
     private var showAnswerArea:
         some View {
-
-        ZStack {
-
-            Rectangle()
-                .fill(
-                    .clear
-                )
-
-            Text(
-                "Show Answer"
-            )
-            .fontWeight(
-                .medium
-            )
-            .foregroundStyle(
-                .tint
-            )
-        }
-        .contentShape(
-            Rectangle()
-        )
-        .onTapGesture {
-
+        Button {
             revealAnswer()
+        } label: {
+            Text("Show Answer")
+                .fontWeight(.medium)
+                .foregroundStyle(.tint)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .macReviewShortcut(.space)
+        .accessibilityIdentifier("review.reveal")
     }
 
     private var ratingArea:
@@ -413,6 +403,8 @@ struct ReviewView: View {
                     rating
             )
         )
+        .accessibilityIdentifier("review.rating.\(String(describing: rating))")
+        .macReviewShortcut(shortcut(for: rating))
     }
 
     // MARK: - Session
@@ -496,6 +488,16 @@ struct ReviewView: View {
     }
 
     // MARK: - Rating
+
+    private func shortcut(for rating: Rating) -> KeyEquivalent {
+        switch rating {
+        case .again: return "1"
+        case .hard: return "2"
+        case .good: return "3"
+        case .easy: return "4"
+        default: return "0" // The rating area only creates the four answer buttons.
+        }
+    }
 
     private func submitRating(
         _ rating: Rating

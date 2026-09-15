@@ -5,19 +5,45 @@ import SwiftData
 final class DataLoader {
 
     private let modelContext: ModelContext
+    private let session: URLSession
 
     private let defaultTagName =
         "No Tag"
 
     init(
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        session: URLSession = .shared
     ) {
+        self.session = session
         self.modelContext =
             modelContext
     }
 
+    /// Install the shipped CSV using the same parser and enablement as imports.
+    func loadBundledDeck(_ deck: DefaultDeck, bundle: Bundle = .main) throws {
+        guard let url = bundle.url(forResource: deck.resourceName, withExtension: "csv")
+            ?? bundle.url(forResource: deck.resourceName, withExtension: "csv", subdirectory: "seed") else {
+            throw BundledDeckError.missingResource(deck.resourceName)
+        }
+        // Save pending UI edits before starting, so rollback only undoes this install.
+        // Use the view's context so enablement and deck rows update immediately.
+        try modelContext.save()
+        do {
+            try importCSV(
+                data: Data(contentsOf: url), deckName: deck.name,
+                catalogKey: deck.key, origin: .builtIn,
+                originName: url.lastPathComponent, originURLString: nil,
+                originIdentifier: deck.key, createRecognition: true, createRecall: true
+            )
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
     // MARK: - URL
 
+    /// Downloads and validates a CSV before creating a deck and its selected card directions.
     func loadFromURL(
         deckName: String,
         urlString: String,
@@ -73,6 +99,7 @@ final class DataLoader {
 
     // MARK: - Google Sheets
 
+    /// Converts a public Sheet link to CSV; rejects HTTP failures and private HTML sign-in pages.
     func loadFromGoogleSheet(
         deckName: String,
         urlString: String,
@@ -134,6 +161,7 @@ final class DataLoader {
 
     // MARK: - File
 
+    /// Reads a security-scoped CSV and preserves existing deck selections when importing.
     func loadFromFile(
         deckName: String,
         url: URL,
@@ -204,9 +232,7 @@ final class DataLoader {
             data,
             response
         ) =
-            try await URLSession
-                .shared
-                .data(
+            try await session.data(
                     from: url
                 )
 
@@ -238,6 +264,7 @@ final class DataLoader {
 
     // MARK: - Import
 
+    /// Validates all rows before inserting the deck, shared tags and vocabulary cards.
     private func importCSV(
         data: Data,
         deckName: String,
@@ -420,7 +447,7 @@ final class DataLoader {
     ) throws {
 
         let descriptor =
-            FetchDescriptor<PyokoConfig>()
+            FetchDescriptor<PyokoConfig>(sortBy: [SortDescriptor(\PyokoConfig.createdAt)])
 
         /*
          If no config exists yet,
@@ -669,6 +696,14 @@ final class DataLoader {
                 .noWordsFound
         }
 
+        let header = rows[0].map {
+            $0.replacingOccurrences(of: "\u{FEFF}", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+        guard header == ["source", "target", "reading", "tags"] else {
+            throw DataLoaderError.invalidHeader
+        }
+
         var words:
             [ImportedWord] = []
 
@@ -823,7 +858,7 @@ final class DataLoader {
             false
 
         let characters =
-            Array(csv)
+            Array(csv.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n"))
 
         var index =
             0
@@ -1037,6 +1072,7 @@ enum DataLoaderError:
     case invalidEncoding
 
     case invalidCSV
+    case invalidHeader
 
     case invalidColumnCount(
         row: Int,
@@ -1122,6 +1158,9 @@ enum DataLoaderError:
             The file must use UTF-8 encoding.
             """
 
+        case .invalidHeader:
+            return "CSV columns must be source,target,reading,tags, in that order."
+
         case .invalidCSV:
 
             return """
@@ -1151,7 +1190,7 @@ enum DataLoaderError:
         ):
 
             return """
-            Row \(row) is missing its Source value.
+            Row \(row) is missing its English value.
 
             Expected:
             source,target,reading,tags
@@ -1166,7 +1205,7 @@ enum DataLoaderError:
         ):
 
             return """
-            Row \(row) is missing its Target value.
+            Row \(row) is missing its Kanji value.
 
             Expected:
             source,target,reading,tags
@@ -1190,5 +1229,15 @@ enum DataLoaderError:
         values.joined(
             separator: ","
         )
+    }
+}
+
+private enum BundledDeckError: LocalizedError {
+    case missingResource(String)
+    var errorDescription: String? {
+        switch self {
+        case .missingResource(let name):
+            return "The bundled deck \(name).csv is missing. Check the app target's Copy Bundle Resources."
+        }
     }
 }

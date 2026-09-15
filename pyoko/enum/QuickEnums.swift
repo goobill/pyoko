@@ -3,6 +3,7 @@ import Foundation
 enum QuickSource: String, Codable, CaseIterable, Identifiable {
 
     case random
+    case reviewed
     case decks
     case tags
     case todaysReview
@@ -17,6 +18,9 @@ enum QuickSource: String, Codable, CaseIterable, Identifiable {
 
         case .random:
             return "Random Vocabulary"
+
+        case .reviewed:
+            return "Previously Reviewed"
 
         case .decks:
             return "Selected Decks"
@@ -35,6 +39,9 @@ enum QuickSource: String, Codable, CaseIterable, Identifiable {
 
         case .random:
             return "Use vocabulary from your enabled review decks."
+
+        case .reviewed:
+            return "Random vocabulary graded at least once in scheduled Review, from enabled decks. Either direction counts."
 
         case .decks:
             return "Choose specific decks for this session."

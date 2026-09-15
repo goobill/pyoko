@@ -7,16 +7,21 @@ final class CardRetrieval {
 
     private let modelContext: ModelContext
 
+    private let clock: () -> Date
+
     init(
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        clock: @escaping () -> Date = { .now }
     ) {
 
+        self.clock = clock
         self.modelContext =
             modelContext
     }
 
     // MARK: - Initial Daily Review
 
+    /// Selects due cards from enabled decks and directions, reserving the configured minimum new cards.
     func getCardsForReview()
         throws -> [PyokoCard] {
 
@@ -26,7 +31,7 @@ final class CardRetrieval {
         let eligibleCards =
             try fetchEligibleCards(
                 config: config,
-                dueThrough: .now
+                dueThrough: clock()
             )
 
         return selectInitialCards(
@@ -54,7 +59,7 @@ final class CardRetrieval {
         let eligibleCards =
             try fetchEligibleCards(
                 config: config,
-                dueThrough: .now
+                dueThrough: clock()
             )
             .filter {
                 !excludingCardIDs.contains(
@@ -69,6 +74,7 @@ final class CardRetrieval {
         )
     }
 
+    /// Counts eligible due cards, excluding any IDs already represented by the caller.
     func getDueCardCount(
         excludingCardIDs: Set<UUID> = []
     ) throws -> Int {
@@ -78,7 +84,7 @@ final class CardRetrieval {
 
         return try fetchEligibleCards(
             config: config,
-            dueThrough: .now
+            dueThrough: clock()
         )
         .filter {
             !excludingCardIDs.contains(
@@ -330,7 +336,7 @@ final class CardRetrieval {
             try getConfig()
 
         let now =
-            Date.now
+            clock()
 
         let startOfToday =
             Calendar.current
@@ -372,7 +378,7 @@ final class CardRetrieval {
         throws -> ReviewConfig {
 
         let descriptor =
-            FetchDescriptor<PyokoConfig>()
+            FetchDescriptor<PyokoConfig>(sortBy: [SortDescriptor(\PyokoConfig.createdAt)])
 
         if let config =
             try modelContext

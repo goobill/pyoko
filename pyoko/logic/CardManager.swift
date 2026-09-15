@@ -139,10 +139,14 @@ final class CardManager {
 
     // MARK: Initializer
 
+    private let clock: () -> Date
+
     init(
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        clock: @escaping () -> Date = { .now }
     ) {
 
+        self.clock = clock
         self.modelContext =
             modelContext
 
@@ -153,13 +157,14 @@ final class CardManager {
 
         self.retrieval =
             CardRetrieval(
-                modelContext:
-                    modelContext
+                modelContext: modelContext,
+                clock: clock
             )
     }
 
     // MARK: - Start Review
 
+    /// Resumes today’s saved queue, or replaces an older queue with today’s eligible cards.
     func startReviewIfNeeded() {
 
         do {
@@ -259,6 +264,7 @@ final class CardManager {
 
     // MARK: - Review Card
 
+    /// Applies one FSRS rating to an unreviewed queue item and saves the schedule and completion together.
     func reviewCard(
         id: UUID,
         rating: Rating
@@ -290,7 +296,7 @@ final class CardManager {
         let result =
             try scheduler.next(
                 card: fsrsCard,
-                now: .now,
+                now: clock(),
                 grade: rating
             )
 
@@ -307,6 +313,7 @@ final class CardManager {
 
     // MARK: - Interval Preview
 
+    /// Calculates the four possible due dates without changing the card or review queue.
     func getIntervalPreview(
         id: UUID
     ) throws -> IntervalPreview {
@@ -321,7 +328,7 @@ final class CardManager {
         }
 
         let now =
-            Date.now
+            clock()
 
         let fsrsCard =
             makeFSRSCard(
@@ -436,6 +443,7 @@ final class CardManager {
     ///
     /// Returns the number of cards appended.
     @discardableResult
+    /// Appends another due batch only after all current queue items are complete.
     func extendReviewSession()
         throws -> Int {
 
@@ -614,7 +622,7 @@ final class CardManager {
         }
 
         let baseDate =
-            Date.now
+            clock()
 
         for (
             index,
@@ -668,7 +676,7 @@ final class CardManager {
             .isDate(
                 reviewDate,
                 inSameDayAs:
-                    Date.now
+                    clock()
             )
     }
 

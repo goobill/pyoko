@@ -6,6 +6,10 @@ final class PyokoQuickConfig {
 
     var id: UUID = UUID()
 
+    // Existing configs migrate to the oldest date. New devices use that config
+    // when it arrives instead of keeping an independently-created default.
+    var createdAt: Date = Date(timeIntervalSince1970: 0)
+
     var cardCount: Int = 20
 
     var source: QuickSource =
@@ -65,6 +69,8 @@ final class PyokoQuickConfig {
         selectedDecks: [PyokoDeck]? = [],
         selectedTags: [PyokoTag]? = []
     ) {
+
+        self.createdAt = .now
 
         self.id =
             id

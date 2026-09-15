@@ -6,6 +6,10 @@ final class PyokoConfig {
 
     var id: UUID = UUID()
 
+    // Existing configs migrate to the oldest date. New devices use that config
+    // when it arrives instead of keeping an independently-created default.
+    var createdAt: Date = Date(timeIntervalSince1970: 0)
+
     var dailyCardLimit: Int = 20
 
     var minimumNewCards: Int = 0
@@ -64,6 +68,8 @@ final class PyokoConfig {
         selectedDecks: [PyokoDeck]? = [],
         selectedTags: [PyokoTag]? = []
     ) {
+
+        self.createdAt = .now
 
         self.id =
             id

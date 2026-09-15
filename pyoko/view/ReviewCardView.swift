@@ -28,74 +28,32 @@ struct ReviewCardView: View {
         () -> Void
 
     var body: some View {
-
         ZStack {
-
-            RoundedRectangle(
-                cornerRadius: 24,
-                style: .continuous
-            )
-            .fill(
-                Color.primary
-                    .opacity(
-                        0.06
-                    )
-            )
-
-            VStack(
-                spacing: 16
-            ) {
-
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.primary.opacity(0.06))
+            VStack(spacing: 16) {
                 header
-
-                Spacer()
-
-                if answerRevealed {
-
-                    answerContent
-
-                } else {
-
-                    questionContent
+                // The hint button sits outside the answer-reveal tap region.
+                VStack(spacing: 16) {
+                    Spacer()
+                    if answerRevealed { answerContent } else { questionContent }
+                    Spacer()
+                    if !answerRevealed {
+                        Text("Tap card to reveal")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
-
-                Spacer()
-
-                if !answerRevealed {
-
-                    Text(
-                        "Tap card to reveal"
-                    )
-                    .font(
-                        .caption
-                    )
-                    .foregroundStyle(
-                        .secondary
-                    )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    guard !answerRevealed else { return }
+                    onReveal()
                 }
             }
-            .padding(
-                24
-            )
+            .padding(24)
         }
-        .frame(
-            maxWidth: .infinity
-        )
-        .frame(
-            height: 360
-        )
-        .contentShape(
-            Rectangle()
-        )
-        .onTapGesture {
-
-            guard !answerRevealed
-            else {
-                return
-            }
-
-            onReveal()
-        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 360)
     }
 
     // MARK: - Header
@@ -140,6 +98,8 @@ struct ReviewCardView: View {
                         .caption
                     )
                 }
+                .accessibilityIdentifier("card.hint")
+                .accessibilityLabel(hintRevealed ? "Hide Hiragana hint" : "Show Hiragana hint")
                 .buttonStyle(
                     .plain
                 )
@@ -182,13 +142,14 @@ struct ReviewCardView: View {
                     )
                 }
 
-                if hintRevealed,
+                if canShowHint && hintRevealed,
                    let reading =
                     card.targetReading {
 
                     Text(
                         reading
                     )
+                    .accessibilityIdentifier("card.hint.text")
                     .font(
                         .title3
                     )
@@ -208,13 +169,14 @@ struct ReviewCardView: View {
                     card.sourceText
                 )
 
-                if hintRevealed,
+                if canShowHint && hintRevealed,
                    let reading =
                     card.targetReading {
 
                     Text(
                         reading
                     )
+                    .accessibilityIdentifier("card.hint.text")
                     .font(
                         .title3
                     )
@@ -392,38 +354,14 @@ struct ReviewCardView: View {
 
     // MARK: - Hint
 
-    private var canShowHint:
-        Bool {
-
-        guard !answerRevealed
-        else {
-            return false
+    private var canShowHint: Bool {
+        guard !answerRevealed, readingHintEnabled,
+              let reading = card.targetReading?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !reading.isEmpty else { return false }
+        if card.type == .recognition {
+            // Never reveal the answer through a hint, or repeat an already visible reading.
+            if usesReadingOnlyAnswer || beforeAnswerDisplayMode.includesReading { return false }
         }
-
-        guard readingHintEnabled
-        else {
-            return false
-        }
-
-        guard card.targetReading != nil
-        else {
-            return false
-        }
-
-        // In Reading-only Recognition,
-        // the reading IS the answer.
-        guard !usesReadingOnlyAnswer
-        else {
-            return false
-        }
-
-        if card.type == .recognition,
-           beforeAnswerDisplayMode
-            .includesReading {
-
-            return false
-        }
-
         return true
     }
 }

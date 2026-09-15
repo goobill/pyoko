@@ -75,6 +75,8 @@ struct DataLoaderView: View {
             
             importSection
         }
+        .accessibilityIdentifier("config.scroll")
+        .pyokoSurface()
         .navigationTitle(
             "Import Deck"
         )
@@ -141,6 +143,7 @@ struct DataLoaderView: View {
                 text:
                     $deckName
             )
+            .accessibilityIdentifier("import.name")
             
             switch importMethod {
                 
@@ -320,7 +323,7 @@ struct DataLoaderView: View {
                 )
                 
                 Text(
-                    "Target → Source"
+                    "Kanji → English"
                 )
                 .font(
                     .caption
@@ -352,7 +355,7 @@ struct DataLoaderView: View {
                 )
                 
                 Text(
-                    "Source → Target"
+                    "English → Kanji"
                 )
                 .font(
                     .caption
@@ -434,23 +437,23 @@ struct DataLoaderView: View {
                     
                     csvColumn(
                         name:
-                            "Source",
+                            "English",
                         description:
-                            "The language you already know."
+                            "English meaning (CSV column: source)."
                     )
                     
                     csvColumn(
                         name:
-                            "Target",
+                            "Kanji",
                         description:
-                            "The language you are learning."
+                            "Japanese spelling, including kana-only words (CSV column: target)."
                     )
                     
                     csvColumn(
                         name:
-                            "Reading",
+                            "Hiragana",
                         description:
-                            "Optional reading or pronunciation of the target."
+                            "Optional Hiragana (CSV column: reading)."
                     )
                     
                     csvColumn(
@@ -507,15 +510,15 @@ struct DataLoaderView: View {
                 ) {
                     
                     formatRule(
-                        "Source is required"
+                        "English is required"
                     )
                     
                     formatRule(
-                        "Target is required"
+                        "Kanji is required"
                     )
                     
                     formatRule(
-                        "Reading can be empty"
+                        "Hiragana can be empty"
                     )
                     
                     formatRule(
@@ -633,6 +636,7 @@ struct DataLoaderView: View {
             .disabled(
                 !canImport
             )
+            .accessibilityIdentifier("import.submit")
         }
     }
     

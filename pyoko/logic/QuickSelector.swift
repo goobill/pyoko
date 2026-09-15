@@ -26,6 +26,7 @@ final class QuickSelector {
 
     // MARK: - Cards
 
+    /// Returns shuffled value-type practice cards; never writes FSRS or scheduled review records.
     func getCards(
         config: PyokoQuickConfig
     ) throws -> [PyokoQuickCard] {
@@ -110,6 +111,9 @@ final class QuickSelector {
 
             return try randomVocabulary()
 
+        case .reviewed:
+            return try randomVocabulary(reviewedOnly: true)
+
         case .decks:
 
             return try deckVocabulary(
@@ -131,7 +135,8 @@ final class QuickSelector {
 
     // MARK: - Random
 
-    private func randomVocabulary()
+    /// FSRS repetitions survive daily queue cleanup; Quick Review and previews never increment them.
+    private func randomVocabulary(reviewedOnly: Bool = false)
         throws -> [ReviewVocabulary] {
 
         let enabledDeckIDs =
@@ -147,6 +152,8 @@ final class QuickSelector {
 
         let filtered =
             cards.filter { card in
+
+                guard !reviewedOnly || card.reps > 0 else { return false }
 
                 guard let deckID =
                     card.deck?.id
@@ -232,6 +239,8 @@ final class QuickSelector {
         let filtered =
             cards.filter { card in
 
+                guard card.deck != nil else { return false }
+
                 let cardTagIDs =
                     Set(
                         (card.tags ?? [])
@@ -258,7 +267,7 @@ final class QuickSelector {
         throws -> Set<UUID> {
 
         let descriptor =
-            FetchDescriptor<PyokoConfig>()
+            FetchDescriptor<PyokoConfig>(sortBy: [SortDescriptor(\PyokoConfig.createdAt)])
 
         if let config =
             try modelContext

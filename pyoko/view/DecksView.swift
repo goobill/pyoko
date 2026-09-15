@@ -13,7 +13,7 @@ struct DecksView: View {
     private var decks:
         [PyokoDeck]
 
-    @Query
+    @Query(sort: \PyokoConfig.createdAt)
     private var configs:
         [PyokoConfig]
 
@@ -45,6 +45,7 @@ struct DecksView: View {
 
             builtInDecksSection
         }
+        .pyokoSurface()
         .navigationTitle(
             "Decks"
         )
@@ -67,6 +68,7 @@ struct DecksView: View {
                             "plus"
                     )
                 }
+                .accessibilityIdentifier("decks.import")
             }
         }
         .onAppear {
@@ -489,11 +491,12 @@ struct DecksView: View {
                 } label: {
 
                     Label(
-                        "Download",
+                        "Install",
                         systemImage:
                             "arrow.down.circle"
                     )
                 }
+                .accessibilityIdentifier("install.\(defaultDeck.key)")
                 .buttonStyle(
                     .bordered
                 )
@@ -558,6 +561,7 @@ struct DecksView: View {
         .buttonStyle(
             .plain
         )
+        .accessibilityIdentifier("deck.enabled.\(deck.catalogKey ?? deck.id.uuidString)")
         .accessibilityLabel(
             enabled
             ? "Disable \(deck.name) for review"
@@ -612,6 +616,7 @@ struct DecksView: View {
         .accessibilityLabel(
             "Delete \(deck.name)"
         )
+        .accessibilityIdentifier("deck.delete.\(deck.catalogKey ?? deck.id.uuidString)")
         .help(
             "Delete Deck"
         )

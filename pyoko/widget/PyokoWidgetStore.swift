@@ -1,20 +1,16 @@
 import Foundation
 
-enum PyokoWidgetStore {
+/// Stores widget state in an injected preferences suite. App and tests use identical logic.
+struct WidgetStore {
+    private let defaults: UserDefaults?
 
-    private static var defaults:
-        UserDefaults? {
-
-        UserDefaults(
-            suiteName:
-                PyokoWidgetConstants
-                    .appGroupIdentifier
-        )
+    init(defaults: UserDefaults?) {
+        self.defaults = defaults
     }
 
     // MARK: - Snapshot
 
-    static func loadSnapshot()
+    func loadSnapshot()
         -> PyokoWidgetSnapshot {
 
         guard
@@ -41,7 +37,7 @@ enum PyokoWidgetStore {
     }
 
     @discardableResult
-    static func saveSnapshot(
+    func saveSnapshot(
         _ snapshot:
             PyokoWidgetSnapshot
     ) -> Bool {
@@ -150,6 +146,8 @@ enum PyokoWidgetStore {
 
         defaults.set(
             keptSameWord
+            && previousSnapshot.readingOnlyAnswer == snapshot.readingOnlyAnswer
+            && snapshot.allows(previousDirection)
             ? wasRevealed
             : false,
             forKey:
@@ -176,7 +174,7 @@ enum PyokoWidgetStore {
 
     // MARK: - Reveal
 
-    static var isWordRevealed:
+    var isWordRevealed:
         Bool {
 
         defaults?
@@ -188,7 +186,7 @@ enum PyokoWidgetStore {
         ?? false
     }
 
-    static func revealWord() {
+    func revealWord() {
 
         defaults?
             .set(
@@ -201,7 +199,7 @@ enum PyokoWidgetStore {
 
     // MARK: - Word
 
-    static func currentWord(
+    func currentWord(
         snapshot:
             PyokoWidgetSnapshot
     ) -> PyokoWidgetWord? {
@@ -224,7 +222,7 @@ enum PyokoWidgetStore {
         ]
     }
 
-    static func currentWordIndex(
+    func currentWordIndex(
         snapshot:
             PyokoWidgetSnapshot
     ) -> Int {
@@ -259,7 +257,7 @@ enum PyokoWidgetStore {
 
     // MARK: - Direction
 
-    static func currentDirection(
+    func currentDirection(
         snapshot:
             PyokoWidgetSnapshot
     ) -> PyokoWidgetDirection {
@@ -290,7 +288,7 @@ enum PyokoWidgetStore {
 
     // MARK: - Next
 
-    static func nextWord() {
+    func nextWord() {
 
         let snapshot =
             loadSnapshot()
@@ -376,7 +374,7 @@ enum PyokoWidgetStore {
 
     // MARK: - Tap
 
-    static func handleTap() {
+    func handleTap() {
 
         if isWordRevealed {
 
@@ -390,7 +388,7 @@ enum PyokoWidgetStore {
 
     // MARK: - Helpers
 
-    private static func normalizedDirection(
+    private func normalizedDirection(
         _ direction:
             PyokoWidgetDirection?,
         snapshot:
@@ -411,7 +409,7 @@ enum PyokoWidgetStore {
         )
     }
 
-    private static func chooseDirection(
+    private func chooseDirection(
         snapshot:
             PyokoWidgetSnapshot
     ) -> PyokoWidgetDirection {
@@ -452,4 +450,22 @@ enum PyokoWidgetStore {
             return .recognition
         }
     }
+}
+
+/// The app and extension always share the same App Group preferences.
+enum PyokoWidgetStore {
+    private static var store: WidgetStore {
+        WidgetStore(defaults: UserDefaults(suiteName: PyokoWidgetConstants.appGroupIdentifier))
+    }
+
+    static func loadSnapshot() -> PyokoWidgetSnapshot { store.loadSnapshot() }
+    @discardableResult
+    static func saveSnapshot(_ snapshot: PyokoWidgetSnapshot) -> Bool { store.saveSnapshot(snapshot) }
+    static var isWordRevealed: Bool { store.isWordRevealed }
+    static func revealWord() { store.revealWord() }
+    static func currentWord(snapshot: PyokoWidgetSnapshot) -> PyokoWidgetWord? { store.currentWord(snapshot: snapshot) }
+    static func currentWordIndex(snapshot: PyokoWidgetSnapshot) -> Int { store.currentWordIndex(snapshot: snapshot) }
+    static func currentDirection(snapshot: PyokoWidgetSnapshot) -> PyokoWidgetDirection { store.currentDirection(snapshot: snapshot) }
+    static func nextWord() { store.nextWord() }
+    static func handleTap() { store.handleTap() }
 }

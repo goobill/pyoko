@@ -75,9 +75,10 @@ struct QuickView: View {
                 completionView
             }
         }
-        .navigationBarBackButtonHidden(
-            true
-        )
+        .pyokoHideBackButton()
+        .frame(maxWidth: 820)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .pyokoSurface()
         .task {
 
             startSession()
@@ -218,6 +219,7 @@ struct QuickView: View {
                 .buttonStyle(
                     .plain
                 )
+                .accessibilityIdentifier("quick.exit")
 
                 ProgressView(
                     value:
@@ -268,12 +270,16 @@ struct QuickView: View {
                     systemImage:
                         "checkmark"
                 )
+                .accessibilityIdentifier("quick.score.correct")
+                .accessibilityValue("\(progress.correct)")
 
                 Label(
                     "\(progress.incorrect) Incorrect",
                     systemImage:
                         "xmark"
                 )
+                .accessibilityIdentifier("quick.score.incorrect")
+                .accessibilityValue("\(progress.incorrect)")
             }
             .font(
                 .caption
@@ -317,31 +323,18 @@ struct QuickView: View {
 
     private var showAnswerArea:
         some View {
-
-        ZStack {
-
-            Rectangle()
-                .fill(
-                    .clear
-                )
-
-            Text(
-                "Show Answer"
-            )
-            .fontWeight(
-                .medium
-            )
-            .foregroundStyle(
-                .tint
-            )
-        }
-        .contentShape(
-            Rectangle()
-        )
-        .onTapGesture {
-
+        Button {
             revealAnswer()
+        } label: {
+            Text("Show Answer")
+                .fontWeight(.medium)
+                .foregroundStyle(.tint)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .macReviewShortcut(.space)
+        .accessibilityIdentifier("quick.reveal")
     }
 
     // MARK: - Writing
@@ -361,6 +354,7 @@ struct QuickView: View {
             .textFieldStyle(
                 .roundedBorder
             )
+            .accessibilityIdentifier("quick.answer")
 
             #if os(iOS)
             .submitLabel(
@@ -393,6 +387,7 @@ struct QuickView: View {
             .disabled(
                 writingAnswerIsEmpty
             )
+            .accessibilityIdentifier("quick.check")
         }
     }
 
@@ -414,16 +409,16 @@ struct QuickView: View {
                 .recognitionReadingOnlyEnabled {
 
                 return
-                    "Write the reading"
+                    "Write the Hiragana"
             }
 
             return
-                "Write the source meaning"
+                "Write the English meaning"
 
         case .recall:
 
             return
-                "Write the target word"
+                "Write the Kanji"
         }
     }
 
@@ -474,6 +469,8 @@ struct QuickView: View {
                 .buttonStyle(
                     .bordered
                 )
+                .accessibilityIdentifier("quick.incorrect")
+                .macReviewShortcut("3")
 
                 Button {
 
@@ -499,7 +496,18 @@ struct QuickView: View {
                 .buttonStyle(
                     .borderedProminent
                 )
+                .accessibilityIdentifier("quick.correct")
+                .macReviewShortcut("4")
             }
+
+            #if os(macOS)
+            Button("Next Card") {
+                manager?.skipCurrent()
+                refresh()
+            }
+            .macReviewShortcut(.space)
+            .accessibilityIdentifier("quick.next")
+            #endif
         }
     }
 
@@ -592,6 +600,7 @@ struct QuickView: View {
                         .buttonStyle(
                             .borderedProminent
                         )
+                        .accessibilityIdentifier("quick.retry")
                     }
 
                     Button {
@@ -611,6 +620,7 @@ struct QuickView: View {
                     .buttonStyle(
                         .bordered
                     )
+                    .accessibilityIdentifier("quick.reset")
 
                     Button {
 
@@ -629,6 +639,7 @@ struct QuickView: View {
                     .buttonStyle(
                         .plain
                     )
+                    .accessibilityIdentifier("quick.complete.exit")
                 }
                 .frame(
                     maxWidth: 360
@@ -689,6 +700,8 @@ struct QuickView: View {
                 Text(
                     "\(progress.correct)"
                 )
+                .accessibilityIdentifier("quick.score.correct")
+                .accessibilityValue("\(progress.correct)")
                 .font(
                     .title2
                 )
@@ -723,6 +736,8 @@ struct QuickView: View {
                 Text(
                     "\(progress.incorrect)"
                 )
+                .accessibilityIdentifier("quick.score.incorrect")
+                .accessibilityValue("\(progress.incorrect)")
                 .font(
                     .title2
                 )
@@ -756,13 +771,16 @@ struct QuickView: View {
                 """
         }
 
-        if progress
-            .incorrect == 0 {
+        if progress.correct == progress.sessionTotal {
 
             return
                 """
                 All \(progress.sessionTotal) cards are now correct.
                 """
+        }
+
+        if progress.incorrect == 0 {
+            return "Session complete. \(progress.correct) of \(progress.sessionTotal) cards marked correct."
         }
 
         return

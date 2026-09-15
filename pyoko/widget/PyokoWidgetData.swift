@@ -22,6 +22,15 @@ struct PyokoWidgetWord:
 
     let reading: String?
 
+    // Optional so snapshots created by older versions still decode.
+    var deckName: String? = nil
+
+    var displayDeckName: String {
+        let name = deckName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return name.isEmpty ? "Vocabulary" : name
+    }
+
+
     var displayReading: String {
 
         let trimmedReading =
@@ -55,6 +64,16 @@ struct PyokoWidgetSnapshot:
     let includeRecall: Bool
 
     let readingOnlyAnswer: Bool
+
+    // Optional fields preserve decoding of existing widget snapshots.
+    var theme: String? = nil
+    var expiresAt: Date? = nil
+    var before: TargetDisplayMode? = nil
+    var after: TargetDisplayMode? = nil
+
+    func isExpired(at date: Date) -> Bool {
+        expiresAt.map { date >= $0 } ?? false
+    }
 
     static let empty =
         PyokoWidgetSnapshot(

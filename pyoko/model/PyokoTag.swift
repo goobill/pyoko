@@ -14,9 +14,6 @@ final class PyokoTag {
     var configs:
         [PyokoConfig]? = []
 
-    var sentenceConfigs:
-        [PyokoSentenceConfig]? = []
-
     var quickConfigs:
         [PyokoQuickConfig]? = []
 

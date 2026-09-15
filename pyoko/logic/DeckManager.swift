@@ -17,6 +17,7 @@ final class DeckManager {
 
     // MARK: - Install
 
+    /// Installs a bundled catalogue deck; existing catalogue keys cannot be installed twice.
     func install(
         _ deck: DefaultDeck
     ) async throws {
@@ -27,38 +28,12 @@ final class DeckManager {
                     modelContext
             )
 
-        try await loader.loadFromURL(
-            deckName:
-                deck.name,
-            urlString:
-                deck.urlString,
-            createRecognition:
-                true,
-            createRecall:
-                true,
-            catalogKey:
-                deck.key,
-            origin:
-                DeckOrigin.builtIn,
-            originName:
-                deck.name,
-            originIdentifier:
-                deck.key
-        )
-
-        /*
-         DataLoader calls
-         enableNewlyImportedDeck(_:)
-         after creating the deck.
-
-         Therefore built-in and manually
-         imported decks follow exactly
-         the same enablement behaviour.
-         */
+        try loader.loadBundledDeck(deck)
     }
 
     // MARK: - Delete
 
+    /// Deletes a deck and cascaded cards, then removes unavailable review tag filters.
     func delete(
         _ deck: PyokoDeck
     ) throws {
@@ -178,6 +153,7 @@ final class DeckManager {
         }
     }
 
+    /// Persists deck enablement without changing FSRS history or enabling other decks.
     func setEnabledForReview(
         _ deck: PyokoDeck,
         enabled: Bool,
@@ -288,9 +264,7 @@ final class DeckManager {
         throws -> PyokoConfig? {
 
         let descriptor =
-            FetchDescriptor<
-                PyokoConfig
-            >()
+            FetchDescriptor<PyokoConfig>(sortBy: [SortDescriptor(\PyokoConfig.createdAt)])
 
         return try modelContext
             .fetch(

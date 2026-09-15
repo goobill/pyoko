@@ -42,7 +42,8 @@ struct QuickWordProvider:
                 target:
                     "失敗",
                 reading:
-                    "しっぱい"
+                    "しっぱい",
+                deckName: "N5 Vocab"
             )
 
         return QuickWordEntry(
@@ -96,12 +97,13 @@ struct QuickWordProvider:
                     now
             )
 
+        var entries = [entry]
+        if let expiry = entry.snapshot.expiresAt, expiry > now {
+            entries.append(makeEntry(date: expiry))
+        }
         completion(
             Timeline(
-                entries:
-                    [
-                        entry
-                    ],
+                entries: entries,
                 policy:
                     .after(
                         now.addingTimeInterval(
@@ -147,480 +149,30 @@ struct QuickWordProvider:
 
 // MARK: - View
 
-struct QuickWordWidgetView:
-    View {
-
-    @Environment(\.widgetFamily)
-    private var family
-
-    let entry:
-        QuickWordEntry
+struct QuickWordWidgetView: View {
+    @Environment(\.colorScheme) private var scheme
+    let entry: QuickWordEntry
 
     var body: some View {
-
         Group {
-
-            if let word =
-                entry.word {
-
-                Button(
-                    intent:
-                        TapWidgetWordIntent()
-                ) {
-
-                    wordView(
-                        word
-                    )
-                    .frame(
-                        maxWidth:
-                            .infinity,
-                        maxHeight:
-                            .infinity
-                    )
-                    .contentShape(
-                        Rectangle()
-                    )
+            if let word = entry.word, !entry.snapshot.isExpired(at: entry.date) {
+                Button(intent: TapWidgetWordIntent()) {
+                    WidgetWordView(word: word, direction: entry.direction,
+                                   revealed: entry.isRevealed, snapshot: entry.snapshot)
                 }
-                .buttonStyle(
-                    .plain
-                )
-                .accessibilityLabel(
-                    accessibilityLabel(
-                        word
-                    )
-                )
-
+                .buttonStyle(.plain)
+                .accessibilityLabel(entry.isRevealed ? "Answer revealed. Next word" : "Reveal answer")
             } else {
-
-                emptyView
-            }
-        }
-        .containerBackground(
-            for:
-                .widget
-        ) {
-
-            Color.clear
-        }
-    }
-
-    // MARK: - Word
-
-    private func wordView(
-        _ word:
-            PyokoWidgetWord
-    ) -> some View {
-
-        VStack(
-            spacing:
-                8
-        ) {
-
-            header
-
-            Spacer(
-                minLength:
-                    4
-            )
-
-            if entry.isRevealed {
-
-                revealedView(
-                    word
-                )
-
-            } else {
-
-                questionView(
-                    word
-                )
-            }
-
-            Spacer(
-                minLength:
-                    4
-            )
-        }
-        .frame(
-            maxWidth:
-                .infinity,
-            maxHeight:
-                .infinity
-        )
-    }
-
-    // MARK: - Header
-
-    private var header:
-        some View {
-
-        HStack {
-
-            Image(
-                systemName:
-                    "hand.tap"
-            )
-            .font(
-                .caption
-            )
-            .foregroundStyle(
-                .secondary
-            )
-            .accessibilityHidden(
-                true
-            )
-
-            Spacer()
-
-            Text(
-                directionTitle
-            )
-            .font(
-                .caption2
-            )
-            .foregroundStyle(
-                .secondary
-            )
-        }
-    }
-
-    // MARK: - Question
-
-    private func questionView(
-        _ word:
-            PyokoWidgetWord
-    ) -> some View {
-
-        Text(
-            questionText(
-                word
-            )
-        )
-        .font(
-            family ==
-                .systemSmall
-            ? .title2
-            : .title
-        )
-        .fontWeight(
-            .semibold
-        )
-        .minimumScaleFactor(
-            0.5
-        )
-        .lineLimit(
-            4
-        )
-        .multilineTextAlignment(
-            .center
-        )
-        .frame(
-            maxWidth:
-                .infinity
-        )
-    }
-
-    // MARK: - Revealed
-
-    private func revealedView(
-        _ word:
-            PyokoWidgetWord
-    ) -> some View {
-
-        VStack(
-            spacing:
-                10
-        ) {
-
-            Text(
-                questionText(
-                    word
-                )
-            )
-            .font(
-                family ==
-                    .systemSmall
-                ? .headline
-                : .title3
-            )
-            .fontWeight(
-                .semibold
-            )
-            .minimumScaleFactor(
-                0.6
-            )
-            .lineLimit(
-                2
-            )
-            .multilineTextAlignment(
-                .center
-            )
-
-            answerView(
-                word
-            )
-        }
-        .frame(
-            maxWidth:
-                .infinity
-        )
-    }
-
-    // MARK: - Answer
-
-    @ViewBuilder
-    private func answerView(
-        _ word:
-            PyokoWidgetWord
-    ) -> some View {
-
-        switch entry.direction {
-
-        case .recognition:
-
-            if entry.snapshot
-                .readingOnlyAnswer {
-
-                Text(
-                    word.displayReading
-                )
-                .font(
-                    family ==
-                        .systemSmall
-                    ? .title3
-                    : .title2
-                )
-                .fontWeight(
-                    .medium
-                )
-                .minimumScaleFactor(
-                    0.6
-                )
-                .lineLimit(
-                    2
-                )
-                .multilineTextAlignment(
-                    .center
-                )
-
-            } else {
-
-                VStack(
-                    spacing:
-                        4
-                ) {
-
-                    if word.displayReading
-                        != word.target {
-
-                        Text(
-                            word.displayReading
-                        )
-                        .font(
-                            .subheadline
-                        )
-                        .foregroundStyle(
-                            .secondary
-                        )
-                    }
-
-                    Text(
-                        word.source
-                    )
-                    .font(
-                        family ==
-                            .systemSmall
-                        ? .title3
-                        : .title2
-                    )
-                    .fontWeight(
-                        .medium
-                    )
-                    .minimumScaleFactor(
-                        0.6
-                    )
-                    .lineLimit(
-                        3
-                    )
-                    .multilineTextAlignment(
-                        .center
-                    )
-                }
-            }
-
-        case .recall:
-
-            VStack(
-                spacing:
-                    4
-            ) {
-
-                Text(
-                    word.target
-                )
-                .font(
-                    family ==
-                        .systemSmall
-                    ? .title2
-                    : .title
-                )
-                .fontWeight(
-                    .medium
-                )
-                .minimumScaleFactor(
-                    0.6
-                )
-                .lineLimit(
-                    2
-                )
-                .multilineTextAlignment(
-                    .center
-                )
-
-                if word.displayReading
-                    != word.target {
-
-                    Text(
-                        word.displayReading
-                    )
-                    .font(
-                        .subheadline
-                    )
-                    .foregroundStyle(
-                        .secondary
-                    )
+                VStack(spacing: 8) {
+                    Text("No words available").font(.headline)
+                    Text("Choose vocabulary in Widget Config.").font(.caption)
                 }
             }
         }
-    }
-
-    // MARK: - Empty
-
-    private var emptyView:
-        some View {
-
-        VStack(
-            spacing:
-                8
-        ) {
-
-            HStack {
-
-                Image(
-                    systemName:
-                        "hand.tap"
-                )
-                .font(
-                    .caption
-                )
-                .foregroundStyle(
-                    .secondary
-                )
-
-                Spacer()
-            }
-
-            Spacer()
-
-            Image(
-                systemName:
-                    "rectangle.stack.badge.plus"
-            )
-            .font(
-                .title2
-            )
-            .foregroundStyle(
-                .secondary
-            )
-
-            Text(
-                "No words available"
-            )
-            .font(
-                .headline
-            )
-
-            Text(
-                "Open Pyoko and enable a deck."
-            )
-            .font(
-                .caption
-            )
-            .foregroundStyle(
-                .secondary
-            )
-            .multilineTextAlignment(
-                .center
-            )
-
-            Spacer()
-        }
-        .frame(
-            maxWidth:
-                .infinity,
-            maxHeight:
-                .infinity
-        )
-    }
-
-    // MARK: - Direction
-
-    private var directionTitle:
-        String {
-
-        switch entry.direction {
-
-        case .recognition:
-
-            if entry.snapshot
-                .readingOnlyAnswer {
-
-                return "Reading"
-            }
-
-            return "Recognition"
-
-        case .recall:
-
-            return "Recall"
-        }
-    }
-
-    // MARK: - Question Text
-
-    private func questionText(
-        _ word:
-            PyokoWidgetWord
-    ) -> String {
-
-        switch entry.direction {
-
-        case .recognition:
-
-            return word.target
-
-        case .recall:
-
-            return word.source
-        }
-    }
-
-    // MARK: - Accessibility
-
-    private func accessibilityLabel(
-        _ word:
-            PyokoWidgetWord
-    ) -> String {
-
-        if entry.isRevealed {
-
-            return
-                "Answer revealed. Tap for the next word."
-
-        } else {
-
-            return
-                "\(questionText(word)). Tap to reveal the answer."
+        .containerBackground(for: .widget) {
+            if let theme = PyokoTheme(rawValue: entry.snapshot.theme ?? "system") {
+                theme.background(for: scheme)
+            } else { Color.clear }
         }
     }
 }

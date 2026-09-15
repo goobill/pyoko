@@ -8,13 +8,13 @@ enum TargetDisplayMode: String, Codable, CaseIterable {
     var title: String {
         switch self {
         case .target:
-            return "Target"
+            return "Kanji"
 
         case .reading:
-            return "Reading"
+            return "Hiragana"
 
         case .targetAndReading:
-            return "Target + Reading"
+            return "Kanji + Hiragana"
         }
     }
 

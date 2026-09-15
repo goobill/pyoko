@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import SwiftData
 
@@ -23,7 +24,6 @@ struct pyokoApp: App {
                     PyokoCard.self,
                     PyokoReviewCard.self,
                     PyokoConfig.self,
-                    PyokoSentenceConfig.self,
                     PyokoQuickConfig.self
                 ]
             )
@@ -36,7 +36,7 @@ struct pyokoApp: App {
                 isStoredInMemoryOnly:
                     false,
                 cloudKitDatabase:
-                    .none
+                    .private(PyokoCloud.containerIdentifier)
             )
 
         do {
@@ -65,14 +65,21 @@ struct pyokoApp: App {
         WindowGroup {
 
             HomeView()
+                .pyokoTheme()
                 .preferredColorScheme(
                     preferredColorScheme
                 )
                 .pyokoWidgetSync()
         }
-        .modelContainer(
-            modelContainer
-        )
+        .modelContainer(modelContainer)
+        #if os(macOS)
+        .defaultSize(width: 1000, height: 760)
+        #endif
+        #if os(macOS)
+        Settings {
+            SettingsView().pyokoTheme().preferredColorScheme(preferredColorScheme)
+        }
+        #endif
     }
 
     private var preferredColorScheme:

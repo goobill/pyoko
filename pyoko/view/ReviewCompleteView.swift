@@ -91,6 +91,8 @@ struct ReviewCompleteView: View {
                 .buttonStyle(
                     .borderedProminent
                 )
+                .accessibilityIdentifier("review.extend")
+                .macReviewShortcut(.space)
 
             } else if status.laterToday > 0 {
 
@@ -111,6 +113,7 @@ struct ReviewCompleteView: View {
                 .buttonStyle(
                     .bordered
                 )
+                .accessibilityIdentifier("review.checkAgain")
             }
 
             Button {
@@ -130,6 +133,7 @@ struct ReviewCompleteView: View {
             .buttonStyle(
                 .bordered
             )
+            .accessibilityIdentifier("review.complete.exit")
 
             Spacer()
         }

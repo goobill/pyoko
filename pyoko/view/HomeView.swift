@@ -2,274 +2,160 @@ import SwiftUI
 import SwiftData
 
 struct HomeView: View {
-
-    @Environment(\.modelContext)
-    private var modelContext
-
-    @State
-    private var reviewRemaining =
-        0
-
-    @State
-    private var reviewTotal =
-        0
-
-    @State
-    private var additionalDue =
-        0
+    @State private var selection: HomeDestination? = .review
 
     var body: some View {
-
+        #if os(macOS)
+        NavigationSplitView {
+            List(selection: $selection) {
+                Section("Review") {
+                    Label("Review", systemImage: "rectangle.stack").tag(HomeDestination.review).accessibilityIdentifier("home.review")
+                    Label("Config", systemImage: "slider.horizontal.3").tag(HomeDestination.config).accessibilityIdentifier("home.config")
+                }
+                Section("Quick Review") {
+                    Label("Quick Review", systemImage: "bolt").tag(HomeDestination.quick).accessibilityIdentifier("home.quick")
+                }
+                Section("Widget") {
+                    Label("Config", systemImage: "square.grid.2x2").tag(HomeDestination.widget).accessibilityIdentifier("home.widget")
+                }
+                Section("Manage") {
+                    Label("Decks", systemImage: "rectangle.stack.badge.plus").tag(HomeDestination.decks).accessibilityIdentifier("home.decks")
+                }
+            }
+            .pyokoSurface()
+            .navigationSplitViewColumnWidth(min: 200, ideal: 230)
+            .safeAreaInset(edge: .top) {
+                HStack {
+                    Text("Pyoko").font(.title2.bold()).accessibilityAddTraits(.isHeader)
+                        .accessibilityIdentifier("home.title")
+                    Spacer()
+                    SettingsLink { Image(systemName: "gearshape").font(.title3) }
+                        .buttonStyle(.plain)
+                        .frame(width: 44, height: 44)
+                        .accessibilityIdentifier("home.settings")
+                        .accessibilityLabel("Settings")
+                        .help("Settings")
+                }
+                .padding(.horizontal, 16)
+                .pyokoSurface()
+            }
+        } detail: {
+            NavigationStack {
+                switch selection ?? .review {
+                case .review: ReviewStartView()
+                case .config: ConfigView()
+                case .quick: QuickConfigView()
+                case .decks: DecksView()
+                case .widget: WidgetConfigView()
+                }
+            }
+            // Clear any pushed session when switching sidebar destinations.
+            .id(selection)
+        }
+        .frame(minWidth: 760, minHeight: 620)
+        #else
         NavigationStack {
-
             List {
-
-                studySection
-
-                manageSection
+                Section("Review") {
+                    NavigationLink { ReviewView() } label: {
+                        HomeMenuRow(title: "Review", subtitle: "Continue your scheduled vocabulary practice.", icon: "rectangle.stack")
+                    }.accessibilityIdentifier("home.review")
+                    NavigationLink { ConfigView() } label: {
+                        Label("Config", systemImage: "slider.horizontal.3")
+                    }.accessibilityIdentifier("home.config")
+                }
+                Section("Quick Review") {
+                    NavigationLink { QuickConfigView() } label: {
+                        HomeMenuRow(title: "Quick Review", subtitle: "Practise without changing your review schedule.", icon: "bolt")
+                    }.accessibilityIdentifier("home.quick")
+                }
+                Section("Widget") {
+                    NavigationLink { WidgetConfigView() } label: {
+                        Label("Config", systemImage: "square.grid.2x2")
+                    }.accessibilityIdentifier("home.widget")
+                }
+                Section("Manage") {
+                    NavigationLink { DecksView() } label: {
+                        HomeMenuRow(title: "Decks", subtitle: "Install, import, enable and manage decks.", icon: "rectangle.stack.badge.plus")
+                    }.accessibilityIdentifier("home.decks")
+                }
             }
-            .navigationTitle(
-                "Pyoko"
-            )
-            .onAppear {
-
-                refreshReviewProgress()
+            .pyokoSurface()
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                HStack {
+                    Text("Pyoko")
+                        .accessibilityIdentifier("home.title")
+                        .font(.largeTitle.bold())
+                        .fixedSize(horizontal: true, vertical: false)
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer()
+                    NavigationLink { SettingsView() } label: {
+                        Image(systemName: "gearshape").font(.title2)
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("home.settings")
+                    .accessibilityLabel("Settings")
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
+                .pyokoSurface()
             }
         }
+        #endif
     }
+}
 
-    // MARK: - Study
+private enum HomeDestination: Hashable {
+    case review, config, quick, decks, widget
+}
 
-    private var studySection:
-        some View {
-
-        Section(
-            "Study"
-        ) {
-
-            NavigationLink {
-
-                ReviewView()
-
-            } label: {
-
-                menuRow(
-                    title:
-                        "Review",
-                    subtitle:
-                        reviewSubtitle,
-                    systemImage:
-                        "rectangle.stack"
-                )
-            }
-
-            NavigationLink {
-
-                QuickConfigView()
-
-            } label: {
-
-                menuRow(
-                    title:
-                        "Quick Review",
-                    subtitle:
-                        "Practise vocabulary without changing scheduling.",
-                    systemImage:
-                        "bolt"
-                )
-            }
-
-            NavigationLink {
-
-                SentenceConfigView()
-
-            } label: {
-
-                menuRow(
-                    title:
-                        "Practice Sentences",
-                    subtitle:
-                        "Practise your vocabulary in generated sentences.",
-                    systemImage:
-                        "text.bubble"
-                )
+private struct HomeMenuRow: View {
+    let title: String
+    let subtitle: String
+    let icon: String
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon).font(.title2).foregroundStyle(.tint).frame(width: 32)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).fontWeight(.medium)
+                Text(subtitle).font(.caption).foregroundStyle(.secondary)
             }
         }
+        .padding(.vertical, 6)
     }
+}
 
-    // MARK: - Manage
-
-    private var manageSection:
-        some View {
-
-        Section(
-            "Manage"
-        ) {
-
-            NavigationLink {
-
-                DecksView()
-
-            } label: {
-
-                menuRow(
-                    title:
-                        "Decks",
-                    subtitle:
-                        "Import, install, enable and manage decks.",
-                    systemImage:
-                        "rectangle.stack.badge.plus"
-                )
-            }
-
-            NavigationLink {
-
-                ConfigView()
-
-            } label: {
-
-                menuRow(
-                    title:
-                        "Config",
-                    subtitle:
-                        "Change your review and display settings.",
-                    systemImage:
-                        "gearshape"
-                )
-            }
+/// A landing page keeps the session in a pushed destination, so Exit also works on Mac.
+private struct ReviewStartView: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "rectangle.stack").font(.system(size: 44)).foregroundStyle(.tint)
+            Text("Review").font(.largeTitle.bold())
+            Text("Study the vocabulary due in your review schedule.")
+                .foregroundStyle(.secondary)
+            NavigationLink("Start Review") { ReviewView() }
+                .accessibilityIdentifier("review.start")
+                .buttonStyle(.borderedProminent)
+            NavigationLink("Config") { ConfigView() }
+                .buttonStyle(.bordered)
         }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .pyokoSurface()
+        .navigationTitle("Review")
     }
+}
 
-    // MARK: - Row
-
-    private func menuRow(
-        title: String,
-        subtitle: String,
-        systemImage: String
-    ) -> some View {
-
-        HStack(
-            spacing: 14
-        ) {
-
-            Image(
-                systemName:
-                    systemImage
-            )
-            .font(
-                .title2
-            )
-            .foregroundStyle(
-                .tint
-            )
-            .frame(
-                width: 32
-            )
-
-            VStack(
-                alignment: .leading,
-                spacing: 4
-            ) {
-
-                Text(
-                    title
-                )
-                .fontWeight(
-                    .medium
-                )
-
-                Text(
-                    subtitle
-                )
-                .font(
-                    .caption
-                )
-                .foregroundStyle(
-                    .secondary
-                )
-            }
-        }
-        .padding(
-            .vertical,
-            5
-        )
-    }
-
-    // MARK: - Review
-
-    private var reviewSubtitle:
-        String {
-
-        if reviewRemaining > 0 {
-
-            return
-                "\(reviewRemaining) of \(reviewTotal) cards remaining."
-        }
-
-        if additionalDue > 0 {
-
-            if additionalDue == 1 {
-
-                return
-                    "1 more card is due."
-            }
-
-            return
-                "\(additionalDue) more cards are due."
-        }
-
-        if reviewTotal == 0 {
-
-            return
-                "No cards to review."
-        }
-
-        return
-            "Today's review is complete."
-    }
-
-    private func refreshReviewProgress() {
-
-        let manager =
-            CardManager(
-                modelContext:
-                    modelContext
-            )
-
-        manager
-            .startReviewIfNeeded()
-
-        let progress =
-            manager.getProgress()
-
-        reviewRemaining =
-            progress.remaining
-
-        reviewTotal =
-            progress.total
-
-        additionalDue =
-            0
-
-        guard progress.remaining
-            == 0
-        else {
-            return
-        }
-
-        do {
-
-            let status =
-                try manager
-                    .getReviewExtensionStatus()
-
-            additionalDue =
-                status.dueNow
-
-        } catch {
-
-            additionalDue =
-                0
-        }
+extension View {
+    @ViewBuilder
+    func pyokoHideBackButton() -> some View {
+        #if os(iOS)
+        navigationBarBackButtonHidden(true)
+        #else
+        self
+        #endif
     }
 }

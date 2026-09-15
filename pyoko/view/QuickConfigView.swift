@@ -18,17 +18,41 @@ struct QuickConfigView: View {
     private var tags:
         [PyokoTag]
 
-    @Query
+    @Query private var vocabularyCards: [PyokoCard]
+
+    /// Use card-side relationships, just as the selector does. Stored tags can outlive their cards.
+    private var availableTags: [PyokoTag] {
+        let ids = Set(vocabularyCards.filter { $0.deck != nil }
+            .flatMap { $0.tags ?? [] }.map(\.id))
+        return tags.filter { ids.contains($0.id) }
+    }
+
+    private func hasMatchingTags(_ config: PyokoQuickConfig) -> Bool {
+        let selected = Set((config.selectedTags ?? []).map(\.id))
+        return availableTags.contains { selected.contains($0.id) }
+    }
+
+    @Query(sort: \PyokoQuickConfig.createdAt)
     private var quickConfigs:
         [PyokoQuickConfig]
 
-    @Query
+    @Query(sort: \PyokoConfig.createdAt)
     private var reviewConfigs:
         [PyokoConfig]
 
     @State
     private var todayReviewCount =
         0
+
+    @Query(filter: #Predicate<PyokoCard> { $0.reps > 0 })
+    private var reviewedCards: [PyokoCard]
+
+    private var hasPreviouslyReviewedVocabulary: Bool {
+        let enabled = Set((reviewConfigs.first?.selectedDecks ?? (reviewConfigs.isEmpty ? decks : [])).map(\.id))
+        return reviewedCards.contains { card in
+            card.deck.map { enabled.contains($0.id) } ?? false
+        }
+    }
 
     @State
     private var errorMessage:
@@ -54,8 +78,9 @@ struct QuickConfigView: View {
                     }
             }
         }
+        .pyokoSurface()
         .navigationTitle(
-            "Quick Review"
+            "Quick Review Config"
         )
         .task {
 
@@ -117,55 +142,6 @@ struct QuickConfigView: View {
             ) {
 
                 GroupBox(
-                    "Vocabulary Source"
-                ) {
-
-                    VStack(
-                        spacing: 6
-                    ) {
-
-                        ForEach(
-                            QuickSource.allCases
-                        ) { source in
-
-                            sourceButton(
-                                source:
-                                    source,
-                                config:
-                                    config
-                            )
-                        }
-                    }
-                }
-
-                if config.source
-                    == .decks {
-
-                    deckSection(
-                        config
-                    )
-                }
-
-                if config.source
-                    == .tags {
-
-                    TagSelectionView(
-                        title:
-                            "Selected Tags",
-                        tags:
-                            tags,
-                        selectedTags:
-                            tagBinding(
-                                config
-                            ),
-                        emptySelectionMessage:
-                            """
-                            Select at least one tag to start Quick Review.
-                            """
-                    )
-                }
-
-                GroupBox(
                     "Session"
                 ) {
 
@@ -211,6 +187,8 @@ struct QuickConfigView: View {
                             in: 1...100
                         )
                         .labelsHidden()
+                        .accessibilityIdentifier("quick.count")
+                        .accessibilityValue("\(config.cardCount)")
                     }
                 }
 
@@ -242,6 +220,7 @@ struct QuickConfigView: View {
                                     }
                                 )
                         )
+                        .accessibilityIdentifier("quick.writing")
 
                         Text(
                             writingDescription(
@@ -261,228 +240,67 @@ struct QuickConfigView: View {
                     }
                 }
 
+                CardConfigView(
+                    recognition: recognitionBinding(config),
+                    recall: recallBinding(config),
+                    before: Binding(get: { config.beforeAnswerDisplayMode }, set: { config.beforeAnswerDisplayMode = $0; save() }),
+                    after: Binding(get: { config.afterAnswerDisplayMode }, set: { config.afterAnswerDisplayMode = $0; save() }),
+                    hiraganaOnly: Binding(get: { config.recognitionReadingOnlyEnabled }, set: { config.recognitionReadingOnlyEnabled = $0; save() }),
+                    hint: Binding(get: { config.readingHintEnabled }, set: { config.readingHintEnabled = $0; save() })
+                )
+                CardPreviewView(
+                    quick: true, recognition: config.includeRecognition, recall: config.includeRecall,
+                    before: config.beforeAnswerDisplayMode, after: config.afterAnswerDisplayMode,
+                    hiraganaOnly: config.recognitionReadingOnlyEnabled, hint: config.readingHintEnabled, writing: config.writingEnabled
+                )
+
                 GroupBox(
-                    "Direction"
+                    "Vocabulary"
                 ) {
 
                     VStack(
-                        alignment: .leading,
-                        spacing: 12
+                        spacing: 6
                     ) {
 
-                        Toggle(
-                            "Recognition",
-                            isOn:
-                                recognitionBinding(
-                                    config
-                                )
-                        )
+                        ForEach(
+                            QuickSource.allCases
+                        ) { source in
 
-                        Toggle(
-                            "Recall",
-                            isOn:
-                                recallBinding(
+                            sourceButton(
+                                source:
+                                    source,
+                                config:
                                     config
-                                )
-                        )
-
-                        if config
-                            .writingEnabled {
-
-                            Text(
-                                directionDescription(
-                                    config
-                                )
-                            )
-                            .font(
-                                .caption
-                            )
-                            .foregroundStyle(
-                                .secondary
-                            )
-                            .fixedSize(
-                                horizontal: false,
-                                vertical: true
                             )
                         }
                     }
                 }
 
-                GroupBox(
-                    "Recognition Answer"
-                ) {
+                if config.source
+                    == .decks {
 
-                    VStack(
-                        alignment: .leading,
-                        spacing: 8
-                    ) {
-
-                        Toggle(
-                            "Reading Only",
-                            isOn:
-                                Binding(
-                                    get: {
-
-                                        config
-                                            .recognitionReadingOnlyEnabled
-                                    },
-                                    set: {
-
-                                        config
-                                            .recognitionReadingOnlyEnabled =
-                                                $0
-
-                                        save()
-                                    }
-                                )
-                        )
-                        .disabled(
-                            !config
-                                .includeRecognition
-                        )
-
-                        Text(
-                            """
-                            When enabled, Recognition practises the reading instead of the meaning. The card shows the target word and the answer is only its reading.
-
-                            Example: 食べる → たべる
-                            """
-                        )
-                        .font(
-                            .caption
-                        )
-                        .foregroundStyle(
-                            .secondary
-                        )
-                        .fixedSize(
-                            horizontal: false,
-                            vertical: true
-                        )
-
-                        if config
-                            .writingEnabled
-                            && config
-                                .recognitionReadingOnlyEnabled
-                            && config
-                                .includeRecognition {
-
-                            Text(
-                                """
-                                In Writing mode, Recognition asks you to type the reading yourself.
-                                """
-                            )
-                            .font(
-                                .caption
-                            )
-                            .foregroundStyle(
-                                .secondary
-                            )
-                            .fixedSize(
-                                horizontal: false,
-                                vertical: true
-                            )
-                        }
-                    }
+                    deckSection(
+                        config
+                    )
                 }
 
-                GroupBox(
-                    "Card Display"
-                ) {
+                if config.source
+                    == .tags {
 
-                    VStack(
-                        spacing: 14
-                    ) {
-
-                        Picker(
-                            "Before Answer",
-                            selection:
-                                Binding(
-                                    get: {
-
-                                        config
-                                            .beforeAnswerDisplayMode
-                                    },
-                                    set: {
-
-                                        config
-                                            .beforeAnswerDisplayMode =
-                                                $0
-
-                                        save()
-                                    }
-                                )
-                        ) {
-
-                            ForEach(
-                                TargetDisplayMode
-                                    .allCases,
-                                id: \.rawValue
-                            ) { mode in
-
-                                Text(
-                                    mode.title
-                                )
-                                .tag(
-                                    mode
-                                )
-                            }
-                        }
-
-                        Picker(
-                            "After Answer",
-                            selection:
-                                Binding(
-                                    get: {
-
-                                        config
-                                            .afterAnswerDisplayMode
-                                    },
-                                    set: {
-
-                                        config
-                                            .afterAnswerDisplayMode =
-                                                $0
-
-                                        save()
-                                    }
-                                )
-                        ) {
-
-                            ForEach(
-                                TargetDisplayMode
-                                    .allCases,
-                                id: \.rawValue
-                            ) { mode in
-
-                                Text(
-                                    mode.title
-                                )
-                                .tag(
-                                    mode
-                                )
-                            }
-                        }
-
-                        Toggle(
-                            "Reading Hint",
-                            isOn:
-                                Binding(
-                                    get: {
-
-                                        config
-                                            .readingHintEnabled
-                                    },
-                                    set: {
-
-                                        config
-                                            .readingHintEnabled =
-                                                $0
-
-                                        save()
-                                    }
-                                )
-                        )
-                    }
+                    TagSelectionView(
+                        title:
+                            "Selected Tags",
+                        tags:
+                            availableTags,
+                        selectedTags:
+                            tagBinding(
+                                config
+                            ),
+                        emptySelectionMessage:
+                            """
+                            Select at least one tag to start Quick Review.
+                            """
+                    )
                 }
 
                 GroupBox {
@@ -523,6 +341,7 @@ struct QuickConfigView: View {
                                     .infinity
                             )
                         }
+                        .accessibilityIdentifier("quick.start")
                         .buttonStyle(
                             .borderedProminent
                         )
@@ -565,7 +384,7 @@ struct QuickConfigView: View {
                 maxWidth:
                     .infinity
             )
-        }
+        }.accessibilityIdentifier("config.scroll")
     }
 
     // MARK: - Writing
@@ -586,52 +405,6 @@ struct QuickConfigView: View {
         return
             """
             Think of the answer, reveal the card, then mark yourself Correct or Incorrect. Incorrect cards can be reviewed again at the end.
-            """
-    }
-
-    private func directionDescription(
-        _ config:
-            PyokoQuickConfig
-    ) -> String {
-
-        if config.includeRecognition
-            && config.includeRecall {
-
-            if config
-                .recognitionReadingOnlyEnabled {
-
-                return
-                    """
-                    Recognition: see the target word and write its reading. Recall: see the source meaning and write the target word. Both types will be mixed during the session.
-                    """
-            }
-
-            return
-                """
-                Recognition: see the target word and write its source meaning. Recall: see the source meaning and write the target word. Both types will be mixed during the session.
-                """
-        }
-
-        if config.includeRecognition {
-
-            if config
-                .recognitionReadingOnlyEnabled {
-
-                return
-                    """
-                    Recognition: see the target word and write its reading.
-                    """
-            }
-
-            return
-                """
-                Recognition: see the target word and write its source meaning.
-                """
-        }
-
-        return
-            """
-            Recall: see the source meaning and write the target word.
             """
     }
 
@@ -719,6 +492,8 @@ struct QuickConfigView: View {
         .buttonStyle(
             .plain
         )
+        .accessibilityIdentifier("quick.source.\(source.rawValue)")
+        .accessibilityValue(config.source == source ? "Selected" : "Not selected")
         .disabled(
             unavailable
         )
@@ -968,6 +743,9 @@ struct QuickConfigView: View {
 
         switch config.source {
 
+        case .reviewed:
+            return hasPreviouslyReviewedVocabulary
+
         case .random:
 
             if let reviewConfig =
@@ -990,10 +768,7 @@ struct QuickConfigView: View {
 
         case .tags:
 
-            return !(config
-                .selectedTags
-                ?? [])
-                .isEmpty
+            return hasMatchingTags(config)
 
         case .todaysReview:
 
@@ -1015,6 +790,11 @@ struct QuickConfigView: View {
         }
 
         switch config.source {
+
+        case .reviewed:
+            if !hasPreviouslyReviewedVocabulary {
+                return "Grade a card in scheduled Review and keep its deck enabled to practise previously reviewed vocabulary."
+            }
 
         case .random:
 
@@ -1047,12 +827,10 @@ struct QuickConfigView: View {
 
         case .tags:
 
-            if (config.selectedTags
-                ?? [])
-                .isEmpty {
+            if !hasMatchingTags(config) {
 
                 return
-                    "Select at least one tag."
+                    "Select a tag with vocabulary in an installed deck. A saved tag may no longer have any cards."
             }
 
         case .todaysReview:

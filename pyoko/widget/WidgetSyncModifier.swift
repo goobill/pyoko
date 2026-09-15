@@ -22,13 +22,18 @@ private struct WidgetSyncObserverView:
     @Environment(\.scenePhase)
     private var scenePhase
 
-    @Query
+    @Query(sort: \PyokoConfig.createdAt)
     private var configs:
         [PyokoConfig]
 
     @Query
     private var cards:
         [PyokoCard]
+
+    @AppStorage(PyokoWidgetConfig.preferenceKey) private var preferences = Data()
+    @Query private var reviews: [PyokoReviewCard]
+
+    @Query private var decks: [PyokoDeck]
 
     var body: some View {
 
@@ -79,6 +84,19 @@ private struct WidgetSyncObserverView:
 
         var hasher =
             Hasher()
+
+        hasher.combine(preferences)
+        for review in reviews {
+            hasher.combine(review.id)
+            hasher.combine(review.reviewed)
+            hasher.combine(review.reviewDate)
+            hasher.combine(review.card?.id)
+        }
+        // Republishes the snapshot when a deck is renamed, including via sync.
+        for deck in decks.sorted(by: { $0.id.uuidString < $1.id.uuidString }) {
+            hasher.combine(deck.id)
+            hasher.combine(deck.name)
+        }
 
         for config in configs {
 
