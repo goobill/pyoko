@@ -10,8 +10,8 @@ struct SettingsView: View {
     @State private var accountMessage = "Checking iCloud account…"
 
     var body: some View {
-        Form {
-            Section("Appearance") {
+        SettingsLayout {
+            SettingsSection("Appearance") {
                 Picker("Appearance", selection: $appearancePreference) {
                     Text("System").tag("system")
                     Text("Light").tag("light")
@@ -19,7 +19,7 @@ struct SettingsView: View {
                 }.pickerStyle(.menu).accessibilityIdentifier("settings.theme")
                 Text("Appearance applies to this device.").font(.caption).foregroundStyle(.secondary)
             }
-            Section("Theme Palette") {
+            SettingsSection("Theme Palette") {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 120))], spacing: 10) {
                     ForEach(PyokoTheme.allCases) { theme in
                         Button {
@@ -53,7 +53,7 @@ struct SettingsView: View {
                 Text("A palette sets the background and matching tint. You can choose a different tint below.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Section("Tint") {
+            SettingsSection("Tint") {
                 Picker("Buttons and Highlights", selection: $tintValue) {
                     Text("Match Theme").tag("automatic")
                     ForEach(PyokoTint.allCases) { tint in
@@ -66,7 +66,7 @@ struct SettingsView: View {
                 Text("Changes apply immediately and are saved on this device.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Section("iCloud") {
+            SettingsSection("iCloud") {
                 Label("iCloud sync configured", systemImage: "icloud")
                 Text(accountMessage).foregroundStyle(.secondary)
                 Text("Decks, review progress and practice config sync through your iCloud account. Changes may take a little time to appear on your other device.")
@@ -76,7 +76,7 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
-        .formStyle(.grouped)
+
         .accessibilityIdentifier("settings.form")
         .pyokoSurface()
         .navigationTitle("Settings")
@@ -85,7 +85,7 @@ struct SettingsView: View {
             if phase == .active { Task { await checkAccount() } }
         }
         #if os(macOS)
-        .frame(minWidth: 480, idealWidth: 520, minHeight: 580, idealHeight: 700)
+        .frame(minWidth: 600, idealWidth: 1000, minHeight: 580, idealHeight: 760)
         #endif
     }
 

@@ -6,6 +6,19 @@ import Testing
 /// Render real SwiftUI views: string-only assertions missed the small grey Hiragana bug.
 @MainActor
 struct WidgetRenderingTests {
+    @Test func lockScreenRendersEnglishAndChangesWithTheSelectedWord() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let first = PyokoWidgetWord(id: "eat", source: "to eat", target: "食べる", reading: "たべる")
+        let second = PyokoWidgetWord(id: "eat", source: "different meaning", target: "食べる", reading: "たべる")
+        let a = LockScreenWordContent(word: first, snapshot: .empty, date: now)
+        let b = LockScreenWordContent(word: second, snapshot: .empty, date: now)
+        #expect(try pixels(LockScreenWordView(content: a), height: 76)
+                    != pixels(LockScreenWordView(content: b), height: 76),
+                "The lock-screen view must render the English meaning, not just Japanese")
+        #expect(try pixels(LockScreenWordView(content: a, inline: true), height: 24)
+                    != pixels(LockScreenWordView(content: b, inline: true), height: 24))
+    }
+
     private func pixels<V: View>(_ view: V, height: CGFloat = 180) throws -> [UInt8] {
         let renderer = ImageRenderer(content: view
             .frame(width: 300, height: height)

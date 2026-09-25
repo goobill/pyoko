@@ -38,6 +38,8 @@ struct QuickView: View {
     private var hintRevealed =
         false
 
+    @FocusState private var writingFocused: Bool
+
     @State
     private var writingText =
         ""
@@ -76,7 +78,6 @@ struct QuickView: View {
             }
         }
         .pyokoHideBackButton()
-        .frame(maxWidth: 820)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .pyokoSurface()
         .task {
@@ -124,16 +125,9 @@ struct QuickView: View {
             PyokoQuickCard
     ) -> some View {
 
-        VStack(
-            spacing: 0
-        ) {
-
+        StudyLayout {
             topBar
-
-            Spacer(
-                minLength: 16
-            )
-
+        } card: {
             QuickCardView(
                 card:
                     card,
@@ -161,27 +155,8 @@ struct QuickView: View {
                 onReveal:
                     revealAnswer
             )
-            .padding(
-                .horizontal,
-                20
-            )
-
-            Spacer(
-                minLength: 12
-            )
-
+        } actions: {
             actionArea
-                .frame(
-                    height: 142
-                )
-                .padding(
-                    .horizontal,
-                    20
-                )
-
-            Spacer(
-                minLength: 16
-            )
         }
     }
 
@@ -236,6 +211,7 @@ struct QuickView: View {
                             )
                         )
                 )
+                .accessibilityIdentifier("study.progress")
                 .tint(
                     .accentColor
                 )
@@ -255,6 +231,9 @@ struct QuickView: View {
                     alignment:
                         .trailing
                 )
+                #if os(macOS)
+                MacShortcutHelp().fixedSize()
+                #endif
             }
 
             HStack(
@@ -329,7 +308,13 @@ struct QuickView: View {
             Text("Show Answer")
                 .fontWeight(.medium)
                 .foregroundStyle(.tint)
+                #if os(macOS)
+                .padding(.horizontal, 24)
+                .frame(height: 44)
+                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                #else
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                #endif
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -351,9 +336,23 @@ struct QuickView: View {
                 text:
                     $writingText
             )
-            .textFieldStyle(
-                .roundedBorder
-            )
+            .focused($writingFocused)
+            .task(id: currentCard?.id) {
+                // Wait for the new field to join the view hierarchy before focusing it.
+                await Task.yield()
+                guard !Task.isCancelled else { return }
+                writingFocused = !answerRevealed
+            }
+            #if os(macOS)
+            .textFieldStyle(.plain)
+            .font(.title3)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.15)))
+            #else
+            .textFieldStyle(.roundedBorder)
+            #endif
             .accessibilityIdentifier("quick.answer")
 
             #if os(iOS)
@@ -366,29 +365,45 @@ struct QuickView: View {
 
                 submitWriting()
             }
+            #if os(macOS)
+            // Inset the whole field, while the action row retains the card's width.
+            .padding(.horizontal, 32)
+            #endif
 
-            Button {
-
-                submitWriting()
-
-            } label: {
-
-                Text(
-                    "Check Answer"
-                )
-                .frame(
-                    maxWidth:
-                        .infinity
-                )
+            WritingButtonsLayout {
+                #if os(macOS)
+                unsureButton
+                checkAnswerButton
+                #else
+                checkAnswerButton
+                unsureButton
+                #endif
             }
-            .buttonStyle(
-                .borderedProminent
-            )
-            .disabled(
-                writingAnswerIsEmpty
-            )
-            .accessibilityIdentifier("quick.check")
         }
+    }
+
+    private var checkAnswerButton: some View {
+        Button(action: submitWriting) {
+            Text("Check Answer")
+                #if os(macOS)
+                .frame(minHeight: 36)
+                #endif
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(writingAnswerIsEmpty)
+        .accessibilityIdentifier("quick.check")
+    }
+
+    private var unsureButton: some View {
+        Button(action: revealUnsureAnswer) {
+            Text("Unsure — Show Answer")
+                #if os(macOS)
+                .frame(maxWidth: .infinity, minHeight: 36)
+                #endif
+        }
+        .buttonStyle(.bordered)
+        .accessibilityIdentifier("quick.unsure")
     }
 
     private var writingPlaceholder:
@@ -513,9 +528,33 @@ struct QuickView: View {
 
     // MARK: - Complete
 
-    private var completionView:
-        some View {
+    private var completionView: some View {
+        #if os(macOS)
+        MacCompletionPage(
+            title: progress.sessionTotal == 0 ? "No Words Available" : "Quick Review Complete",
+            message: completionMessage,
+            icon: progress.sessionTotal == 0 ? "rectangle.stack" : "checkmark.circle.fill"
+        ) {
+            if progress.sessionTotal > 0 { resultSummary }
+            else { Text("Choose vocabulary in Quick Review Config.").font(.title3) }
+        } actions: {
+            if progress.sessionTotal > 0 {
+                if progress.incorrect > 0 {
+                    MacCompletionButton(title: reviewIncorrectTitle, action: reviewIncorrect)
+                        .accessibilityIdentifier("quick.retry")
+                }
+                MacCompletionButton(title: "Reset Review", action: resetReview)
+                    .accessibilityIdentifier("quick.reset")
+            }
+            MacCompletionButton(title: "Back to Quick Review", action: { dismiss() })
+                .accessibilityIdentifier("quick.complete.exit")
+        }
+        #else
+        phoneCompletionView
+        #endif
+    }
 
+    private var phoneCompletionView: some View {
         VStack(
             spacing: 24
         ) {
@@ -926,6 +965,7 @@ struct QuickView: View {
             return
         }
 
+        writingFocused = false
         submittedWritingText =
             trimmed
 
@@ -937,6 +977,14 @@ struct QuickView: View {
     }
 
     // MARK: - Result
+
+    /// Allows an empty response while preserving any attempt; scoring happens after reveal.
+    private func revealUnsureAnswer() {
+        guard config.writingEnabled, !answerRevealed else { return }
+        submittedWritingText = writingText.trimmingCharacters(in: .whitespacesAndNewlines)
+        hintRevealed = false
+        answerRevealed = true
+    }
 
     private func submitResult(
         _ result:

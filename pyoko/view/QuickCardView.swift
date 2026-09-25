@@ -277,6 +277,38 @@ struct QuickCardView: View {
     private var writingAnswerContent:
         some View {
 
+        #if os(macOS)
+        VStack(spacing: 24) {
+            if card.type == .recall {
+                primaryText(card.sourceText)
+            } else if recognitionReadingOnlyEnabled {
+                primaryText(card.targetText)
+            } else {
+                targetContent(mode: afterAnswerDisplayMode, primary: true)
+            }
+            Divider()
+            HStack(alignment: .top, spacing: 24) {
+                VStack(spacing: 10) {
+                    Text("Correct answer").font(.headline).foregroundStyle(.secondary)
+                    if card.type == .recall {
+                        targetContent(mode: afterAnswerDisplayMode, primary: true)
+                    } else {
+                        primaryText(recognitionReadingOnlyEnabled
+                                    ? (card.targetReading ?? card.targetText) : card.sourceText)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("writing.correctAnswer")
+                VStack(spacing: 10) {
+                    Text("Your answer").font(.headline).foregroundStyle(.secondary)
+                    primaryText(submittedAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                ? "—" : submittedAnswer)
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("writing.yourAnswer")
+            }
+        }
+        #else
         switch card.type {
 
         case .recognition:
@@ -406,6 +438,7 @@ struct QuickCardView: View {
                 )
             }
         }
+        #endif
     }
 
     private func answerSection(

@@ -84,6 +84,7 @@
 				"enum/PyokoTheme.swift",
 				"enum/TargetDisplayMode.swift",
 				widget/WidgetWordView.swift,
+				widget/LockScreenWordView.swift,
 				widget/PyokoWidgetConstants.swift,
 				widget/PyokoWidgetData.swift,
 				widget/PyokoWidgetStore.swift,

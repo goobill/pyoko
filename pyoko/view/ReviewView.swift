@@ -67,8 +67,6 @@ struct ReviewView: View {
                         extensionStatus,
                     onContinue:
                         extendReview,
-                    onCheckAgain:
-                        refreshCompletion,
                     onExit: {
                         dismiss()
                     }
@@ -76,7 +74,6 @@ struct ReviewView: View {
             }
         }
         .pyokoHideBackButton()
-        .frame(maxWidth: 820)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .pyokoSurface()
         .task {
@@ -118,16 +115,9 @@ struct ReviewView: View {
         card: PyokoCard
     ) -> some View {
 
-        VStack(
-            spacing: 0
-        ) {
-
+        StudyLayout {
             topBar
-
-            Spacer(
-                minLength: 16
-            )
-
+        } card: {
             ReviewCardView(
                 card:
                     card,
@@ -146,27 +136,8 @@ struct ReviewView: View {
                 onReveal:
                     revealAnswer
             )
-            .padding(
-                .horizontal,
-                20
-            )
-
-            Spacer(
-                minLength: 12
-            )
-
+        } actions: {
             actionArea
-                .frame(
-                    height: 142
-                )
-                .padding(
-                    .horizontal,
-                    20
-                )
-
-            Spacer(
-                minLength: 16
-            )
         }
     }
 
@@ -216,6 +187,7 @@ struct ReviewView: View {
                         )
                     )
             )
+            .accessibilityIdentifier("study.progress")
             .tint(
                 .accentColor
             )
@@ -234,6 +206,9 @@ struct ReviewView: View {
                 minWidth: 42,
                 alignment: .trailing
             )
+            #if os(macOS)
+            MacShortcutHelp().fixedSize()
+            #endif
         }
         .padding(
             .horizontal,
@@ -269,7 +244,13 @@ struct ReviewView: View {
             Text("Show Answer")
                 .fontWeight(.medium)
                 .foregroundStyle(.tint)
+                #if os(macOS)
+                .padding(.horizontal, 24)
+                .frame(height: 44)
+                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                #else
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                #endif
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -313,36 +294,34 @@ struct ReviewView: View {
                 .secondary
             )
 
-            HStack(
-                spacing: 8
-            ) {
+            RatingButtonsLayout {
 
                 ratingButton(
                     rating:
                         .again,
                     opacity:
-                        0.95
+                        0.16
                 )
 
                 ratingButton(
                     rating:
                         .hard,
                     opacity:
-                        0.78
+                        0.16
                 )
 
                 ratingButton(
                     rating:
                         .good,
                     opacity:
-                        0.60
+                        0.16
                 )
 
                 ratingButton(
                     rating:
                         .easy,
                     opacity:
-                        0.42
+                        0.16
                 )
             }
         }
@@ -361,25 +340,8 @@ struct ReviewView: View {
 
         } label: {
 
-            Text(
-                intervalText(
-                    for:
-                        rating
-                )
-            )
-            .font(
-                .subheadline
-            )
-            .fontWeight(
-                .semibold
-            )
-            .frame(
-                maxWidth:
-                    .infinity
-            )
-            .frame(
-                height: 48
-            )
+            RatingButtonLabel(title: String(describing: rating).capitalized,
+                              interval: intervalText(for: rating))
             .background {
 
                 RoundedRectangle(

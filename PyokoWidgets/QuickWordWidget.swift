@@ -151,9 +151,27 @@ struct QuickWordProvider:
 
 struct QuickWordWidgetView: View {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.widgetFamily) private var family
     let entry: QuickWordEntry
 
     var body: some View {
+        #if os(iOS)
+        switch family {
+        case .accessoryRectangular, .accessoryInline:
+            LockScreenWordView(
+                content: LockScreenWordContent(word: entry.word, snapshot: entry.snapshot, date: entry.date),
+                inline: family == .accessoryInline
+            )
+            .containerBackground(for: .widget) { Color.clear }
+        default:
+            homeScreenContent
+        }
+        #else
+        homeScreenContent
+        #endif
+    }
+
+    private var homeScreenContent: some View {
         Group {
             if let word = entry.word, !entry.snapshot.isExpired(at: entry.date) {
                 Button(intent: TapWidgetWordIntent()) {
@@ -202,13 +220,16 @@ struct QuickWordWidget:
             "Word Review"
         )
         .description(
-            "Test yourself with random vocabulary from your Pyoko decks."
+            "Review vocabulary at home, or see a word and its meaning on your Lock Screen."
         )
-        .supportedFamilies(
-            [
-                .systemSmall,
-                .systemMedium
-            ]
-        )
+        .supportedFamilies(supportedFamilies)
+    }
+
+    private var supportedFamilies: [WidgetFamily] {
+        #if os(iOS)
+        [.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline]
+        #else
+        [.systemSmall, .systemMedium]
+        #endif
     }
 }

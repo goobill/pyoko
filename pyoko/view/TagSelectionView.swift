@@ -67,7 +67,11 @@ struct TagSelectionView: View {
 
                 } else {
 
+                    #if os(macOS)
+                    MacTagGrid(tags: tags, selectedTags: $selectedTags)
+                    #else
                     tagList
+                    #endif
                 }
 
                 if let emptySelectionMessage,

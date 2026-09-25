@@ -177,10 +177,17 @@ final class pyokoUITests: XCTestCase {
 
     @MainActor func testActualQuickRoundRetryResetAndExit() throws {
         let app = try launch(); startQuick(app)
+        XCTAssertFalse(element("quick.unsure", app).exists, "Unsure belongs to writing mode")
         for _ in 0..<100 {
             if element("quick.retry", app).exists { break }
             tap("quick.reveal", app); tap("quick.incorrect", app)
         }
+        #if os(macOS)
+        XCTAssertTrue(element("completion.desktop", app).exists)
+        XCTAssertGreaterThanOrEqual(scrollTo("quick.retry", app).frame.height, 44)
+        XCTAssertGreaterThanOrEqual(scrollTo("quick.reset", app).frame.height, 44)
+        XCTAssertGreaterThanOrEqual(scrollTo("quick.complete.exit", app).frame.height, 44)
+        #endif
         tap("quick.retry", app)
         for _ in 0..<100 {
             if element("quick.reset", app).exists { break }
@@ -220,6 +227,41 @@ final class pyokoUITests: XCTestCase {
         XCTAssertTrue(element("quick.answer", app).exists || element("quick.reset", app).exists)
     }
 
+    @MainActor func testWritingUnsureRevealsBlankAnswerWithoutScoring() throws {
+        let app = try launch(); startQuick(app, writing: true)
+        #if os(macOS)
+        XCTAssertTrue(element("study.desktop", app).waitForExistence(timeout: 5))
+        #else
+        XCTAssertTrue(element("study.phone", app).waitForExistence(timeout: 5))
+        #endif
+        XCTAssertFalse(element("quick.check", app).isEnabled)
+        let unsure = scrollTo("quick.unsure", app)
+        XCTAssertTrue(unsure.isHittable)
+        unsure.tap()
+        XCTAssertFalse(element("quick.answer", app).exists)
+        XCTAssertFalse(element("quick.unsure", app).exists)
+        XCTAssertEqual(element("quick.score.correct", app).value as? String, "0")
+        XCTAssertEqual(element("quick.score.incorrect", app).value as? String, "0")
+        scrollTo("quick.incorrect", app).tap()
+        XCTAssertEqual(element("quick.score.incorrect", app).value as? String, "1")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Platform study layout"; screenshot.lifetime = .keepAlways; add(screenshot)
+        if element("quick.reset", app).exists { tap("quick.reset", app) }
+        XCTAssertTrue(scrollTo("quick.unsure", app).isHittable, "Each writing card must allow Unsure")
+    }
+
+    @MainActor func testWritingPreviewUnsurePreservesAttemptAndResets() throws {
+        let app = try launch(); configureCards(app, quick: true, writing: true)
+        let input = scrollTo("preview.answer", app)
+        input.tap(); input.typeText("my attempt")
+        scrollTo("preview.unsure", app).tap()
+        XCTAssertTrue(app.staticTexts["my attempt"].exists)
+        XCTAssertEqual(element("preview.action", app).label, "Reset Preview")
+        scrollTo("preview.action", app).tap()
+        XCTAssertTrue(element("preview.answer", app).exists)
+        XCTAssertTrue(element("preview.unsure", app).exists)
+    }
+
     @MainActor private func startReview(_ app: XCUIApplication) {
         ensureDeck(app); configureCards(app, quick: false)
         restart(app); tap("home.review", app)
@@ -252,6 +294,95 @@ final class pyokoUITests: XCTestCase {
     }
 
     #if os(macOS)
+    @MainActor func testMacScheduledCompletionUsesLargeActionsAndExits() throws {
+        let app = try launch(); startReview(app)
+        for _ in 0..<100 {
+            if element("review.complete.exit", app).exists { break }
+            scrollTo("review.reveal", app).tap()
+            scrollTo("review.rating.easy", app).tap()
+        }
+        XCTAssertTrue(element("completion.desktop", app).exists)
+        let exit = scrollTo("review.complete.exit", app)
+        XCTAssertGreaterThanOrEqual(exit.frame.height, 44)
+        XCTAssertFalse(element("review.checkAgain", app).exists)
+        XCTAssertTrue(element("review.complete.metric.Completed", app).exists)
+        XCTAssertTrue(element("review.complete.metric.Due now", app).exists)
+        for id in ["review.extend"] where element(id, app).exists {
+            XCTAssertGreaterThanOrEqual(scrollTo(id, app).frame.height, 44)
+        }
+        exit.tap()
+        XCTAssertTrue(element("review.start", app).waitForExistence(timeout: 5))
+    }
+
+    @MainActor func testMacWritingAutofocusEnterAndGradeWithoutClickingField() throws {
+        let app = try launch(); startQuick(app, writing: true)
+        for attempt in 0..<2 {
+            let input = element("quick.answer", app)
+            XCTAssertTrue(input.waitForExistence(timeout: 5))
+            app.typeText("answer 3 4")
+            XCTAssertEqual(input.value as? String, "answer 3 4",
+                           "The new writing field must accept typing without a click")
+            app.typeKey(XCUIKeyboardKey.return, modifierFlags: [])
+            XCTAssertTrue(element("quick.correct", app).waitForExistence(timeout: 5))
+            app.typeKey(attempt == 0 ? "4" : "3", modifierFlags: [])
+            XCTAssertFalse(element("quick.correct", app).exists)
+            if attempt == 0 && element("quick.reset", app).exists {
+                tap("quick.reset", app)
+            }
+        }
+    }
+
+    @MainActor func testMacWritingComparisonAndInlineShortcutHelp() throws {
+        let app = try launch(); startQuick(app, writing: true)
+        let help = element("shortcuts.help", app)
+        let progress = element("study.progress", app)
+        XCTAssertTrue(help.waitForExistence(timeout: 5))
+        XCTAssertTrue(progress.exists)
+        XCTAssertEqual(help.frame.midY, progress.frame.midY, accuracy: 4)
+        XCTAssertEqual(help.label, "Shortcuts")
+        XCTAssertGreaterThan(help.frame.minX, progress.frame.maxX)
+        let check = scrollTo("quick.check", app)
+        let unsure = element("quick.unsure", app)
+        XCTAssertTrue(unsure.exists)
+        XCTAssertEqual(check.frame.midY, unsure.frame.midY, accuracy: 2)
+        XCTAssertGreaterThan(check.frame.minX, unsure.frame.maxX)
+        XCTAssertFalse(check.isEnabled)
+        XCTAssertTrue(unsure.isEnabled)
+        scrollTo("quick.unsure", app).tap()
+        let correct = scrollTo("writing.correctAnswer", app)
+        let attempt = element("writing.yourAnswer", app)
+        XCTAssertTrue(attempt.exists)
+        XCTAssertEqual(correct.frame.minY, attempt.frame.minY, accuracy: 2)
+        XCTAssertGreaterThan(attempt.frame.minX, correct.frame.maxX)
+        XCTAssertTrue(app.staticTexts["—"].exists, "A blank attempt has a visible placeholder")
+        tap("quick.exit", app)
+        XCTAssertTrue(element("quick.start", app).waitForExistence(timeout: 5),
+                      "The lower back control must still return to config")
+    }
+
+    @MainActor func testMacReviewControlsStayBelowCardInOneRow() throws {
+        let app = try launch(); startReview(app)
+        let reveal = scrollTo("review.reveal", app)
+        XCTAssertLessThanOrEqual(reveal.frame.height, 52)
+        XCTAssertGreaterThanOrEqual(reveal.frame.minY, element("study.card", app).frame.maxY)
+        reveal.tap()
+        let ratings = ["again", "hard", "good", "easy"].map { element("review.rating.\($0)", app) }
+        _ = scrollTo("review.rating.again", app)
+        for rating in ratings {
+            XCTAssertTrue(rating.exists)
+            XCTAssertEqual(rating.frame.midY, ratings[0].frame.midY, accuracy: 2)
+            XCTAssertGreaterThanOrEqual(rating.frame.minY, element("study.card", app).frame.maxY)
+        }
+        for index in 1..<ratings.count {
+            XCTAssertGreaterThan(ratings[index].frame.minX, ratings[index - 1].frame.maxX)
+        }
+        ratings[2].tap()
+        restart(app)
+        XCTAssertTrue(element("review.summary.completed", app).waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(Int(element("review.summary.completed", app).value as? String ?? "") ?? 0, 0)
+        XCTAssertGreaterThanOrEqual(element("review.start", app).frame.height, 40)
+    }
+
     @MainActor func testMacReviewSpaceAndAllFourNumberKeys() throws {
         let app = try launch(); startReview(app)
         for (key, rating) in zip(["1", "2", "3", "4"], ["again", "hard", "good", "easy"]) {
@@ -263,6 +394,69 @@ final class pyokoUITests: XCTestCase {
             app.typeKey(key, modifierFlags: [])
             XCTAssertFalse(element("review.rating.\(rating)", app).exists)
         }
+    }
+
+    @MainActor func testMacShortcutHelpOpensAndClosesInConfigAndStudy() throws {
+        let app = try launch(); ensureDeck(app); configureCards(app, quick: true)
+        scrollTo("shortcuts.help", app).tap()
+        XCTAssertTrue(app.staticTexts["Again / Hard / Good / Easy"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Incorrect / Correct"].exists)
+        tap("shortcuts.done", app)
+        XCTAssertFalse(element("shortcuts.done", app).exists)
+        scrollTo("quick.source.random", app).tap()
+        scrollTo("quick.start", app).tap()
+        tap("shortcuts.help", app)
+        XCTAssertTrue(app.staticTexts["Writing mode"].waitForExistence(timeout: 5))
+        tap("shortcuts.done", app)
+        tap("quick.reveal", app)
+        XCTAssertGreaterThanOrEqual(element("quick.correct", app).frame.height, 44)
+        XCTAssertGreaterThanOrEqual(element("quick.incorrect", app).frame.height, 44)
+    }
+
+    @MainActor func testMacTagSearchKeepsHiddenSelectionsAndPersists() throws {
+        let app = try launch(); ensureDeck(app); configureCards(app, quick: true)
+        scrollTo("quick.source.tags", app).tap()
+        let none = scrollTo("tags.none", app)
+        if none.isEnabled { none.tap() }
+        let search = scrollTo("tags.search", app)
+        search.tap(); search.typeText("noun")
+        setToggle("tag.Noun", true, app)
+        search.tap(); app.typeKey("a", modifierFlags: .command)
+        search.typeText("no-such-pyoko-tag")
+        XCTAssertTrue(app.staticTexts["No tags match your search."].exists)
+        XCTAssertFalse(element("tag.Noun", app).exists)
+        search.tap(); app.typeKey("a", modifierFlags: .command)
+        app.typeKey(XCUIKeyboardKey.delete, modifierFlags: [])
+        XCTAssertEqual(scrollTo("tag.Noun", app).value as? String, "1")
+        restart(app); tap("home.quick", app)
+        XCTAssertEqual(scrollTo("tag.Noun", app).value as? String, "1")
+        scrollTo("quick.start", app).tap()
+        XCTAssertTrue(element("quick.reveal", app).waitForExistence(timeout: 5))
+    }
+
+    @MainActor func testMacWideConfigUsesSeparateColumns() throws {
+        let app = try launch(); tap("home.config", app)
+        let controls = element("config.controls", app)
+        XCTAssertTrue(controls.waitForExistence(timeout: 5))
+        try XCTSkipUnless(element("config.columns", app).exists,
+                          "Enlarge the Mac window until the detail area is at least 860 points, then rerun.")
+        let preview = element("config.previews", app)
+        XCTAssertTrue(preview.exists)
+        XCTAssertGreaterThanOrEqual(preview.frame.minX - controls.frame.maxX, 20)
+        XCTAssertLessThanOrEqual(preview.frame.width, 620)
+        XCTAssertGreaterThanOrEqual(controls.frame.width, 360)
+    }
+
+    @MainActor func testMacLockPreviewIsCenteredInItsPanel() throws {
+        let app = try launch(); tap("home.widget", app)
+        let preview = scrollTo("widget.lockPreview", app)
+        let panel = element("widget.lockPanel", app)
+        XCTAssertTrue(panel.exists)
+        XCTAssertEqual(preview.frame.midX, panel.frame.midX, accuracy: 4)
+        XCTAssertLessThanOrEqual(preview.frame.width, 220,
+                                 "The lock preview must retain accessory proportions")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Mac widget configuration"; screenshot.lifetime = .keepAlways; add(screenshot)
     }
 
     @MainActor func testMacQuickSpaceRevealsThenAdvances() throws {

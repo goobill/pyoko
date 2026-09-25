@@ -8,13 +8,16 @@ final class CardRetrieval {
     private let modelContext: ModelContext
 
     private let clock: () -> Date
+    private let randomize: ([PyokoCard]) -> [PyokoCard]
 
     init(
         modelContext: ModelContext,
-        clock: @escaping () -> Date = { .now }
+        clock: @escaping () -> Date = { .now },
+        randomize: @escaping ([PyokoCard]) -> [PyokoCard] = { $0.shuffled() }
     ) {
 
         self.clock = clock
+        self.randomize = randomize
         self.modelContext =
             modelContext
     }
@@ -35,7 +38,7 @@ final class CardRetrieval {
             )
 
         return selectInitialCards(
-            from: eligibleCards,
+            from: randomize(eligibleCards),
             config: config
         )
     }
@@ -47,7 +50,7 @@ final class CardRetrieval {
     /// Unlike the initial daily session, this does not
     /// reserve places for new cards. Once the learner
     /// explicitly extends their review we simply take
-    /// the next cards due according to FSRS.
+    /// a random selection of cards currently due according to FSRS.
     func getCardsForExtension(
         limit: Int,
         excludingCardIDs: Set<UUID> = []
@@ -68,7 +71,7 @@ final class CardRetrieval {
             }
 
         return Array(
-            eligibleCards.prefix(
+            randomize(eligibleCards).prefix(
                 max(limit, 0)
             )
         )
@@ -205,18 +208,8 @@ final class CardRetrieval {
             )
         }
 
-        // Preserve due ordering once the mix of
-        // new/review cards has been selected.
-        return selected.sorted {
-
-            if $0.due == $1.due {
-
-                return $0.id.uuidString
-                    < $1.id.uuidString
-            }
-
-            return $0.due < $1.due
-        }
+        // Mix the reserved new cards and review cards before the queue is persisted.
+        return randomize(selected)
     }
 
     // MARK: - Eligibility

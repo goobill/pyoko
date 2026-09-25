@@ -39,11 +39,47 @@ struct DecksView: View {
 
     var body: some View {
 
-        List {
-
-            importedDecksSection
-
-            builtInDecksSection
+        Group {
+            #if os(macOS)
+            MacPanelPage {
+                Text("Manage decks").font(.largeTitle.bold())
+                Text("Enable decks for practice or import your own vocabulary.")
+                    .foregroundStyle(.secondary)
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 400), spacing: 24)], alignment: .leading, spacing: 24) {
+                    GroupBox("Imported Decks") {
+                        VStack(alignment: .leading, spacing: 20) {
+                            if importedDecks.isEmpty {
+                                Text("Import a CSV, URL, or Google Sheet using Import Deck above.")
+                                    .foregroundStyle(.secondary)
+                            }
+                            ForEach(importedDecks) { deck in
+                                installedDeckRow(deck)
+                                Divider()
+                            }
+                            Text("Enabled decks are included in future sessions.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    GroupBox("Built-in Decks") {
+                        VStack(alignment: .leading, spacing: 20) {
+                            ForEach(DefaultDecks.all) { deck in
+                                builtInDeckRow(deck)
+                                Divider()
+                            }
+                            Text("Disable a deck without deleting its cards or progress.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .accessibilityIdentifier("decks.desktop")
+            #else
+            List {
+                importedDecksSection
+                builtInDecksSection
+            }
+            .pyokoListPage()
+            #endif
         }
         .pyokoSurface()
         .navigationTitle(

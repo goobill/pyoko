@@ -135,12 +135,18 @@ struct QuickConfigView: View {
         var config =
             storedConfig
 
-        ScrollView {
+        ConfigWorkspace {
 
-            VStack(
-                spacing: 18
-            ) {
 
+                #if os(macOS)
+                GroupBox("Session") {
+                    MacCountControl(title: "Cards", value: Binding(
+                        get: { config.cardCount }, set: { config.cardCount = $0; save() }),
+                        range: 1...100)
+                        .accessibilityIdentifier("quick.count")
+                        .accessibilityValue("\(config.cardCount)")
+                }
+                #else
                 GroupBox(
                     "Session"
                 ) {
@@ -192,6 +198,8 @@ struct QuickConfigView: View {
                     }
                 }
 
+
+                #endif
                 GroupBox(
                     "Practice Mode"
                 ) {
@@ -248,12 +256,13 @@ struct QuickConfigView: View {
                     hiraganaOnly: Binding(get: { config.recognitionReadingOnlyEnabled }, set: { config.recognitionReadingOnlyEnabled = $0; save() }),
                     hint: Binding(get: { config.readingHintEnabled }, set: { config.readingHintEnabled = $0; save() })
                 )
+        } preview: {
                 CardPreviewView(
                     quick: true, recognition: config.includeRecognition, recall: config.includeRecall,
                     before: config.beforeAnswerDisplayMode, after: config.afterAnswerDisplayMode,
                     hiraganaOnly: config.recognitionReadingOnlyEnabled, hint: config.readingHintEnabled, writing: config.writingEnabled
                 )
-
+        } vocabulary: {
                 GroupBox(
                     "Vocabulary"
                 ) {
@@ -302,7 +311,7 @@ struct QuickConfigView: View {
                             """
                     )
                 }
-
+        } footer: {
                 GroupBox {
 
                     VStack(
@@ -336,6 +345,9 @@ struct QuickConfigView: View {
                             Text(
                                 "Start Quick Review"
                             )
+                            #if os(macOS)
+                            .frame(minHeight: 36)
+                            #endif
                             .frame(
                                 maxWidth:
                                     .infinity
@@ -375,16 +387,7 @@ struct QuickConfigView: View {
                             .infinity
                     )
                 }
-            }
-            .frame(
-                maxWidth: 700
-            )
-            .padding()
-            .frame(
-                maxWidth:
-                    .infinity
-            )
-        }.accessibilityIdentifier("config.scroll")
+        }
     }
 
     // MARK: - Writing

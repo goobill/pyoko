@@ -98,14 +98,28 @@ struct ConfigView: View {
         var config =
             storedConfig
 
-        ScrollView {
+        ConfigWorkspace {
 
-            VStack(
-                spacing: 18
-            ) {
 
                 // MARK: Daily Review
 
+                #if os(macOS)
+                GroupBox("Session") {
+                    VStack(spacing: 14) {
+                        MacCountControl(title: "Daily card limit", value: Binding(
+                            get: { config.dailyCardLimit },
+                            set: { value in
+                                config.dailyCardLimit = value
+                                config.minimumNewCards = min(config.minimumNewCards, value)
+                                save()
+                            }), range: 1...100)
+                        MacCountControl(title: "Minimum new cards", value: Binding(
+                            get: { config.minimumNewCards },
+                            set: { config.minimumNewCards = $0; save() }),
+                            range: 0...config.dailyCardLimit)
+                    }
+                }
+                #else
                 GroupBox(
                     "Session"
                 ) {
@@ -207,6 +221,8 @@ struct ConfigView: View {
                     }
                 }
 
+                #endif
+
                 CardConfigView(
                     recognition: recognitionBinding(config),
                     recall: recallBinding(config),
@@ -215,12 +231,13 @@ struct ConfigView: View {
                     hiraganaOnly: Binding(get: { config.readingOnlyAnswer }, set: { config.readingOnlyAnswer = $0; save() }),
                     hint: Binding(get: { config.readingHintEnabled }, set: { config.readingHintEnabled = $0; save() })
                 )
+        } preview: {
                 CardPreviewView(
                     quick: false, recognition: config.showRecognitionCards, recall: config.showRecallCards,
                     before: config.beforeAnswerDisplayMode, after: config.afterAnswerDisplayMode,
                     hiraganaOnly: config.readingOnlyAnswer, hint: config.readingHintEnabled
                 )
-
+        } vocabulary: {
                 // MARK: Decks
 
                 GroupBox(
@@ -275,6 +292,13 @@ struct ConfigView: View {
                     }
                 }
 
+                #if os(macOS)
+                TagSelectionView(title: "Tags", tags: availableTags(config: config),
+                    selectedTags: Binding(
+                        get: { config.selectedTags ?? [] },
+                        set: { config.selectedTags = $0; save() }),
+                    emptySelectionMessage: "No selection means all tags in enabled decks are eligible.")
+                #else
                 // MARK: Tags
 
                 GroupBox(
@@ -425,18 +449,11 @@ struct ConfigView: View {
                         }
                     }
                 }
+                #endif
 
+        } footer: {
                 versionFooter
-            }
-            .frame(
-                maxWidth: 700
-            )
-            .padding()
-            .frame(
-                maxWidth:
-                    .infinity
-            )
-        }.accessibilityIdentifier("config.scroll")
+        }
     }
 
     // MARK: - Direction

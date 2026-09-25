@@ -143,7 +143,8 @@ final class CardManager {
 
     init(
         modelContext: ModelContext,
-        clock: @escaping () -> Date = { .now }
+        clock: @escaping () -> Date = { .now },
+        randomize: @escaping ([PyokoCard]) -> [PyokoCard] = { $0.shuffled() }
     ) {
 
         self.clock = clock
@@ -158,7 +159,8 @@ final class CardManager {
         self.retrieval =
             CardRetrieval(
                 modelContext: modelContext,
-                clock: clock
+                clock: clock,
+                randomize: randomize
             )
     }
 

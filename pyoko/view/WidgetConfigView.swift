@@ -58,8 +58,7 @@ struct WidgetConfigView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 18) {
+        ConfigWorkspace {
                 CardConfigView(
                     recognition: directionBinding(\.recognition, other: \.recall),
                     recall: directionBinding(\.recall, other: \.recognition),
@@ -67,6 +66,7 @@ struct WidgetConfigView: View {
                     after: modeBinding(\.after, default: .targetAndReading),
                     hiraganaOnly: binding(\.readingOnly), hint: .constant(false), showsHint: false
                 )
+        } preview: {
                 GroupBox("Widget Preview") {
                     VStack(spacing: 12) {
                         if preferences.recognition && preferences.recall {
@@ -94,6 +94,23 @@ struct WidgetConfigView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
+                GroupBox("Lock Screen Preview") {
+                    let result = snapshot(preferences)
+                    let word = result.words.first ?? PyokoWidgetWord(id: "preview", source: "to eat",
+                        target: "食べる", reading: "たべる", deckName: "Example")
+                    VStack(alignment: .leading, spacing: 12) {
+                        LockScreenWordView(content: LockScreenWordContent(word: word, snapshot: result, date: .now))
+                            .frame(width: 170, height: 76)
+                            .padding(12)
+                            .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
+                            .accessibilityIdentifier("widget.lockPreview")
+                            .modifier(LockPreviewAlignment())
+                        Text("The lock-screen widget always shows Japanese and English together. It uses the same vocabulary selection. Add Word Review when customising your iPhone Lock Screen.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .accessibilityIdentifier("widget.lockPanel")
+        } vocabulary: {
                 GroupBox("Vocabulary") {
                     VStack(spacing: 6) {
                         ForEach(PyokoWidgetConfig.Source.allCases, id: \.self) { source in
@@ -142,6 +159,7 @@ struct WidgetConfigView: View {
                                              set: { binding(\.tagIDs).wrappedValue = Set($0.map(\.id)) }),
                         emptySelectionMessage: "Select at least one tag. Words may match any selected tag.")
                 }
+        } footer: {
                 GroupBox("Theme") {
                     Picker("Widget Theme", selection: binding(\.theme)) {
                         Text("Default (System)").tag("system")
@@ -159,10 +177,7 @@ struct WidgetConfigView: View {
                         Text("Only enabled decks are included. Saved automatically on this device for all Word Review widgets. Open Pyoko to refresh synced words.")
                     }.font(.caption).foregroundStyle(.secondary)
                 }
-            }
-            .frame(maxWidth: 700).padding().frame(maxWidth: .infinity)
         }
-        .accessibilityIdentifier("config.scroll")
         .pyokoSurface()
         .navigationTitle("Widget Config")
         .onChange(of: stored) { _, _ in revealed = false; WidgetSync.refresh(modelContext: context) }
@@ -177,5 +192,19 @@ struct WidgetConfigView: View {
                 stored = updated.encoded
             }
         }
+    }
+}
+
+private struct LockPreviewAlignment: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        HStack {
+            Spacer(minLength: 0)
+            content
+            Spacer(minLength: 0)
+        }
+        #else
+        content
+        #endif
     }
 }

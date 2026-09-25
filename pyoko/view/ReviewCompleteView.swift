@@ -18,14 +18,32 @@ struct ReviewCompleteView: View {
     let onContinue:
         () -> Void
 
-    let onCheckAgain:
-        () -> Void
-
     let onExit:
         () -> Void
 
     var body: some View {
+        #if os(macOS)
+        MacCompletionPage(title: title, message: message,
+                          icon: status.canExtend ? "arrow.clockwise.circle.fill" : "checkmark.circle.fill") {
+            HStack(spacing: 32) {
+                completionMetric("Completed", count: progress.completed, icon: "checkmark.circle")
+                completionMetric("Due now", count: status.dueNow, icon: "rectangle.stack")
+            }
+        } actions: {
+            if status.canExtend {
+                MacCompletionButton(title: continueTitle, action: onContinue)
+                    .accessibilityIdentifier("review.extend")
+                    .macReviewShortcut(.space)
+            }
+            MacCompletionButton(title: "Back to Home", action: onExit)
+                .accessibilityIdentifier("review.complete.exit")
+        }
+        #else
+        phoneContent
+        #endif
+    }
 
+    private var phoneContent: some View {
         VStack(
             spacing: 24
         ) {
@@ -94,26 +112,6 @@ struct ReviewCompleteView: View {
                 .accessibilityIdentifier("review.extend")
                 .macReviewShortcut(.space)
 
-            } else if status.laterToday > 0 {
-
-                Button {
-
-                    onCheckAgain()
-
-                } label: {
-
-                    Text(
-                        "Check Again"
-                    )
-                    .frame(
-                        maxWidth:
-                            .infinity
-                    )
-                }
-                .buttonStyle(
-                    .bordered
-                )
-                .accessibilityIdentifier("review.checkAgain")
             }
 
             Button {
@@ -146,6 +144,17 @@ struct ReviewCompleteView: View {
         .frame(
             maxWidth: .infinity
         )
+    }
+
+    private func completionMetric(_ title: String, count: Int, icon: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon).font(.title2).foregroundStyle(.secondary)
+            Text("\(count)").font(.system(size: 32, weight: .semibold)).monospacedDigit()
+            Text(title).font(.callout).foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("review.complete.metric.\(title)")
+        .accessibilityValue("\(count)")
     }
 
     private var title: String {
@@ -186,18 +195,7 @@ struct ReviewCompleteView: View {
         }
 
         if status.laterToday > 0 {
-
-            let cardWord =
-                status.laterToday == 1
-                ? "card is"
-                : "cards are"
-
-            return
-                """
-                No more cards are due right now.
-
-                \(status.laterToday) \(cardWord) scheduled later today.
-                """
+            return "No more cards are due right now."
         }
 
         if progress.total == 0 {

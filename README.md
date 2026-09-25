@@ -4,7 +4,37 @@ An offline-capable Japanese vocabulary app for iPhone, iPad and native macOS. Pr
 
 **Status: beta candidate, not yet Xcode-verified.** Unit, integration, rendered-view and UI regression suites are included. Source checks are not a passing test run: Swift compilation, runtime tests, coverage, device sync and store migration must be verified on a Mac before release.
 
-## Latest changes: regression tests and Mac keyboard controls
+## Latest changes: desktop workspaces
+
+- Quick writing automatically focuses each new answer field. Type, press Enter to reveal, then 3 for Incorrect or 4 for Correct; the next field receives focus automatically.
+- Completion metrics use large numbers and smaller labels. Review ratings and desktop completion actions use a lighter tint.
+- Scheduled completion omits the later-today count and Check Again action. Return home and open Review to refresh due availability; Continue remains available when more cards are due now.
+
+- Both Mac completion pages use a large heading, a padded session-summary panel and larger action buttons. Quick Review retains retry/reset/exit; scheduled Review offers continue when available and exit.
+- Mac writing actions place Unsure on the left and Check Answer on the right.
+
+- Keyboard help shares the progress-bar row in Mac study sessions.
+- The compact **Shortcuts** button sits on the right of that row. Study screens keep the lower back control and hide the duplicate navigation back button.
+- All scheduled rating buttons use the same light tint. Mac writing input has internal horizontal padding, with Check Answer and Unsure side by side below it.
+- The Mac writing field is also inset 32 points on each side relative to the card; the two buttons retain the full width below it.
+- Quick writing feedback shows a larger prompt and side-by-side Correct answer / Your answer columns on Mac. Blank attempts show a dash; phone feedback keeps its existing layout.
+- New scheduled batches randomly sample eligible cards across enabled decks, retaining configured new-card allowances and FSRS due eligibility. Extension batches are random too. Saved sessions retain their order when resumed; already-created queues are not reshuffled.
+
+- On wide Mac windows, Review, Quick Review and Widget configuration place controls beside previews. Vocabulary panels span the workspace below. Narrow windows stack panels; phone layouts keep their existing section order.
+- Study controls stay below the card at every Mac window width. Show Answer is a compact button; the four named scheduled ratings remain in one horizontal row.
+- Decks and Settings now share the desktop panel styling, margins and adaptive columns. Their existing install, enable/disable, delete, appearance and iCloud controls use the same underlying code.
+- The larger Review landing page shows today's saved completed/remaining counts and offers Resume Review when a queue exists. Opening the page does not create a session or change scheduling. Counts describe the saved batch, not every future due card.
+- Desktop tag pickers use searchable adaptive columns. Searching never clears selections hidden by the search. The lock-screen preview is centered and keeps its accessory proportions.
+- A **Keyboard shortcuts** info button in configuration and study screens explains Space, rating keys and writing mode. No extra prompts or notifications are introduced.
+
+### Writing, platform layouts and the Lock Screen
+
+- Writing practice and its preview include **Unsure — Show Answer**. It works with an empty answer, preserves a partial attempt and reveals the solution without scoring. Choose Incorrect/Correct afterwards; mistakes remain available for retry.
+- The view/desktop folder owns Mac navigation, horizontal workspaces, panel styling, tag grids and shortcut help. The view/phone folder owns phone navigation, touch spacing and narrow-screen study layout. HomeView, StudyLayout and ConfigWorkspace select the platform. Review/Quick managers, SwiftData models, card rendering, config controls and iCloud code remain shared; desktop layouts do not duplicate persistence code.
+- Study screens scroll in smaller windows or when the phone keyboard is open. Desktop decks/import pages have bounded widths and consistent margins.
+- **Word Review** now supports iPhone Lock Screen rectangular and inline widgets. Both always show Japanese and English, using the existing Widget Config vocabulary selection. Before Answer controls whether Japanese uses Kanji, Hiragana or both (the inline size omits the secondary reading). System lock-screen styling applies; long meanings may be truncated.
+
+To add it: long-press the iPhone Lock Screen, choose Customise → Lock Screen, tap the widget area below the clock and select Pyoko → Word Review. The inline variant goes in the date row above the clock. Open Pyoko first to publish vocabulary. The existing Home Screen/Mac widget keeps its reveal/next interaction.
 
 Quick Review's tag picker now lists tags linked to cards in installed decks. Start checks that a selected tag has vocabulary, preventing stale empty tags from leading to an empty session. Single-tag import/save/reload and UI-start regression tests are included. This does not reconstruct missing tag relationships in existing data.
 

@@ -77,6 +77,7 @@ struct DataLoaderView: View {
         }
         .accessibilityIdentifier("config.scroll")
         .pyokoSurface()
+        .pyokoListPage()
         .navigationTitle(
             "Import Deck"
         )

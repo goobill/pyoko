@@ -65,6 +65,14 @@ struct CardPreviewView: View {
                 }
                 .accessibilityIdentifier("preview.action")
                 .buttonStyle(.bordered)
+                if quick && writing && !revealed {
+                    Button("Unsure — Show Answer") {
+                        hintRevealed = false
+                        revealed = true
+                    }
+                    .accessibilityIdentifier("preview.unsure")
+                    .buttonStyle(.bordered)
+                }
                 Text("Example only — does not change your progress.")
                     .font(.caption).foregroundStyle(.secondary)
             }

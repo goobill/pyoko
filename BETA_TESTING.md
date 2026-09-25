@@ -56,7 +56,37 @@ Run WidgetTests in Xcode, then verify on iPhone and Mac: switch each source, dis
 
 Hint regression tests explicitly configure their display modes and hint preference, including the Quick writing preview. Rendered-view tests supplement taps: toggling state must alter actual SwiftUI output, and standalone Hiragana must match the primary Japanese size and colour. Recognition intentionally hides hints when Hiragana is already visible or is the answer.
 
+## Desktop workspace checks
+
+The autofocus regression starts writing practice and types directly through the application, without clicking the field, presses Return, grades with 4/3 and repeats on the next card (or reset for a one-card session). Verify this with a Japanese input method too: committing a composition must not accidentally grade a card. Completion tests require distinct Completed/Due now metrics and no Check Again button. Visually check the lighter tint in light/dark themes. These checks still require Xcode execution.
+
+Completion UI regressions check Quick retry/reset/exit and scheduled completion action heights, plus returning to the Review landing page. Check continuation and later-today states, empty Quick selections, and small/wide windows manually. The writing comparison test requires Check Answer to the right of Unsure. Xcode execution remains outstanding.
+
+Verify the Mac writing field has a 32-point outer inset on each side in addition to its internal text padding. The card and two-button action row remain full-width. Repeat blank/typed answer and Unsure checks at the minimum window width.
+
+Check that Shortcuts is right-aligned after progress and that only the lower study back button remains. The Mac writing UI test checks the help label/position, same-row Check Answer and Unsure, blank-answer enablement, and lower-back navigation. Visually confirm all four review ratings share the lightest previous tint, input text has room inside both edges, and the writing actions fit at minimum window width.
+
+Run ReviewRandomizationTests: deterministic injected permutations must affect selection before the limit is applied, include vocabulary from later imports, and leave persisted queue order unchanged on resume. Extension selection is checked separately. Existing eligibility/quota tests still apply. Random shuffles may naturally produce adjacent cards from the same deck; strict deck alternation is not required.
+
+Run the Mac writing comparison test: keyboard help and progress must share a row, Correct answer and Your answer must share a row, and blank attempts must have a visible placeholder. Check recall and recognition, Kanji/Hiragana modes, long answers, a narrow window and a wide window manually. These tests have not been run in this environment.
+
+New Mac UI tests exercise opening/closing shortcut help in config and study screens, minimum rating button height, case-insensitive tag search, no-result search, preservation/persistence of hidden selections, single-tag session start, and lock-screen preview centering/proportions. The wide-window test explicitly skips when the detail area is too narrow; enlarge the window and rerun it before release.
+
+Resize to the minimum window size and to a wide desktop window. Above 860 points of detail width, config controls and previews must sit side by side. Below that width, config panels must stack without horizontal clipping. Study actions must always remain below the card: a compact reveal button followed by one row of four ratings after reveal. Check all three config pages, Decks, Settings, wrapped toggle labels, tag columns, both study directions, writing inputs, light/dark appearance and keyboard help. Capture both sizes; automated source inspection cannot establish visual quality. Confirm the phone layout and control order remain unchanged.
+
+ReviewSessionSummaryTests cover pending/completed queues, completed batches, date boundaries, missing card relationships and read-only summary behaviour. The Mac UI regression checks the compact reveal button, rating row geometry below the card and saved progress after relaunch. Existing deck and palette UI tests continue to exercise the shared actions in their new containers. Run these in Xcode; they have not been executed in the editing environment.
+
 ## Regression release gate
+
+New writing/layout/widget checks:
+
+- Run the Unsure UI tests on iPhone and Mac. Blank input must reveal without incrementing either score; Incorrect must increment once; the next writing card and preview reset must restore Unsure. A partial preview attempt must remain visible after reveal.
+- Run LockScreenWidgetTests and the rendered lock-screen test: English must appear even for recall/Hiragana-only settings; Hiragana-only uses the main line; blank readings fall back to Kanji; expired or missing content shows the empty prompt.
+- On Mac, resize the window to its minimum size and a wide desktop size. Confirm config panels have consistent margins, study controls scroll into view and all existing keyboard tests still pass.
+- On iPhone, use a small simulator and landscape with the keyboard open; reach Check Answer, Unsure and both rating buttons by scrolling. Check larger accessibility text sizes.
+- Add both lock-screen widget sizes on an actual iPhone. Check long English meanings, empty selections, midnight expiry, system tint and refresh after changing Widget Config. The UI runner does not automate the Lock Screen or prove WidgetKit refresh timing.
+
+Apple-platform compilation, rendered tests and device checks remain unexecuted in this editing environment.
 
 Previously Reviewed tests cover lifetime FSRS repetitions, old reviews with future due dates, enabled/disabled decks, orphan and ungraded cards, deduplication, both practice directions, limits, saved source selection and no scheduling writes. A UI test grades a scheduled card, selects the new source, relaunches and starts practice.
 
