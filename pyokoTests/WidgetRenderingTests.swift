@@ -6,6 +6,24 @@ import Testing
 /// Render real SwiftUI views: string-only assertions missed the small grey Hiragana bug.
 @MainActor
 struct WidgetRenderingTests {
+    @Test func lockScreenUsesLargerTypeAndFullSizeStandaloneHiragana() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let word = PyokoWidgetWord(id: "eat", source: "to eat", target: "食べる", reading: "たべる")
+        var snapshot = PyokoWidgetSnapshot.empty
+        snapshot.before = .reading
+        let content = LockScreenWordContent(word: word, snapshot: snapshot, date: now)
+        let actual = try pixels(LockScreenWordView(content: content), height: 76)
+        let expected = VStack(alignment: .leading, spacing: 2) {
+            Text("たべる").font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.65)
+            Text("to eat").font(.system(size: 15, weight: .medium))
+                .lineLimit(2).minimumScaleFactor(0.75)
+        }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        #expect(Set(actual).count > 4, "A blank render cannot pass")
+        #expect(actual == (try pixels(expected, height: 76)),
+                "Standalone Hiragana must render at 24pt in the primary colour, with a 15pt meaning")
+    }
+
     @Test func lockScreenRendersEnglishAndChangesWithTheSelectedWord() throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let first = PyokoWidgetWord(id: "eat", source: "to eat", target: "食べる", reading: "たべる")

@@ -60,13 +60,13 @@ struct CardPreviewView: View {
                         .textFieldStyle(.roundedBorder)
                         .onSubmit { revealed = true }
                 }
-                Button(revealed ? "Reset Preview" : (quick && writing ? "Check Answer" : "Show Answer")) {
+                Button(revealed ? "Reset Preview" : (quick && writing ? "Check" : "Show Answer")) {
                     if revealed { reset() } else { revealed = true }
                 }
                 .accessibilityIdentifier("preview.action")
                 .buttonStyle(.bordered)
                 if quick && writing && !revealed {
-                    Button("Unsure — Show Answer") {
+                    Button("Unsure") {
                         hintRevealed = false
                         revealed = true
                     }

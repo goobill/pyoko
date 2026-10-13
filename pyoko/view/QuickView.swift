@@ -38,7 +38,13 @@ struct QuickView: View {
     private var hintRevealed =
         false
 
+    #if os(iOS)
+    // UIKit owns first-responder status. An unbound SwiftUI FocusState reads
+    // false on redraw and would dismiss this field after each text edit.
+    @State private var writingFocused = false
+    #else
     @FocusState private var writingFocused: Bool
+    #endif
 
     @State
     private var writingText =
@@ -125,7 +131,7 @@ struct QuickView: View {
             PyokoQuickCard
     ) -> some View {
 
-        StudyLayout {
+        StudyLayout(phoneWriting: config.writingEnabled && !answerRevealed) {
             topBar
         } card: {
             QuickCardView(
@@ -331,62 +337,55 @@ struct QuickView: View {
             spacing: 12
         ) {
 
-            TextField(
-                writingPlaceholder,
-                text:
-                    $writingText
-            )
-            .focused($writingFocused)
+            Group {
+                #if os(iOS)
+                PhoneWritingField(
+                    text: $writingText,
+                    isFocused: $writingFocused,
+                    placeholder: writingPlaceholder,
+                    language: .preferred(for: currentCard?.type ?? .recognition,
+                                         hiraganaAnswer: config.recognitionReadingOnlyEnabled),
+                    onSubmit: submitWriting
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                #else
+                TextField(writingPlaceholder, text: $writingText)
+                    .focused($writingFocused)
+                    .modifier(MacWritingKeyboard(focused: writingFocused,
+                        language: .preferred(for: currentCard?.type ?? .recognition,
+                                             hiraganaAnswer: config.recognitionReadingOnlyEnabled)))
+                    .textFieldStyle(.plain)
+                    .font(.title3)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+                    .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.15)))
+                    .accessibilityIdentifier("quick.answer")
+                    .onSubmit { submitWriting() }
+                    .padding(.horizontal, 32)
+                #endif
+            }
             .task(id: currentCard?.id) {
-                // Wait for the new field to join the view hierarchy before focusing it.
                 await Task.yield()
                 guard !Task.isCancelled else { return }
                 writingFocused = !answerRevealed
             }
-            #if os(macOS)
-            .textFieldStyle(.plain)
-            .font(.title3)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.15)))
-            #else
-            .textFieldStyle(.roundedBorder)
-            #endif
-            .accessibilityIdentifier("quick.answer")
-
-            #if os(iOS)
-            .submitLabel(
-                .done
-            )
-            #endif
-
-            .onSubmit {
-
-                submitWriting()
-            }
-            #if os(macOS)
-            // Inset the whole field, while the action row retains the card's width.
-            .padding(.horizontal, 32)
-            #endif
 
             WritingButtonsLayout {
-                #if os(macOS)
                 unsureButton
                 checkAnswerButton
-                #else
-                checkAnswerButton
-                unsureButton
-                #endif
             }
         }
     }
 
     private var checkAnswerButton: some View {
         Button(action: submitWriting) {
-            Text("Check Answer")
+            Text("Check")
                 #if os(macOS)
                 .frame(minHeight: 36)
+                #else
+                .frame(minHeight: 32)
                 #endif
                 .frame(maxWidth: .infinity)
         }
@@ -397,9 +396,11 @@ struct QuickView: View {
 
     private var unsureButton: some View {
         Button(action: revealUnsureAnswer) {
-            Text("Unsure — Show Answer")
+            Text("Unsure")
                 #if os(macOS)
                 .frame(maxWidth: .infinity, minHeight: 36)
+                #else
+                .frame(maxWidth: .infinity, minHeight: 32)
                 #endif
         }
         .buttonStyle(.bordered)

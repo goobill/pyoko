@@ -1,5 +1,30 @@
 import Foundation
 
+enum PyokoWidgetMode: String, Codable, CaseIterable {
+    case review, random
+}
+
+enum PyokoWidgetPair: String, Codable, CaseIterable {
+    case kanjiEnglish, hiraganaEnglish, kanjiHiragana
+
+    var title: String {
+        switch self {
+        case .kanjiEnglish: return "Kanji + English"
+        case .hiraganaEnglish: return "Hiragana + English"
+        case .kanjiHiragana: return "Kanji + Hiragana"
+        }
+    }
+
+    func text(for word: PyokoWidgetWord) -> (primary: String, secondary: String?) {
+        switch self {
+        case .kanjiEnglish: return (word.target, word.source)
+        case .hiraganaEnglish: return (word.displayReading, word.source)
+        case .kanjiHiragana:
+            return (word.target, word.displayReading == word.target ? nil : word.displayReading)
+        }
+    }
+}
+
 enum PyokoWidgetDirection:
     String,
     Codable,
@@ -70,6 +95,10 @@ struct PyokoWidgetSnapshot:
     var expiresAt: Date? = nil
     var before: TargetDisplayMode? = nil
     var after: TargetDisplayMode? = nil
+    var mode: PyokoWidgetMode? = nil
+    var pair: PyokoWidgetPair? = nil
+
+    var isRandom: Bool { mode == .random }
 
     func isExpired(at date: Date) -> Bool {
         expiresAt.map { date >= $0 } ?? false

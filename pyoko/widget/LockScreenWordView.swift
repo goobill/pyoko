@@ -15,6 +15,14 @@ struct LockScreenWordContent {
             isEmpty = true
             return
         }
+        if snapshot.isRandom {
+            let text = (snapshot.pair ?? .kanjiEnglish).text(for: word)
+            japanese = text.primary
+            reading = nil
+            meaning = text.secondary ?? ""
+            isEmpty = false
+            return
+        }
         let mode = snapshot.before ?? .target
         japanese = mode == .reading ? word.displayReading : word.target
         reading = mode == .targetAndReading && word.displayReading != word.target
@@ -35,11 +43,24 @@ struct LockScreenWordView: View {
             Text(content.inlineText)
         } else {
             VStack(alignment: .leading, spacing: 2) {
-                Text(content.japanese).font(.headline).lineLimit(1).minimumScaleFactor(0.7)
+                // The accessory slot is system-sized. Give the word priority within it;
+                // standalone Hiragana deliberately uses this same primary style.
+                Text(content.japanese)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
                 if let reading = content.reading {
-                    Text(reading).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    Text(reading)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                 }
-                Text(content.meaning).font(.caption).lineLimit(2)
+                Text(content.meaning)
+                    .font(.system(size: 15, weight: .medium))
+                    .lineLimit(content.reading == nil ? 2 : 1)
+                    .minimumScaleFactor(0.75)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)

@@ -48,6 +48,13 @@ struct DecksView: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 400), spacing: 24)], alignment: .leading, spacing: 24) {
                     GroupBox("Imported Decks") {
                         VStack(alignment: .leading, spacing: 20) {
+                            NavigationLink { DataLoaderView() } label: {
+                                Label("Import Deck", systemImage: "plus")
+                                    .font(.headline).padding(.horizontal, 12).frame(minHeight: 40)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .accessibilityIdentifier("decks.import")
+                            MoreDecksLink().buttonStyle(.bordered)
                             if importedDecks.isEmpty {
                                 Text("Import a CSV, URL, or Google Sheet using Import Deck above.")
                                     .foregroundStyle(.secondary)
@@ -77,6 +84,7 @@ struct DecksView: View {
             List {
                 importedDecksSection
                 builtInDecksSection
+                Section { MoreDecksLink() }
             }
             .pyokoListPage()
             #endif
@@ -86,7 +94,7 @@ struct DecksView: View {
             "Decks"
         )
         .toolbar {
-
+            #if !os(macOS)
             ToolbarItem(
                 placement:
                     .primaryAction
@@ -106,6 +114,7 @@ struct DecksView: View {
                 }
                 .accessibilityIdentifier("decks.import")
             }
+            #endif
         }
         .onAppear {
 

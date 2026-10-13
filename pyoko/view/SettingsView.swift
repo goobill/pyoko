@@ -1,5 +1,4 @@
 import SwiftUI
-import CloudKit
 
 struct SettingsView: View {
     @AppStorage("appearancePreference") private var appearancePreference = "system"
@@ -7,7 +6,7 @@ struct SettingsView: View {
     @AppStorage("tintPreference") private var tintValue = "automatic"
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var scenePhase
-    @State private var accountMessage = "Checking iCloud account…"
+    @State private var accountCheck = CloudAccountCheck()
 
     var body: some View {
         SettingsLayout {
@@ -68,11 +67,27 @@ struct SettingsView: View {
             }
             SettingsSection("iCloud") {
                 Label("iCloud sync configured", systemImage: "icloud")
-                Text(accountMessage).foregroundStyle(.secondary)
+                Text(accountCheck.isChecking ? "Checking iCloud account…" : accountCheck.message)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("settings.cloud.result")
                 Text("Decks, review progress and practice config sync through your iCloud account. Changes may take a little time to appear on your other device.")
                     .font(.caption).foregroundStyle(.secondary)
-                Button("Check iCloud Account") { Task { await checkAccount() } }
-                Text("Account availability does not confirm that all changes have synced.")
+                Button {
+                    Task { await accountCheck.check() }
+                } label: {
+                    HStack {
+                        if accountCheck.isChecking { ProgressView().controlSize(.small) }
+                        Text(accountCheck.isChecking ? "Checking…" : "Check Account Status")
+                    }
+                }
+                .disabled(accountCheck.isChecking)
+                .accessibilityIdentifier("settings.cloud.check")
+                if let checked = accountCheck.lastChecked {
+                    Text("Last checked: \(checked.formatted(date: .omitted, time: .standard))")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("settings.cloud.checked")
+                }
+                Text("Checks account access only. Sync happens automatically; this does not force a sync or confirm that all changes have synced.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -80,28 +95,13 @@ struct SettingsView: View {
         .accessibilityIdentifier("settings.form")
         .pyokoSurface()
         .navigationTitle("Settings")
-        .task { await checkAccount() }
+        .task { await accountCheck.check() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await checkAccount() } }
+            if phase == .active { Task { await accountCheck.check() } }
         }
         #if os(macOS)
         .frame(minWidth: 600, idealWidth: 1000, minHeight: 580, idealHeight: 760)
         #endif
     }
 
-    private func checkAccount() async {
-        do {
-            let status = try await CKContainer(identifier: PyokoCloud.containerIdentifier).accountStatus()
-            switch status {
-            case .available: accountMessage = "iCloud account available."
-            case .noAccount: accountMessage = "Sign in to iCloud in your device's Settings to sync."
-            case .restricted: accountMessage = "iCloud access is restricted on this device."
-            case .couldNotDetermine, .temporarilyUnavailable:
-                accountMessage = "iCloud is temporarily unavailable. Try again later."
-            @unknown default: accountMessage = "Unable to determine iCloud availability."
-            }
-        } catch {
-            accountMessage = "Could not check iCloud: \(error.localizedDescription)"
-        }
-    }
 }

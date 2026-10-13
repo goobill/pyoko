@@ -6,6 +6,68 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct WidgetTests {
+    @Test func randomPairsAndMissingReadings() {
+        let value = word("one")
+        #expect(PyokoWidgetPair.kanjiEnglish.text(for: value).secondary == "eat")
+        #expect(PyokoWidgetPair.hiraganaEnglish.text(for: value).primary == "たべる")
+        #expect(PyokoWidgetPair.kanjiHiragana.text(for: value).secondary == "たべる")
+        let missing = PyokoWidgetWord(id: "missing", source: "thanks", target: "ありがとう", reading: nil)
+        #expect(PyokoWidgetPair.hiraganaEnglish.text(for: missing).primary == "ありがとう")
+        #expect(PyokoWidgetPair.kanjiHiragana.text(for: missing).secondary == nil)
+    }
+
+    @Test func randomModeAdvancesWithoutRevealAndThrottlesRefresh() throws {
+        try withDefaults { store, _ in
+            var value = snapshot([word("one"), word("two")]); value.mode = .random
+            #expect(store.saveSnapshot(value))
+            let now = Date(timeIntervalSince1970: 10000)
+            let first = store.currentWord(snapshot: value)?.id
+            store.handleTap(at: now)
+            let second = store.currentWord(snapshot: value)?.id
+            #expect(first != second)
+            #expect(!store.isWordRevealed)
+            store.refreshRandomWordIfNeeded(at: now.addingTimeInterval(1))
+            #expect(store.currentWord(snapshot: value)?.id == second)
+            store.refreshRandomWordIfNeeded(at: now.addingTimeInterval(WidgetStore.randomRefreshInterval))
+            #expect(store.currentWord(snapshot: value)?.id == first)
+            value.expiresAt = now
+            #expect(store.saveSnapshot(value))
+            store.handleTap(at: now)
+            #expect(store.currentWord(snapshot: value)?.id == first)
+        }
+    }
+
+    @Test func randomModePreservesFiltersAndLegacyPreferences() throws {
+        let s = try TestStore(), deck = s.deck(), hidden = s.deck("Hidden")
+        let card = s.card(deck), excluded = s.card(hidden)
+        let config = s.config([deck])
+        var prefs = PyokoWidgetConfig()
+        prefs.source = .decks; prefs.deckIDs = [deck.id]; prefs.theme = "rose"
+        let legacy = PyokoWidgetConfig.decode(prefs.encoded)
+        #expect(legacy.mode == nil && legacy.deckIDs == prefs.deckIDs && legacy.theme == "rose")
+        prefs.mode = .random; prefs.pair = .hiraganaEnglish
+        let decoded = PyokoWidgetConfig.decode(prefs.encoded)
+        #expect(decoded == prefs)
+        let result = WidgetSync.makeSnapshot(config: config, cards: [card, excluded], now: s.now, preferences: decoded)
+        #expect(result.isRandom && result.pair == .hiraganaEnglish && result.words.count == 1)
+        let lock = LockScreenWordContent(word: result.words.first, snapshot: result, date: s.now)
+        #expect(lock.japanese == result.words.first?.displayReading)
+        #expect(lock.meaning == result.words.first?.source)
+    }
+
+    @Test func randomEmptyAndSingleWordAreSafe() throws {
+        try withDefaults { store, _ in
+            var value = snapshot([]); value.mode = .random
+            #expect(store.saveSnapshot(value)); store.handleTap()
+            #expect(store.currentWord(snapshot: value) == nil)
+            value = snapshot([word("only")]); value.mode = .random
+            #expect(store.saveSnapshot(value)); store.handleTap()
+            #expect(store.currentWord(snapshot: value)?.id == "only")
+            value.mode = .review
+            #expect(store.saveSnapshot(value)); store.handleTap()
+            #expect(store.isWordRevealed)
+        }
+    }
     private func snapshot(_ words: [PyokoWidgetWord], recognition: Bool = true, recall: Bool = false) -> PyokoWidgetSnapshot {
         PyokoWidgetSnapshot(publishedAt: .now, words: words, includeRecognition: recognition,
                             includeRecall: recall, readingOnlyAnswer: false)

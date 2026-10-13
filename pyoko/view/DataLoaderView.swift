@@ -65,19 +65,26 @@ struct DataLoaderView: View {
     
     var body: some View {
         
-        Form {
+        Group {
+            #if os(macOS)
+            desktopImport
+            #else
+            Form {
             
             deckSection
+            Section { MoreDecksLink() }
             
             cardTypeSection
             
             formatSection
             
             importSection
+            }
+            .pyokoListPage()
+            #endif
         }
         .accessibilityIdentifier("config.scroll")
         .pyokoSurface()
-        .pyokoListPage()
         .navigationTitle(
             "Import Deck"
         )
@@ -113,6 +120,68 @@ struct DataLoaderView: View {
     }
     
     // MARK: - Deck
+
+    #if os(macOS)
+    /// Desktop panels share the same import state, validation and loader as the phone form.
+    private var desktopImport: some View {
+        MacPanelPage {
+            Text("Import a deck").font(.largeTitle.bold())
+            Text("Choose a CSV file or link, then select the cards to create.")
+                .foregroundStyle(.secondary)
+            MoreDecksLink().buttonStyle(.bordered)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 380), spacing: 24)], alignment: .leading, spacing: 24) {
+                GroupBox("Deck details") {
+                    VStack(alignment: .leading, spacing: 24) {
+                        Picker("Import From", selection: $importMethod) {
+                            ForEach(ImportMethod.allCases) { Text($0.title).tag($0) }
+                        }.pickerStyle(.segmented)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Deck name").font(.headline)
+                            TextField("Deck Name", text: $deckName)
+                                .textFieldStyle(.roundedBorder)
+                                .accessibilityIdentifier("import.name")
+                        }
+                        switch importMethod {
+                        case .file: fileImportFields
+                        case .url: urlImportFields
+                        case .googleSheets: googleSheetsFields
+                        }
+                        Divider()
+                        Text("Cards to create").font(.headline)
+                        Toggle("Recognition · Japanese → English", isOn: $createRecognition)
+                        Toggle("Recall · English → Japanese", isOn: $createRecall)
+                        Text("Each selected direction creates a separate review card for each word.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Button { Task { await importData() } } label: {
+                            HStack(spacing: 10) {
+                                if isLoading { ProgressView().controlSize(.small) }
+                                Text(isLoading ? "Importing…" : "Import Deck").font(.headline)
+                            }.frame(maxWidth: .infinity, minHeight: 40)
+                        }.buttonStyle(.borderedProminent)
+                        .disabled(!canImport)
+                        .accessibilityIdentifier("import.submit")
+                    }
+                    .disabled(isLoading)
+                }
+                GroupBox("CSV format") {
+                    VStack(alignment: .leading, spacing: 18) {
+                        Text("Use these four column headers:")
+                        Text("source,target,reading,tags").font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                        Divider()
+                        csvColumn(name: "English · source", description: "Required English meaning.")
+                        csvColumn(name: "Kanji · target", description: "Required Japanese spelling; kana-only words are supported.")
+                        csvColumn(name: "Hiragana · reading", description: "Optional reading.")
+                        csvColumn(name: "Tags · tags", description: "Optional categories separated by |.")
+                        Divider()
+                        Text("to eat,食べる,たべる,N5|Verb").font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                        Text("Include the header row and four columns per word. Empty tags become No Tag.")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }.accessibilityIdentifier("import.desktop")
+    }
+    #endif
     
     private var deckSection:
         some View {
@@ -224,7 +293,7 @@ struct DataLoaderView: View {
             }
             
             Text(
-                "Choose a CSV from Files. Available locations can include local storage, iCloud Drive, Google Drive, and other installed file providers."
+                "Choose a CSV from your device, iCloud Drive, or another available file provider."
             )
             .font(
                 .caption

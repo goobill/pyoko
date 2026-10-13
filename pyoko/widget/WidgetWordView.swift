@@ -69,7 +69,18 @@ struct WidgetWordView: View {
 
             Spacer(minLength: 4)
 
-            if revealed {
+            if snapshot.isRandom {
+                let pair = snapshot.pair ?? .kanjiEnglish
+                let text = pair.text(for: word)
+                primaryText(text.primary)
+                if let secondary = text.secondary {
+                    if pair == .kanjiHiragana {
+                        readingText(secondary)
+                    } else {
+                        answerTextView(secondary)
+                    }
+                }
+            } else if revealed {
                 revealedContent
             } else {
                 questionContent

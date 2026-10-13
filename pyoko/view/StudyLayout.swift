@@ -5,9 +5,11 @@ struct StudyLayout<Header: View, Card: View, Actions: View>: View {
     let header: Header
     let card: Card
     let actions: Actions
+    let phoneWriting: Bool
 
-    init(@ViewBuilder header: () -> Header, @ViewBuilder card: () -> Card,
+    init(phoneWriting: Bool = false, @ViewBuilder header: () -> Header, @ViewBuilder card: () -> Card,
          @ViewBuilder actions: () -> Actions) {
+        self.phoneWriting = phoneWriting
         self.header = header(); self.card = card(); self.actions = actions()
     }
 
@@ -15,8 +17,19 @@ struct StudyLayout<Header: View, Card: View, Actions: View>: View {
         #if os(macOS)
         MacStudyLayout(header: header, card: card, actions: actions)
         #else
-        PhoneStudyLayout(header: header, card: card, actions: actions)
+        PhoneStudyLayout(header: header, card: card, actions: actions, writing: phoneWriting)
         #endif
+    }
+}
+
+private struct PhoneWritingCardHeightKey: EnvironmentKey {
+    static let defaultValue: CGFloat? = nil
+}
+
+extension EnvironmentValues {
+    var phoneWritingCardHeight: CGFloat? {
+        get { self[PhoneWritingCardHeightKey.self] }
+        set { self[PhoneWritingCardHeightKey.self] = newValue }
     }
 }
 

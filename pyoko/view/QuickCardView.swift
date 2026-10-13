@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct QuickCardView: View {
+    @Environment(\.phoneWritingCardHeight) private var writingCardHeight
 
     let card:
         PyokoQuickCard
@@ -37,14 +38,14 @@ struct QuickCardView: View {
         ZStack {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(Color.primary.opacity(0.06))
-            VStack(spacing: 16) {
+            VStack(spacing: writingCardHeight == nil ? 16 : 8) {
                 header
                 // The hint button sits outside the answer-reveal tap region.
-                VStack(spacing: 16) {
+                VStack(spacing: writingCardHeight == nil ? 16 : 8) {
                     Spacer()
                     if answerRevealed { answerContent } else { questionContent }
                     Spacer()
-                    if !answerRevealed {
+                    if !answerRevealed && writingCardHeight == nil {
                         Text(footerText)
                             .font(.caption).foregroundStyle(.secondary)
                     }
@@ -56,10 +57,11 @@ struct QuickCardView: View {
                     onReveal()
                 }
             }
-            .padding(24)
+            .padding(writingCardHeight == nil ? 24 : 16)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 360)
+        .frame(height: writingCardHeight ?? 360)
+        .accessibilityIdentifier("quick.card")
     }
 
     // MARK: - Header

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Keep writing actions in one desktop row, while retaining the phone's touch layout.
+/// Keep both writing actions within reach above the keyboard.
 struct WritingButtonsLayout<Content: View>: View {
     let content: Content
     init(@ViewBuilder content: () -> Content) { self.content = content() }
@@ -9,7 +9,7 @@ struct WritingButtonsLayout<Content: View>: View {
         #if os(macOS)
         HStack(spacing: 16) { content }
         #else
-        VStack(spacing: 12) { content }
+        HStack(spacing: 12) { content }
         #endif
     }
 }

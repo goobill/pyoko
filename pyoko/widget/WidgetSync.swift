@@ -95,7 +95,8 @@ enum WidgetSync {
             includeRecognition: preferences.recognition || !preferences.recall,
             includeRecall: preferences.recall, readingOnlyAnswer: preferences.readingOnly,
             theme: preferences.theme, expiresAt: preferences.source == .today ? end : nil,
-            before: preferences.before, after: preferences.after
+            before: preferences.before, after: preferences.after,
+            mode: preferences.mode, pair: preferences.pair
         )
     }
 

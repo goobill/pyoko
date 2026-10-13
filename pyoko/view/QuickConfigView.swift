@@ -333,54 +333,6 @@ struct QuickConfigView: View {
                             .center
                         )
 
-                        NavigationLink {
-
-                            QuickView(
-                                config:
-                                    config
-                            )
-
-                        } label: {
-
-                            Text(
-                                "Start Quick Review"
-                            )
-                            #if os(macOS)
-                            .frame(minHeight: 36)
-                            #endif
-                            .frame(
-                                maxWidth:
-                                    .infinity
-                            )
-                        }
-                        .accessibilityIdentifier("quick.start")
-                        .buttonStyle(
-                            .borderedProminent
-                        )
-                        .disabled(
-                            !canStart(
-                                config
-                            )
-                        )
-
-                        if let validation =
-                            validationMessage(
-                                config
-                            ) {
-
-                            Text(
-                                validation
-                            )
-                            .font(
-                                .caption
-                            )
-                            .foregroundStyle(
-                                .secondary
-                            )
-                            .multilineTextAlignment(
-                                .center
-                            )
-                        }
                     }
                     .frame(
                         maxWidth:
@@ -388,6 +340,34 @@ struct QuickConfigView: View {
                     )
                 }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            startBar(config)
+        }
+    }
+
+    /// Kept outside the scroll view so starting practice is always within reach.
+    private func startBar(_ config: PyokoQuickConfig) -> some View {
+        VStack(spacing: 8) {
+            if let validation = validationMessage(config) {
+                Text(validation).font(.caption).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            NavigationLink { QuickView(config: config) } label: {
+                Text("Start Quick Review")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 32)
+            }
+            .accessibilityIdentifier("quick.start")
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(!canStart(config))
+        }
+        .frame(maxWidth: 1240)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .background(.regularMaterial)
+        .accessibilityIdentifier("quick.startBar")
     }
 
     // MARK: - Writing

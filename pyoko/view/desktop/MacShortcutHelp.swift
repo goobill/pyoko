@@ -24,7 +24,7 @@ Label("Shortcuts", systemImage: "info.circle")
                 shortcut("3 / 4", "Incorrect / Correct")
                 Divider()
                 Text("Writing mode").font(.headline)
-                Text("Type normally, including spaces and numbers. Return or Check Answer reveals your attempt. Unsure reveals without typing. Rating keys work after reveal.")
+                Text("Type normally, including spaces and numbers. Return or Check reveals your attempt. Unsure reveals without typing. Rating keys work after reveal.")
                     .fixedSize(horizontal: false, vertical: true)
                 Button("Done") { showingHelp = false }
                     .accessibilityIdentifier("shortcuts.done")

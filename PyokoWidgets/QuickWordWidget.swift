@@ -91,6 +91,8 @@ struct QuickWordProvider:
         let now =
             Date.now
 
+        PyokoWidgetStore.refreshRandomWordIfNeeded(at: now)
+
         let entry =
             makeEntry(
                 date:
@@ -107,7 +109,7 @@ struct QuickWordProvider:
                 policy:
                     .after(
                         now.addingTimeInterval(
-                            60 * 60 * 6
+                            entry.snapshot.isRandom ? WidgetStore.randomRefreshInterval : 60 * 60 * 6
                         )
                     )
             )
@@ -179,7 +181,7 @@ struct QuickWordWidgetView: View {
                                    revealed: entry.isRevealed, snapshot: entry.snapshot)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(entry.isRevealed ? "Answer revealed. Next word" : "Reveal answer")
+                .accessibilityLabel(entry.snapshot.isRandom ? "Next random word" : (entry.isRevealed ? "Answer revealed. Next word" : "Reveal answer"))
             } else {
                 VStack(spacing: 8) {
                     Text("No words available").font(.headline)

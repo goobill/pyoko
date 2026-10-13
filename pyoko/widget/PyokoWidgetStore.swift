@@ -3,6 +3,8 @@ import Foundation
 /// Stores widget state in an injected preferences suite. App and tests use identical logic.
 struct WidgetStore {
     private let defaults: UserDefaults?
+    private let randomRefreshKey = "widget.randomRefreshDate"
+    static let randomRefreshInterval: TimeInterval = 15 * 60
 
     init(defaults: UserDefaults?) {
         self.defaults = defaults
@@ -144,8 +146,13 @@ struct WidgetStore {
             && previousWordID ==
                 newWordID
 
+        if previousSnapshot.isRandom != snapshot.isRandom {
+            defaults.removeObject(forKey: randomRefreshKey)
+        }
+
         defaults.set(
             keptSameWord
+            && previousSnapshot.isRandom == snapshot.isRandom
             && previousSnapshot.readingOnlyAnswer == snapshot.readingOnlyAnswer
             && snapshot.allows(previousDirection)
             ? wasRevealed
@@ -374,7 +381,15 @@ struct WidgetStore {
 
     // MARK: - Tap
 
-    func handleTap() {
+    /// Random mode always shows both fields, so tapping immediately advances.
+    func handleTap(at date: Date = .now) {
+        let snapshot = loadSnapshot()
+        guard !snapshot.isExpired(at: date) else { return }
+        if snapshot.isRandom {
+            nextWord()
+            defaults?.set(date, forKey: randomRefreshKey)
+            return
+        }
 
         if isWordRevealed {
 
@@ -387,6 +402,16 @@ struct WidgetStore {
     }
 
     // MARK: - Helpers
+
+    /// Timeline reloads may happen repeatedly; keep a tapped word stable until the interval elapses.
+    func refreshRandomWordIfNeeded(at date: Date) {
+        let snapshot = loadSnapshot()
+        guard snapshot.isRandom, !snapshot.isExpired(at: date), !snapshot.words.isEmpty else { return }
+        if let previous = defaults?.object(forKey: randomRefreshKey) as? Date,
+           date.timeIntervalSince(previous) < Self.randomRefreshInterval { return }
+        nextWord()
+        defaults?.set(date, forKey: randomRefreshKey)
+    }
 
     private func normalizedDirection(
         _ direction:
@@ -468,4 +493,5 @@ enum PyokoWidgetStore {
     static func currentDirection(snapshot: PyokoWidgetSnapshot) -> PyokoWidgetDirection { store.currentDirection(snapshot: snapshot) }
     static func nextWord() { store.nextWord() }
     static func handleTap() { store.handleTap() }
+    static func refreshRandomWordIfNeeded(at date: Date) { store.refreshRandomWordIfNeeded(at: date) }
 }

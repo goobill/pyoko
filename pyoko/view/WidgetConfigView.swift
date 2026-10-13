@@ -13,6 +13,24 @@ struct WidgetConfigView: View {
     @Query(sort: \PyokoDeck.name) private var decks: [PyokoDeck]
     @State private var revealed = false
     @State private var direction: PyokoWidgetDirection = .recognition
+    @State private var previewWordID: String?
+
+    private var isRandom: Bool { preferences.mode == .random }
+
+    private func previewWord(_ result: PyokoWidgetSnapshot) -> PyokoWidgetWord {
+        result.words.first(where: { $0.id == previewWordID }) ?? result.words.first
+            ?? PyokoWidgetWord(id: "preview", source: "to eat", target: "食べる", reading: "たべる", deckName: "Example")
+    }
+
+    private func advancePreview() {
+        if isRandom {
+            let result = snapshot(preferences)
+            let current = previewWord(result).id
+            previewWordID = result.words.filter { $0.id != current }.randomElement()?.id ?? current
+        } else {
+            revealed.toggle()
+        }
+    }
 
     private var preferences: PyokoWidgetConfig { .decode(stored) }
     private func binding<T>(_ key: WritableKeyPath<PyokoWidgetConfig, T>) -> Binding<T> {
@@ -27,7 +45,8 @@ struct WidgetConfigView: View {
             return PyokoWidgetSnapshot(publishedAt: .now, words: [],
                 includeRecognition: preferences.recognition, includeRecall: preferences.recall,
                 readingOnlyAnswer: preferences.readingOnly, theme: preferences.theme,
-                before: preferences.before, after: preferences.after)
+                before: preferences.before, after: preferences.after,
+                mode: preferences.mode, pair: preferences.pair)
         }
         return WidgetSync.makeSnapshot(config: config, cards: cards, now: .now,
                                        preferences: preferences, reviews: reviews)
@@ -59,6 +78,27 @@ struct WidgetConfigView: View {
 
     var body: some View {
         ConfigWorkspace {
+            GroupBox("Widget Mode") {
+                VStack(alignment: .leading, spacing: 16) {
+                    Picker("Mode", selection: Binding(get: { preferences.mode ?? .review },
+                        set: { binding(\.mode).wrappedValue = $0 })) {
+                        Text("Review").tag(PyokoWidgetMode.review)
+                        Text("Random").tag(PyokoWidgetMode.random)
+                    }.pickerStyle(.segmented)
+                    .accessibilityIdentifier("widget.mode")
+                    if isRandom {
+                        Picker("Show", selection: Binding(get: { preferences.pair ?? .kanjiEnglish },
+                            set: { binding(\.pair).wrappedValue = $0 })) {
+                            ForEach(PyokoWidgetPair.allCases, id: \.self) { pair in
+                                Text(pair.title).tag(pair)
+                            }
+                        }.accessibilityIdentifier("widget.pair")
+                        Text("Shows both fields immediately. Rotates when the system refreshes the widget; tap the Home Screen widget for another word. A new word on every viewing cannot be guaranteed.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            if !isRandom {
                 CardConfigView(
                     recognition: directionBinding(\.recognition, other: \.recall),
                     recall: directionBinding(\.recall, other: \.recognition),
@@ -66,10 +106,11 @@ struct WidgetConfigView: View {
                     after: modeBinding(\.after, default: .targetAndReading),
                     hiraganaOnly: binding(\.readingOnly), hint: .constant(false), showsHint: false
                 )
+            }
         } preview: {
                 GroupBox("Widget Preview") {
                     VStack(spacing: 12) {
-                        if preferences.recognition && preferences.recall {
+                        if !isRandom && preferences.recognition && preferences.recall {
                             Picker("Preview Direction", selection: $direction) {
                                 Text("Recognition").tag(PyokoWidgetDirection.recognition)
                                 Text("Recall").tag(PyokoWidgetDirection.recall)
@@ -77,17 +118,16 @@ struct WidgetConfigView: View {
                             .accessibilityIdentifier("widget.direction")
                         }
                         let result = snapshot(preferences)
-                        let word = result.words.first ?? PyokoWidgetWord(id: "preview", source: "to eat",
-                            target: "食べる", reading: "たべる", deckName: "Example")
-                        Button { revealed.toggle() } label: {
+                        let word = previewWord(result)
+                        Button { advancePreview() } label: {
                             WidgetWordView(word: word, direction: activeDirection, revealed: revealed, snapshot: result)
                                 .padding().frame(height: 190)
                                 .background((PyokoTheme(rawValue: preferences.theme) ?? .classic).background(for: scheme),
                                             in: RoundedRectangle(cornerRadius: 16))
                         }.buttonStyle(.plain)
                         .accessibilityIdentifier("widget.preview")
-                        .accessibilityLabel(revealed ? "Reset preview" : "Reveal preview answer")
-                        Button(revealed ? "Reset Preview" : "Show Answer") { revealed.toggle() }
+                        .accessibilityLabel(isRandom ? "Next random word" : (revealed ? "Reset preview" : "Reveal preview answer"))
+                        Button(isRandom ? "Next Word" : (revealed ? "Reset Preview" : "Show Answer")) { advancePreview() }
                             .accessibilityIdentifier("widget.action")
                             .buttonStyle(.bordered)
                         Text(result.words.isEmpty ? "Example only — no matching words selected." : "Example only — does not change your progress.")
@@ -96,8 +136,7 @@ struct WidgetConfigView: View {
                 }
                 GroupBox("Lock Screen Preview") {
                     let result = snapshot(preferences)
-                    let word = result.words.first ?? PyokoWidgetWord(id: "preview", source: "to eat",
-                        target: "食べる", reading: "たべる", deckName: "Example")
+                    let word = previewWord(result)
                     VStack(alignment: .leading, spacing: 12) {
                         LockScreenWordView(content: LockScreenWordContent(word: word, snapshot: result, date: .now))
                             .frame(width: 170, height: 76)
@@ -105,7 +144,7 @@ struct WidgetConfigView: View {
                             .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
                             .accessibilityIdentifier("widget.lockPreview")
                             .modifier(LockPreviewAlignment())
-                        Text("The lock-screen widget always shows Japanese and English together. It uses the same vocabulary selection. Add Word Review when customising your iPhone Lock Screen.")
+                        Text("The lock-screen widget shows your selected pair in Random mode, or Japanese and English in Review mode. It uses the same vocabulary selection. Add Word Review when customising your iPhone Lock Screen.")
                             .font(.caption).foregroundStyle(.secondary)
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -180,7 +219,7 @@ struct WidgetConfigView: View {
         }
         .pyokoSurface()
         .navigationTitle("Widget Config")
-        .onChange(of: stored) { _, _ in revealed = false; WidgetSync.refresh(modelContext: context) }
+        .onChange(of: stored) { _, _ in revealed = false; previewWordID = nil; WidgetSync.refresh(modelContext: context) }
         .onChange(of: direction) { _, _ in revealed = false }
         .task {
             // Migrate the previous combined filter UI to the matching source choice.

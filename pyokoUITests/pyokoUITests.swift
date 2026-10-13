@@ -119,7 +119,7 @@ final class pyokoUITests: XCTestCase {
         XCTAssertTrue(text.waitForExistence(timeout: 3))
         XCTAssertEqual(text.label, "たべる")
         let action = element("preview.action", app)
-        XCTAssertEqual(action.label, writing ? "Check Answer" : "Show Answer",
+        XCTAssertEqual(action.label, writing ? "Check" : "Show Answer",
                        "Hint must not reveal the full answer")
         hint.tap(); XCTAssertFalse(text.exists)
         scrollTo("preview.action", app).tap()
@@ -129,7 +129,7 @@ final class pyokoUITests: XCTestCase {
         choose("config.before", "Hiragana", app)
         _ = scrollTo("preview.action", app)
         XCTAssertFalse(element("card.hint", app).exists)
-        XCTAssertEqual(action.label, writing ? "Check Answer" : "Show Answer")
+        XCTAssertEqual(action.label, writing ? "Check" : "Show Answer")
     }
 
     @MainActor func testReviewHintTapAndDisplayChanges() throws { try checkHint(quick: false) }
@@ -200,6 +200,31 @@ final class pyokoUITests: XCTestCase {
         XCTAssertTrue(element("quick.start", app).waitForExistence(timeout: 5))
     }
 
+    @MainActor func testQuickStartStaysPinnedWhileSettingsScroll() throws {
+        let app = try launch(); ensureDeck(app); configureCards(app, quick: true)
+        scrollTo("quick.source.random", app).tap()
+        let start = element("quick.start", app)
+        XCTAssertTrue(start.isHittable)
+        let initialY = start.frame.midY
+        let scroll = app.scrollViews["config.scroll"]
+        #if os(macOS)
+        scroll.scroll(byDeltaX: 0, deltaY: 500)
+        #else
+        scroll.swipeDown()
+        #endif
+        XCTAssertTrue(start.isHittable)
+        XCTAssertEqual(start.frame.midY, initialY, accuracy: 2)
+        #if os(macOS)
+        scroll.scroll(byDeltaX: 0, deltaY: -500)
+        #else
+        scroll.swipeUp()
+        #endif
+        XCTAssertTrue(start.isHittable)
+        XCTAssertEqual(start.frame.midY, initialY, accuracy: 2)
+        start.tap()
+        XCTAssertTrue(element("quick.reveal", app).waitForExistence(timeout: 5))
+    }
+
     @MainActor func testSingleTagSelectionStartsQuickReview() throws {
         let app = try launch(); ensureDeck(app); configureCards(app, quick: true)
         scrollTo("quick.source.tags", app).tap()
@@ -214,6 +239,55 @@ final class pyokoUITests: XCTestCase {
         XCTAssertTrue(element("quick.reveal", app).waitForExistence(timeout: 5),
                       "A single populated tag must not lead to No Words Available")
     }
+
+    #if os(iOS)
+    @MainActor func testPhoneWritingKeepsFocusAcrossEditsAndNextCard() throws {
+        let app = try launch(); startQuick(app, writing: true)
+        for _ in 0..<2 {
+            let input = element("quick.answer", app)
+            XCTAssertTrue(input.waitForExistence(timeout: 10))
+            XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5),
+                          "Writing should focus automatically; enable the simulator software keyboard")
+            var expected = ""
+            for character in ["t", "o", " ", "e", "a", "t"] {
+                // Never tap the field: refocusing would mask this regression.
+                app.typeText(character)
+                expected += character
+                XCTAssertEqual(input.value as? String, expected)
+                XCTAssertTrue(app.keyboards.firstMatch.exists, "Typing must not dismiss the keyboard")
+            }
+            app.typeText(XCUIKeyboardKey.delete.rawValue)
+            XCTAssertEqual(input.value as? String, "to ea")
+            let check = element("quick.check", app)
+            let unsure = element("quick.unsure", app)
+            let card = element("quick.card", app)
+            let keyboardTop = app.keyboards.firstMatch.frame.minY
+            XCTAssertEqual(check.label, "Check")
+            XCTAssertEqual(unsure.label, "Unsure")
+            XCTAssertTrue(check.isHittable && unsure.isHittable && input.isHittable,
+                          "Writing actions must be reachable without scrolling")
+            XCTAssertLessThanOrEqual(input.frame.maxY, keyboardTop)
+            XCTAssertLessThanOrEqual(check.frame.maxY, keyboardTop)
+            XCTAssertLessThanOrEqual(unsure.frame.maxY, keyboardTop)
+            XCTAssertLessThan(unsure.frame.midX, check.frame.midX)
+            XCTAssertLessThan(abs(check.frame.midY - unsure.frame.midY), 4)
+            XCTAssertLessThanOrEqual(card.frame.height, 221,
+                                     "Writing must use a compact question card")
+            app.typeText("t\n")
+            XCTAssertTrue(element("quick.correct", app).waitForExistence(timeout: 5))
+            XCTAssertFalse(input.exists, "Return should reveal the answer")
+            tap("quick.correct", app)
+            if element("quick.reset", app).exists { tap("quick.reset", app) }
+        }
+    }
+
+    @MainActor func testPhoneNonWritingDoesNotOpenKeyboard() throws {
+        let app = try launch(); startQuick(app, writing: false)
+        XCTAssertTrue(element("quick.reveal", app).waitForExistence(timeout: 5))
+        XCTAssertFalse(app.keyboards.firstMatch.exists)
+        XCTAssertFalse(element("quick.answer", app).exists)
+    }
+    #endif
 
     @MainActor func testWritingRejectsBlankAndAcceptsSpaces() throws {
         let app = try launch(); startQuick(app, writing: true)
@@ -532,11 +606,43 @@ final class pyokoUITests: XCTestCase {
     }
 
     @MainActor func testImportRequiresANameAndFile() throws {
-        let app = try launch(); tap("home.decks", app); tap("decks.import", app)
+        let app = try launch(); tap("home.decks", app)
+        XCTAssertTrue(scrollTo("decks.more", app).isHittable)
+        tap("decks.import", app)
+        XCTAssertTrue(scrollTo("decks.more", app).isHittable)
+        #if os(macOS)
+        XCTAssertTrue(element("import.desktop", app).waitForExistence(timeout: 5))
+        #endif
         let name = scrollTo("import.name", app)
         name.tap(); name.typeText("Incomplete UI fixture")
         XCTAssertFalse(scrollTo("import.submit", app).isEnabled,
                        "A name alone must not enable an import")
+    }
+
+    @MainActor func testRandomWidgetModeAndPairsPersist() throws {
+        let app = try launch(); ensureDeck(app); tap("home.widget", app)
+        let mode = scrollTo("widget.mode", app)
+        #if os(macOS)
+        mode.radioButtons["Random"].tap()
+        #else
+        mode.buttons["Random"].tap()
+        #endif
+        for pair in ["Kanji + English", "Hiragana + English", "Kanji + Hiragana"] {
+            choose("widget.pair", pair, app)
+            XCTAssertEqual(scrollTo("widget.action", app).label, "Next Word")
+            scrollTo("widget.action", app).tap()
+            XCTAssertEqual(element("widget.action", app).label, "Next Word")
+        }
+        restart(app); tap("home.widget", app)
+        XCTAssertTrue(scrollTo("widget.pair", app).exists)
+        XCTAssertEqual(scrollTo("widget.action", app).label, "Next Word")
+        let restoredMode = scrollTo("widget.mode", app)
+        #if os(macOS)
+        restoredMode.radioButtons["Review"].tap()
+        #else
+        restoredMode.buttons["Review"].tap()
+        #endif
+        XCTAssertEqual(scrollTo("widget.action", app).label, "Show Answer")
     }
 
     @MainActor func testDeckDeleteCancelThenConfirmAndReinstall() throws {

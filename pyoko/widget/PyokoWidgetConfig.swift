@@ -27,6 +27,9 @@ struct PyokoWidgetConfig: Codable, Equatable {
     var recall = true
     var readingOnly = false
     var theme = "system"
+    // Optional for compatibility with preferences saved before these options existed.
+    var mode: PyokoWidgetMode? = nil
+    var pair: PyokoWidgetPair? = nil
 
     static func decode(_ data: Data) -> Self {
         (try? JSONDecoder().decode(Self.self, from: data)) ?? Self()
